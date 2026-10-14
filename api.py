@@ -1,25 +1,56 @@
-from fastapi import FastAPI, HTTPException, Depends, Body
-from fastapi.middleware.cors import CORSMiddleware
+import os
+from datetime import datetime, timedelta
+from typing import Optional, List
+
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Form
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, Response
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from datetime import timedelta
-from io import BytesIO
+from pydantic import BaseModel, EmailStr
 
-from dotenv import load_dotenv
-
-load_dotenv()
-
-from models import TimetableRequest, ValidationResponse, TimetableResponse
-from solver import validate_teachers, solve_timetable
-from pdf_generator import generate_teachers_pdf, generate_classes_pdf
-from excel_generator import generate_teachers_excel, generate_classes_excel
 from database import init_db, get_db, User, School, Teacher, SavedTimetable
-from auth import verify_password, get_password_hash, create_access_token, get_current_user, ACCESS_TOKEN_EXPIRE_MINUTES
+from auth import get_password_hash, verify_password, create_access_token
+from excel_generator import generate_excel
+from pdf_generator import generate_pdf
+from solver import validate_teachers, solve_timetable
 
-app = FastAPI(title="School Timetable Generator", version="3.0.0")
+# === ПЕРЕМЕННЫЕ ОКРУЖЕНИЯ ===
+SECRET_KEY = os.getenv("SECRET_KEY", "my-super-secret-key-12345-abc")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "10080"))
 
+
+# === PYDANTIC МОДЕЛИ ===
+class UserRegister(BaseModel):
+    email: EmailStr
+    password: str
+    full_name: str
+    school_name: Optional[str] = None
+
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class SchoolData(BaseModel):
+    school_name: str
+    teachers: List[dict]
+    classes: List[dict]
+    subjects: List[dict]
+    availability: dict
+
+
+class TimetableSave(BaseModel):
+    name: str
+    data: dict
+
+
+# === FASTAPI ПРИЛОЖЕНИЕ ===
+app = FastAPI(title="Генератор школьного расписания")
+
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -28,30 +59,31 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Статические файлы
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-init_db()
+
+# === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
+def get_current_user(token: str = Form(...), db: Session = Depends(get_db)) -> User:
+    """Получить текущего пользователя по токену (упрощённо)"""
+    from jose import jwt, JWTError
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise HTTPException(status_code=401, detail="Невалидный токен")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Невалидный токен")
+
+    user = db.query(User).filter(User.email == email).first()
+    if user is None:
+        raise HTTPException(status_code=401, detail="Пользователь не найден")
+    return user
 
 
-# === СЕРИАЛИЗАТОР ===
-
-def serialize_timetable(tt):
-    """Преобразует объект SavedTimetable в словарь для JSON"""
-    return {
-        "id": tt.id,
-        "name": tt.name,
-        "description": tt.description or "",
-        "data": tt.data,
-        "result": tt.result,
-        "created_at": tt.created_at.isoformat() if tt.created_at else None,
-        "updated_at": tt.updated_at.isoformat() if tt.updated_at else None,
-    }
-
-
-# === ГЛАВНАЯ ===
-
+# === ГЛАВНАЯ СТРАНИЦА ===
 @app.get("/", response_class=HTMLResponse)
-def root():
+def read_root():
     with open("static/index.html", "r", encoding="utf-8") as f:
         return f.read()
 
@@ -62,360 +94,156 @@ def health_check():
 
 
 # === АВТОРИЗАЦИЯ ===
-
 @app.post("/register")
-def register(email: str = Body(...), password: str = Body(...), full_name: str = Body(...), school_name: str = Body(None),
-    db_user = db.query(User).filter(User.email == email).first()
+def register(user: UserRegister, db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.email == user.email).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Email уже зарегистрирован")
 
     new_user = User(
-        email=email,
-        hashed_password=get_password_hash(password),
-        full_name=full_name,
-        school_name=school_name
+        email=user.email,
+        hashed_password=get_password_hash(user.password),
+        full_name=user.full_name,
+        school_name=user.school_name
     )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
 
-    school = School(user_id=new_user.id, name=school_name or "Моя школа")
-    db.add(school)
-    db.commit()
+    access_token = create_access_token(
+        data={"sub": new_user.email},
+        secret_key=SECRET_KEY,
+        algorithm=ALGORITHM,
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
 
-    return {"id": new_user.id, "email": new_user.email, "full_name": new_user.full_name}
+    return {
+        "message": "Регистрация успешна",
+        "user_id": new_user.id,
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
 
 
 @app.post("/login")
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == form_data.username).first()
-    if not user or not verify_password(form_data.password, user.hashed_password):
+def login(user: UserLogin, db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.email == user.email).first()
+    if not db_user or not verify_password(user.password, db_user.hashed_password):
         raise HTTPException(status_code=401, detail="Неверный email или пароль")
 
     access_token = create_access_token(
-        data={"sub": user.id},
+        data={"sub": db_user.email},
+        secret_key=SECRET_KEY,
+        algorithm=ALGORITHM,
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-    return {"access_token": access_token, "token_type": "bearer"}
 
-
-@app.get("/me")
-def get_me(current_user: User = Depends(get_current_user)):
     return {
-        "id": current_user.id,
-        "email": current_user.email,
-        "full_name": current_user.full_name,
-        "school_name": current_user.school_name
+        "message": "Вход выполнен",
+        "user_id": db_user.id,
+        "full_name": db_user.full_name,
+        "school_name": db_user.school_name,
+        "access_token": access_token,
+        "token_type": "bearer"
     }
 
 
-# === СОХРАНЁННЫЕ РАСПИСАНИЯ ===
+# === ШКОЛЫ И УЧИТЕЛЯ ===
+@app.post("/schools")
+def create_school(school: SchoolData, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    new_school = School(
+        user_id=current_user.id,
+        name=school.school_name,
+        settings=school.dict()
+    )
+    db.add(new_school)
+    db.commit()
+    db.refresh(new_school)
+    return {"message": "Школа сохранена", "school_id": new_school.id}
+
+
+@app.get("/schools")
+def get_schools(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    schools = db.query(School).filter(School.user_id == current_user.id).all()
+    return schools
+
+
+# === ГЕНЕРАЦИЯ РАСПИСАНИЯ ===
+@app.post("/generate")
+def generate_timetable(
+        data: SchoolData,
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+):
+    try:
+        teachers_valid = validate_teachers(data.teachers)
+        if not teachers_valid:
+            raise HTTPException(status_code=400, detail="Ошибка в данных учителей")
+
+        timetable = solve_timetable(data)
+        return {"message": "Расписание сгенерировано", "timetable": timetable}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# === СОХРАНЕНИЕ РАСПИСАНИЯ ===
+@app.post("/timetables/save")
+def save_timetable(
+        timetable: TimetableSave,
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+):
+    saved = SavedTimetable(
+        user_id=current_user.id,
+        name=timetable.name,
+        data=timetable.data
+    )
+    db.add(saved)
+    db.commit()
+    db.refresh(saved)
+    return {"message": "Расписание сохранено", "id": saved.id}
+
 
 @app.get("/timetables")
 def get_timetables(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    timetables = db.query(SavedTimetable).filter(
-        SavedTimetable.user_id == current_user.id
-    ).order_by(SavedTimetable.created_at.desc()).all()
-
-    return [serialize_timetable(tt) for tt in timetables]
-
-
-@app.post("/timetables")
-def save_timetable(timetable: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    new_tt = SavedTimetable(
-        user_id=current_user.id,
-        name=timetable.get("name", "Без названия"),
-        description=timetable.get("description", ""),
-        data=timetable.get("data", {}),
-        result=timetable.get("result")
-    )
-    db.add(new_tt)
-    db.commit()
-    db.refresh(new_tt)
-    return serialize_timetable(new_tt)
-
-
-@app.get("/timetables/{timetable_id}")
-def get_timetable(timetable_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    tt = db.query(SavedTimetable).filter(
-        SavedTimetable.id == timetable_id,
-        SavedTimetable.user_id == current_user.id
-    ).first()
-
-    if not tt:
-        raise HTTPException(status_code=404, detail="Расписание не найдено")
-
-    return serialize_timetable(tt)
-
-
-@app.delete("/timetables/{timetable_id}")
-def delete_timetable(timetable_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    tt = db.query(SavedTimetable).filter(
-        SavedTimetable.id == timetable_id,
-        SavedTimetable.user_id == current_user.id
-    ).first()
-    if not tt:
-        raise HTTPException(status_code=404, detail="Расписание не найдено")
-    db.delete(tt)
-    db.commit()
-    return {"message": "Расписание удалено"}
-
-
-# === ГЕНЕРАЦИЯ ===
-
-@app.post("/validate", response_model=ValidationResponse)
-def validate_data(request: TimetableRequest):
-    is_valid, teacher_stats, errors = validate_teachers(request)
-    return ValidationResponse(
-        is_valid=is_valid,
-        teachers=teacher_stats,
-        errors=errors
-    )
-
-
-@app.post("/generate", response_model=TimetableResponse)
-def generate_timetable(request: TimetableRequest):
-    is_valid, teacher_stats, errors = validate_teachers(request)
-    if not is_valid:
-        raise HTTPException(status_code=400, detail={"message": "Данные содержат ошибки", "errors": errors})
-
-    result = solve_timetable(request)
-    if result.status == "INFEASIBLE":
-        raise HTTPException(status_code=422, detail={"message": "Не удалось составить расписание"})
-
-    return result
-
-
-@app.post("/generate-with-fallback")
-def generate_timetable_with_fallback(request: TimetableRequest):
-    result = solve_timetable(request)
-    return result
+    timetables = db.query(SavedTimetable).filter(SavedTimetable.user_id == current_user.id).all()
+    return timetables
 
 
 # === ЭКСПОРТ ===
-
-@app.post("/export-pdf/teachers")
-def export_teachers_pdf(request: TimetableRequest):
-    is_valid, _, errors = validate_teachers(request)
-    if not is_valid:
-        raise HTTPException(status_code=400, detail={"errors": errors})
-    result = solve_timetable(request)
-    if result.status == "INFEASIBLE":
-        raise HTTPException(status_code=422, detail={"message": "Не удалось составить расписание"})
-
-    result_dict = {'teachers': [{'teacher': t.teacher, 'total_lessons': t.total_lessons, 'schedule': {
-        day: {str(slot): [{'subject': l.subject, 'grade': l.grade, 'teacher': l.teacher} for l in lessons] for
-              slot, lessons in slots.items()} for day, slots in t.schedule.items()}} for t in result.teachers]}
-
-    pdf_bytes = generate_teachers_pdf(result_dict, request.days, request.slots)
-    return Response(content=pdf_bytes, media_type='application/pdf',
-                    headers={'Content-Disposition': 'attachment; filename="timetable_teachers.pdf"'})
+@app.post("/export/excel")
+def export_excel(
+        data: dict,
+        current_user: User = Depends(get_current_user)
+):
+    try:
+        file_path = generate_excel(data)
+        return FileResponse(file_path, media_type="application/vnd.ms-excel", filename="timetable.xlsx")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/export-pdf/classes")
-def export_classes_pdf(request: TimetableRequest):
-    is_valid, _, errors = validate_teachers(request)
-    if not is_valid:
-        raise HTTPException(status_code=400, detail={"errors": errors})
-    result = solve_timetable(request)
-    if result.status == "INFEASIBLE":
-        raise HTTPException(status_code=422, detail={"message": "Не удалось составить расписание"})
-
-    result_dict = {'teachers': [{'teacher': t.teacher, 'total_lessons': t.total_lessons, 'schedule': {
-        day: {str(slot): [{'subject': l.subject, 'grade': l.grade, 'teacher': l.teacher} for l in lessons] for
-              slot, lessons in slots.items()} for day, slots in t.schedule.items()}} for t in result.teachers]}
-
-    pdf_bytes = generate_classes_pdf(result_dict, request.days, request.slots)
-    return Response(content=pdf_bytes, media_type='application/pdf',
-                    headers={'Content-Disposition': 'attachment; filename="timetable_classes.pdf"'})
+@app.post("/export/pdf")
+def export_pdf(
+        data: dict,
+        current_user: User = Depends(get_current_user)
+):
+    try:
+        file_path = generate_pdf(data)
+        return FileResponse(file_path, media_type="application/pdf", filename="timetable.pdf")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/export-excel/teachers")
-def export_teachers_excel(request: TimetableRequest):
-    is_valid, _, errors = validate_teachers(request)
-    if not is_valid:
-        raise HTTPException(status_code=400, detail={"errors": errors})
-    result = solve_timetable(request)
-    if result.status == "INFEASIBLE":
-        raise HTTPException(status_code=422, detail={"message": "Не удалось составить расписание"})
-
-    result_dict = {'teachers': [{'teacher': t.teacher, 'total_lessons': t.total_lessons, 'schedule': {
-        day: {str(slot): [{'subject': l.subject, 'grade': l.grade, 'teacher': l.teacher} for l in lessons] for
-              slot, lessons in slots.items()} for day, slots in t.schedule.items()}} for t in result.teachers]}
-
-    wb = generate_teachers_excel(result_dict, request.days, request.slots)
-    output = BytesIO()
-    wb.save(output)
-    output.seek(0)
-    return Response(content=output.getvalue(),
-                    media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                    headers={'Content-Disposition': 'attachment; filename="timetable_teachers.xlsx"'})
+# === ЗАГРУЗКА ФАЙЛА ===
+@app.post("/upload")
+async def upload_file(file: UploadFile = File(...)):
+    content = await file.read()
+    return {"message": f"Файл {file.filename} загружен", "size": len(content)}
 
 
-@app.post("/export-excel/classes")
-def export_classes_excel(request: TimetableRequest):
-    is_valid, _, errors = validate_teachers(request)
-    if not is_valid:
-        raise HTTPException(status_code=400, detail={"errors": errors})
-    result = solve_timetable(request)
-    if result.status == "INFEASIBLE":
-        raise HTTPException(status_code=422, detail={"message": "Не удалось составить расписание"})
-
-    result_dict = {'teachers': [{'teacher': t.teacher, 'total_lessons': t.total_lessons, 'schedule': {
-        day: {str(slot): [{'subject': l.subject, 'grade': l.grade, 'teacher': l.teacher} for l in lessons] for
-              slot, lessons in slots.items()} for day, slots in t.schedule.items()}} for t in result.teachers]}
-
-    wb = generate_classes_excel(result_dict, request.days, request.slots)
-    output = BytesIO()
-    wb.save(output)
-    output.seek(0)
-    return Response(content=output.getvalue(),
-                    media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                    headers={'Content-Disposition': 'attachment; filename="timetable_classes.xlsx"'})
-
-
-# === ТЕСТОВЫЕ ДАННЫЕ ===
-
-SAMPLE_DATA = {
-    "days": ["Пн", "Вт", "Ср", "Чт", "Пт"],
-    "slots": [1, 2, 3, 4, 5, 6, 7],
-    "teachers": {
-        "Асланова": {
-            "lessons": [
-                {"subject": "Старт IT", "grade": "5-6", "hours": 2},
-                {"subject": "Старт IT", "grade": "8", "hours": 2},
-                {"subject": "ИИ", "grade": "6", "hours": 2},
-                {"subject": "Информатика", "grade": "7-8", "hours": 2}
-            ],
-            "availability": {"Пн": [], "Вт": [1, 2, 3, 4, 5], "Ср": [1, 2, 3, 4, 5, 6, 7], "Чт": [],
-                             "Пт": [1, 2, 3, 4, 5, 6, 7]}
-        },
-        "Леонтьев": {
-            "lessons": [{"subject": "Старт IT", "grade": "7", "hours": 2}],
-            "availability": {"Пн": [], "Вт": [5, 6, 7], "Ср": [5, 6, 7], "Чт": [6, 7], "Пт": [6, 7]}
-        },
-        "Пешкова": {
-            "lessons": [
-                {"subject": "Математика", "grade": "5", "hours": 4},
-                {"subject": "Математика", "grade": "6", "hours": 4},
-                {"subject": "ВиС", "grade": "7", "hours": 2}
-            ],
-            "availability": {"Пн": [], "Вт": [1, 2, 3, 4, 5], "Ср": [1, 2, 3, 4, 5], "Чт": [1, 2, 3, 4],
-                             "Пт": [1, 2, 3, 4, 5]}
-        },
-        "Стариков": {
-            "lessons": [
-                {"subject": "Алгебра", "grade": "7", "hours": 3},
-                {"subject": "Алгебра", "grade": "8", "hours": 3},
-                {"subject": "Геометрия", "grade": "7", "hours": 2},
-                {"subject": "Геометрия", "grade": "8", "hours": 2},
-                {"subject": "ВиС", "grade": "8", "hours": 2},
-                {"subject": "Домашку", "grade": "7", "hours": 2},
-                {"subject": "Домашку", "grade": "8", "hours": 2}
-            ],
-            "availability": {"Пн": [], "Вт": [1, 2, 3, 4, 5, 6, 7], "Ср": [6, 7], "Чт": [1, 2, 3, 4, 5, 6, 7], "Пт": []}
-        },
-        "Разумова": {
-            "lessons": [
-                {"subject": "Английский", "grade": "5", "hours": 2},
-                {"subject": "Английский", "grade": "6", "hours": 2},
-                {"subject": "Английский", "grade": "7", "hours": 2},
-                {"subject": "Английский", "grade": "8", "hours": 2},
-                {"subject": "Speaking club", "grade": "5", "hours": 1},
-                {"subject": "Speaking club", "grade": "6", "hours": 1},
-                {"subject": "Speaking club", "grade": "7", "hours": 1},
-                {"subject": "Speaking club", "grade": "8", "hours": 1}
-            ],
-            "availability": {"Пн": [4, 5, 6, 7], "Вт": [4, 5, 6, 7], "Ср": [5, 6, 7], "Чт": [3, 4, 5, 6, 7],
-                             "Пт": [1, 2, 3, 4]}
-        },
-        "Баженова": {
-            "lessons": [
-                {"subject": "Технология", "grade": "5", "hours": 2},
-                {"subject": "Технология", "grade": "6", "hours": 2},
-                {"subject": "Технология", "grade": "7", "hours": 2},
-                {"subject": "Технология", "grade": "8", "hours": 2},
-                {"subject": "ИЗО", "grade": "5", "hours": 1},
-                {"subject": "ИЗО", "grade": "6", "hours": 1},
-                {"subject": "ИЗО", "grade": "7", "hours": 1},
-                {"subject": "ИЗО", "grade": "8", "hours": 1}
-            ],
-            "availability": {"Пн": [1, 2, 3, 4, 5, 6, 7], "Вт": [1, 2, 3, 4, 5, 6, 7], "Ср": [1, 2, 3, 4, 5, 6, 7],
-                             "Чт": [1, 2, 3, 4, 5, 6, 7], "Пт": [1, 2, 3, 4, 5, 6, 7]}
-        },
-        "Мозолина": {
-            "lessons": [
-                {"subject": "Английский", "grade": "1", "hours": 3},
-                {"subject": "Английский", "grade": "2", "hours": 3},
-                {"subject": "Английский", "grade": "3", "hours": 3},
-                {"subject": "Speaking club", "grade": "1", "hours": 1},
-                {"subject": "Speaking club", "grade": "2", "hours": 1},
-                {"subject": "Speaking club", "grade": "3", "hours": 1}
-            ],
-            "availability": {"Пн": [2, 3, 4, 5], "Вт": [2, 3, 4, 5], "Ср": [2, 3, 4, 5], "Чт": [2, 3, 4, 5],
-                             "Пт": [2, 3, 4, 5]},
-            "max_days_per_week": 4
-        },
-        "Моисеенко": {
-            "lessons": [
-                {"subject": "География", "grade": "5", "hours": 2},
-                {"subject": "География", "grade": "6", "hours": 2},
-                {"subject": "География", "grade": "7", "hours": 2},
-                {"subject": "География", "grade": "8", "hours": 2},
-                {"subject": "История", "grade": "5", "hours": 2},
-                {"subject": "История", "grade": "6", "hours": 2},
-                {"subject": "История", "grade": "7", "hours": 2},
-                {"subject": "История", "grade": "8", "hours": 2}
-            ],
-            "availability": {"Пн": [1, 2, 3, 4, 5, 6, 7], "Вт": [1, 2, 3, 4, 5, 6, 7], "Ср": [1, 2, 3, 4, 5, 6],
-                             "Чт": [1, 2, 3, 4, 5, 6, 7], "Пт": [1, 2, 3, 4, 5, 6, 7]}
-        },
-        "Зевахина": {
-            "lessons": [
-                {"subject": "Химия", "grade": "8", "hours": 2},
-                {"subject": "PRO опыты", "grade": "5", "hours": 1},
-                {"subject": "PRO опыты", "grade": "6", "hours": 1},
-                {"subject": "PRO опыты", "grade": "7", "hours": 1},
-                {"subject": "Биология", "grade": "5", "hours": 2},
-                {"subject": "Биология", "grade": "6", "hours": 2},
-                {"subject": "Биология", "grade": "7", "hours": 2},
-                {"subject": "Биология", "grade": "8", "hours": 2}
-            ],
-            "availability": {"Пн": [1, 2, 3, 4, 5, 6], "Вт": [1, 2, 3, 4, 5, 6], "Ср": [1, 2, 3, 4, 5, 6],
-                             "Чт": [1, 2, 3, 4, 5, 6], "Пт": [1, 2, 3, 4, 5, 6]}
-        },
-        "Заболотских": {
-            "lessons": [
-                {"subject": "Русский язык", "grade": "5", "hours": 4},
-                {"subject": "Русский язык", "grade": "6", "hours": 4},
-                {"subject": "Русский язык", "grade": "7", "hours": 4},
-                {"subject": "Русский язык", "grade": "8", "hours": 4},
-                {"subject": "Литература", "grade": "5", "hours": 2},
-                {"subject": "Литература", "grade": "6", "hours": 2},
-                {"subject": "Литература", "grade": "7", "hours": 2},
-                {"subject": "Литература", "grade": "8", "hours": 2}
-            ],
-            "availability": {"Пн": [1, 2, 3, 4, 5, 6, 7], "Вт": [1, 2, 3, 4, 5], "Ср": [1, 2, 3, 4, 5, 6, 7],
-                             "Чт": [1, 2, 3, 4, 5], "Пт": [1, 2, 3, 4, 5, 6, 7]}
-        },
-        "Донская": {
-            "lessons": [
-                {"subject": "Физика", "grade": "7", "hours": 2},
-                {"subject": "Физика", "grade": "8", "hours": 2}
-            ],
-            "availability": {"Пн": [1, 2, 3, 4, 5, 6, 7], "Вт": [1, 2, 3, 4, 5, 6, 7], "Ср": [1, 2, 3, 4, 5, 6, 7],
-                             "Чт": [1, 2, 3, 4, 5, 6, 7], "Пт": [1, 2, 3, 4, 5, 6, 7]}
-        }
-    }
-}
-
-
-@app.get("/sample-data")
-def get_sample_data():
-    return SAMPLE_DATA
-
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+# === ИНИЦИАЛИЗАЦИЯ БД ===
+@app.on_event("startup")
+def startup_event():
+    init_db()
+    print("✅ База данных инициализирована")
