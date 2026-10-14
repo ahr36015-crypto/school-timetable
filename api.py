@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, Response
@@ -64,7 +64,7 @@ def health_check():
 # === АВТОРИЗАЦИЯ ===
 
 @app.post("/register")
-def register(email: str, password: str, full_name: str, school_name: str = None, db: Session = Depends(get_db)):
+def register(email: str = Body(...), password: str = Body(...), full_name: str = Body(...), school_name: str = Body(None),
     db_user = db.query(User).filter(User.email == email).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Email уже зарегистрирован")
