@@ -1,8 +1,7 @@
 import os
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, ForeignKey, Table
-from sqlalchemy.orm import declarative_base, sessionmaker
-
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, ForeignKey, Table, DateTime, Text, Float, func
+from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 
 load_dotenv()
 
