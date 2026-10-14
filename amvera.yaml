@@ -1,14 +1,13 @@
-build:
-  type: python
-  python:
+meta:
+  environment: python
+  toolchain:
+    name: pip
     version: "3.11"
-    install:
-      - pip install -r requirements.txt
-    build: []
-  entrypoint:
-    - uvicorn
-    - api:app
-    - --host
-    - "0.0.0.0"
-    - --port
-    - "8000"
+
+build:
+  requirements: requirements.txt
+
+run:
+  scriptName: api:app
+  port: 8000
+  persistence: false
