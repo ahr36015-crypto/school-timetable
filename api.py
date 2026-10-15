@@ -4,7 +4,7 @@ from typing import Optional, List, Dict, Any
 
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -29,6 +29,11 @@ class UserLogin(BaseModel):
 class TimetableGenerate(BaseModel):
     name: str
     num_classes: int = 1
+
+
+class TimetableUpdate(BaseModel):
+    name: Optional[str] = None
+    data: Optional[Dict[str, Any]] = None
 
 
 # FastAPI приложение
@@ -130,21 +135,18 @@ def generate_timetable(
         current_user: User = Depends(get_current_user),
         db: Session = Depends(get_db)
 ):
-    """Генерирует и сохраняет расписание"""
     try:
-        # Создаем структуру расписания
+        subjects = ["Математика", "Русский язык", "Литература", "Физика",
+                    "История", "Биология", "География", "Английский",
+                    "Физкультура", "Информатика", "Химия", "Обществознание"]
+        days = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"]
+
         timetable_data = {
             "name": timetable.name,
             "num_classes": timetable.num_classes,
             "created_at": datetime.utcnow().isoformat(),
             "classes": []
         }
-
-        # Генерируем простые уроки для каждого класса
-        subjects = ["Математика", "Русский язык", "Литература", "Физика",
-                    "История", "Биология", "География", "Английский",
-                    "Физкультура", "Информатика"]
-        days = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"]
 
         for i in range(timetable.num_classes):
             class_schedule = {
@@ -153,17 +155,18 @@ def generate_timetable(
             }
 
             for day in days:
-                for hour in range(1, 6):
+                for hour in range(1, 8):
                     lesson = {
                         "day": day,
-                        "time": f"{8 + hour}:00",
-                        "subject": subjects[(i + hour) % len(subjects)]
+                        "time": f"{8 + hour - 1}:00-{9 + hour - 1}:00",
+                        "subject": subjects[(i + hour) % len(subjects)],
+                        "teacher": f"Учитель {(i + hour) % 5 + 1}",
+                        "room": f"Кабинет {(i + hour) % 20 + 1}"
                     }
                     class_schedule["lessons"].append(lesson)
 
             timetable_data["classes"].append(class_schedule)
 
-        # Сохраняем в БД
         saved = SavedTimetable(
             user_id=current_user.id,
             name=timetable.name,
@@ -183,30 +186,25 @@ def generate_timetable(
         raise HTTPException(status_code=500, detail=f"Ошибка: {str(e)}")
 
 
-# Получить все расписания пользователя
+# Получить все расписания
 @app.get("/timetables")
 def get_timetables(
         current_user: User = Depends(get_current_user),
         db: Session = Depends(get_db)
 ):
-    """Получить список всех расписаний текущего пользователя"""
-    try:
-        timetables = db.query(SavedTimetable).filter(
-            SavedTimetable.user_id == current_user.id
-        ).order_by(SavedTimetable.created_at.desc()).all()
+    timetables = db.query(SavedTimetable).filter(
+        SavedTimetable.user_id == current_user.id
+    ).order_by(SavedTimetable.created_at.desc()).all()
 
-        result = []
-        for t in timetables:
-            result.append({
-                "id": t.id,
-                "name": t.name,
-                "created_at": t.created_at.isoformat() if t.created_at else None,
-                "data": t.data
-            })
-
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка: {str(e)}")
+    return [
+        {
+            "id": t.id,
+            "name": t.name,
+            "created_at": t.created_at.isoformat() if t.created_at else None,
+            "data": t.data
+        }
+        for t in timetables
+    ]
 
 
 # Получить конкретное расписание
@@ -216,7 +214,6 @@ def get_timetable(
         current_user: User = Depends(get_current_user),
         db: Session = Depends(get_db)
 ):
-    """Получить конкретное расписание по ID"""
     timetable = db.query(SavedTimetable).filter(
         SavedTimetable.id == timetable_id,
         SavedTimetable.user_id == current_user.id
@@ -233,6 +230,39 @@ def get_timetable(
     }
 
 
+# Обновить расписание
+@app.put("/timetables/{timetable_id}")
+def update_timetable(
+        timetable_id: int,
+        update_data: TimetableUpdate,
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+):
+    timetable = db.query(SavedTimetable).filter(
+        SavedTimetable.id == timetable_id,
+        SavedTimetable.user_id == current_user.id
+    ).first()
+
+    if not timetable:
+        raise HTTPException(status_code=404, detail="Расписание не найдено")
+
+    if update_data.name is not None:
+        timetable.name = update_data.name
+    if update_data.data is not None:
+        timetable.data = update_data.data
+
+    timetable.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(timetable)
+
+    return {
+        "message": "Расписание обновлено",
+        "id": timetable.id,
+        "name": timetable.name,
+        "data": timetable.data
+    }
+
+
 # Удалить расписание
 @app.delete("/timetables/{timetable_id}")
 def delete_timetable(
@@ -240,7 +270,6 @@ def delete_timetable(
         current_user: User = Depends(get_current_user),
         db: Session = Depends(get_db)
 ):
-    """Удалить расписание"""
     timetable = db.query(SavedTimetable).filter(
         SavedTimetable.id == timetable_id,
         SavedTimetable.user_id == current_user.id

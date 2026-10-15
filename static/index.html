@@ -17,7 +17,7 @@
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             padding: 40px;
-            max-width: 1000px;
+            max-width: 1200px;
             margin: 0 auto;
         }
         h1 { text-align: center; color: #333; margin-bottom: 10px; }
@@ -30,18 +30,22 @@
         .tab.active { color: #667eea; border-bottom: 3px solid #667eea; font-weight: 600; }
         .form-group { margin-bottom: 20px; }
         label { display: block; margin-bottom: 8px; color: #333; font-weight: 500; }
-        input {
+        input, select, textarea {
             width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0;
             border-radius: 8px; font-size: 15px;
         }
-        input:focus { outline: none; border-color: #667eea; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #667eea; }
         button {
-            width: 100%; padding: 14px;
+            padding: 12px 20px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white; border: none; border-radius: 8px;
-            font-size: 16px; font-weight: 600; cursor: pointer;
+            font-size: 14px; font-weight: 600; cursor: pointer;
+            margin: 5px;
         }
         button:hover { transform: translateY(-2px); }
+        button.small { padding: 6px 12px; font-size: 12px; }
+        button.danger { background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); }
+        button.success { background: linear-gradient(135deg, #27ae60 0%, #229954 100%); }
         .error {
             background: #fee; color: #c33; padding: 12px;
             border-radius: 8px; margin-top: 15px;
@@ -62,25 +66,67 @@
             display: flex; justify-content: space-between; align-items: center;
             margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #eee;
         }
-        .logout-btn { width: auto; padding: 8px 20px; background: #e74c3c; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .logout-btn { background: #e74c3c; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; }
         .section { background: #f8f9fa; padding: 25px; border-radius: 12px; }
         .section h2 { margin-bottom: 20px; color: #333; font-size: 22px; }
         .timetable-card {
             background: white; padding: 15px; border-radius: 8px;
             margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex; justify-content: space-between; align-items: center;
         }
         .timetable-card h3 { color: #667eea; margin-bottom: 5px; }
         .timetable-card p { color: #999; font-size: 12px; }
-        .delete-btn {
-            width: auto; padding: 6px 12px; background: #e74c3c;
-            font-size: 12px; margin-top: 10px;
+        .actions { display: flex; gap: 5px; }
+
+        /* Модальное окно */
+        .modal {
+            display: none; position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%; background: rgba(0,0,0,0.7);
+            z-index: 1000; overflow-y: auto;
         }
+        .modal.active { display: flex; justify-content: center; align-items: flex-start; }
+        .modal-content {
+            background: white; border-radius: 15px; padding: 30px;
+            margin: 50px auto; max-width: 1000px; width: 95%;
+            max-height: 90vh; overflow-y: auto;
+        }
+        .modal-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #eee;
+        }
+        .close-btn {
+            background: none; border: none; font-size: 28px;
+            cursor: pointer; color: #999; padding: 0; margin: 0;
+        }
+        .close-btn:hover { color: #333; transform: none; }
+
+        /* Таблица расписания */
+        .timetable-table {
+            width: 100%; border-collapse: collapse; margin-top: 15px;
+        }
+        .timetable-table th, .timetable-table td {
+            border: 1px solid #ddd; padding: 10px; text-align: left;
+        }
+        .timetable-table th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; font-weight: 600;
+        }
+        .timetable-table tr:nth-child(even) { background: #f8f9fa; }
+        .timetable-table tr:hover { background: #e3f2fd; }
+
+        .class-selector { margin-bottom: 20px; }
+        .class-selector select {
+            padding: 10px; font-size: 16px; border-radius: 8px;
+            border: 2px solid #667eea;
+        }
+
         .stat-card { background: white; padding: 20px; border-radius: 10px; text-align: center; }
         .stat-value { font-size: 36px; font-weight: bold; color: #667eea; }
     </style>
 </head>
 <body>
+    <!-- Авторизация -->
     <div id="authContainer" class="container">
         <h1> Генератор школьного расписания</h1>
         <p class="subtitle">Войдите или создайте аккаунт</p>
@@ -106,7 +152,7 @@
                 <input type="text" id="regFullName" placeholder="Иванов Иван Иванович">
             </div>
             <div class="form-group">
-                <label>📧 Email</label>
+                <label> Email</label>
                 <input type="email" id="regEmail" placeholder="your@email.com">
             </div>
             <div class="form-group">
@@ -114,7 +160,7 @@
                 <input type="text" id="regSchool" placeholder="Школа №123">
             </div>
             <div class="form-group">
-                <label>🔒 Пароль</label>
+                <label> Пароль</label>
                 <input type="password" id="regPassword" placeholder="••••••••">
             </div>
             <button onclick="register()">Зарегистрироваться</button>
@@ -122,6 +168,7 @@
         </div>
     </div>
 
+    <!-- Дашборд -->
     <div id="dashboard" class="container">
         <div class="header">
             <div>
@@ -161,7 +208,29 @@
         </div>
     </div>
 
+    <!-- Модальное окно просмотра/редактирования -->
+    <div id="viewModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Просмотр расписания</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="class-selector">
+                <label>Выберите класс: </label>
+                <select id="classSelect" onchange="showClassSchedule()"></select>
+            </div>
+            <div id="scheduleContainer"></div>
+            <div style="margin-top: 20px; text-align: center;">
+                <button onclick="closeModal()" class="danger">Закрыть</button>
+                <button onclick="editCurrentTimetable()" class="success">Редактировать название</button>
+            </div>
+        </div>
+    </div>
+
     <script>
+        let currentTimetable = null;
+        let currentTimetableId = null;
+
         window.onload = function() {
             if (localStorage.getItem('access_token')) showDashboard();
         };
@@ -281,34 +350,151 @@
                 });
                 const data = await res.json();
 
-                if (res.ok && Array.isArray(data) && data.length > 0) {
-                    container.innerHTML = data.map(t =>
-                        '<div class="timetable-card">' +
-                        '<h3>' + t.name + '</h3>' +
-                        '<p>Создано: ' + new Date(t.created_at).toLocaleString('ru-RU') + '</p>' +
-                        '<button class="delete-btn" onclick="deleteTimetable('+t.id+')">Удалить</button>' +
-                        '</div>'
-                    ).join('');
-                    document.getElementById('totalCount').textContent = data.length;
+                if (res.ok && Array.isArray(data)) {
+                    if (data.length === 0) {
+                        container.innerHTML = '<p style="color:#999;text-align:center">Нет расписаний</p>';
+                        document.getElementById('totalCount').textContent = '0';
+                    } else {
+                        container.innerHTML = data.map(t =>
+                            '<div class="timetable-card">' +
+                            '<div><h3>' + t.name + '</h3>' +
+                            '<p>Создано: ' + new Date(t.created_at).toLocaleString('ru-RU') + '</p></div>' +
+                            '<div class="actions">' +
+                            '<button class="small success" onclick="viewTimetable(' + t.id + ')">Просмотр</button>' +
+                            '<button class="small danger" onclick="deleteTimetable(' + t.id + ')">Удалить</button>' +
+                            '</div></div>'
+                        ).join('');
+                        document.getElementById('totalCount').textContent = data.length;
+                    }
                 } else {
-                    container.innerHTML = '<p style="color:#999;text-align:center">Нет расписаний</p>';
-                    document.getElementById('totalCount').textContent = '0';
+                    container.innerHTML = '<p style="color:#c33;text-align:center">Ошибка</p>';
                 }
             } catch(e) {
                 container.innerHTML = '<p style="color:#c33;text-align:center">Ошибка</p>';
             }
         }
 
-        async function deleteTimetable(id) {
-            if (!confirm('Удалить?')) return;
+        async function viewTimetable(id) {
             try {
-                await fetch('/timetables/' + id, {
+                const res = await fetch('/timetables/' + id, {
+                    headers: {'Authorization': 'Bearer ' + localStorage.getItem('access_token')}
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    currentTimetable = data;
+                    currentTimetableId = id;
+                    document.getElementById('modalTitle').textContent = '📅 ' + data.name;
+
+                    // Заполняем селектор классов
+                    const classSelect = document.getElementById('classSelect');
+                    classSelect.innerHTML = '';
+                    if (data.data && data.data.classes) {
+                        data.data.classes.forEach((cls, idx) => {
+                            const option = document.createElement('option');
+                            option.value = idx;
+                            option.textContent = cls.class_name || 'Класс ' + (idx + 1);
+                            classSelect.appendChild(option);
+                        });
+                    }
+
+                    document.getElementById('viewModal').classList.add('active');
+                    showClassSchedule();
+                }
+            } catch(e) {
+                alert('Ошибка загрузки расписания');
+            }
+        }
+
+        function showClassSchedule() {
+            if (!currentTimetable || !currentTimetable.data) return;
+
+            const classIndex = parseInt(document.getElementById('classSelect').value);
+            const classData = currentTimetable.data.classes[classIndex];
+
+            if (!classData || !classData.lessons) {
+                document.getElementById('scheduleContainer').innerHTML = '<p>Нет данных</p>';
+                return;
+            }
+
+            // Группируем уроки по дням
+            const days = {};
+            classData.lessons.forEach(lesson => {
+                if (!days[lesson.day]) days[lesson.day] = [];
+                days[lesson.day].push(lesson);
+            });
+
+            let html = '<h3>' + classData.class_name + '</h3>';
+            html += '<table class="timetable-table">';
+            html += '<thead><tr><th>День</th><th>Время</th><th>Предмет</th><th>Учитель</th><th>Кабинет</th></tr></thead>';
+            html += '<tbody>';
+
+            Object.keys(days).forEach(day => {
+                days[day].forEach(lesson => {
+                    html += '<tr>';
+                    html += '<td>' + day + '</td>';
+                    html += '<td>' + lesson.time + '</td>';
+                    html += '<td><strong>' + lesson.subject + '</strong></td>';
+                    html += '<td>' + (lesson.teacher || '-') + '</td>';
+                    html += '<td>' + (lesson.room || '-') + '</td>';
+                    html += '</tr>';
+                });
+            });
+
+            html += '</tbody></table>';
+            document.getElementById('scheduleContainer').innerHTML = html;
+        }
+
+        async function editCurrentTimetable() {
+            const newName = prompt('Введите новое название:', currentTimetable.name);
+            if (!newName || newName === currentTimetable.name) return;
+
+            try {
+                const res = await fetch('/timetables/' + currentTimetableId, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + localStorage.getItem('access_token')
+                    },
+                    body: JSON.stringify({name: newName})
+                });
+
+                if (res.ok) {
+                    currentTimetable.name = newName;
+                    document.getElementById('modalTitle').textContent = '📅 ' + newName;
+                    loadTimetables();
+                    alert('Название обновлено!');
+                } else {
+                    alert('Ошибка при обновлении');
+                }
+            } catch(e) {
+                alert('Ошибка соединения');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('viewModal').classList.remove('active');
+            currentTimetable = null;
+            currentTimetableId = null;
+        }
+
+        async function deleteTimetable(id) {
+            if (!confirm('Удалить это расписание?')) return;
+            try {
+                const res = await fetch('/timetables/' + id, {
                     method: 'DELETE',
                     headers: {'Authorization': 'Bearer ' + localStorage.getItem('access_token')}
                 });
-                loadTimetables();
-            } catch(e) { console.error(e); }
+                if (res.ok) loadTimetables();
+            } catch(e) {
+                alert('Ошибка при удалении');
+            }
         }
+
+        // Закрытие модального окна по клику вне его
+        document.getElementById('viewModal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
     </script>
 </body>
 </html>
