@@ -74,7 +74,7 @@ async def read_root():
     if os.path.exists(index_path):
         with open(index_path, "r", encoding="utf-8") as f:
             return f.read()
-    return HTMLResponse("<h1>Frontend not found</h1>", status_code=404)
+    return HTMLResponse(content="<h1>Frontend not found</h1>", status_code=404)
 
 
 @app.get("/health")
@@ -137,12 +137,12 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
 
 
 # ============================================================
-# AI-парсинг текста (имитация ИИ)
+# AI-парсинг текста
 # ============================================================
 @app.post("/api/ai-parse")
 def ai_parse_text(
-    request: AIInputRequest,
-    current_user: User = Depends(get_current_user),
+        request: AIInputRequest,
+        current_user: User = Depends(get_current_user),
 ):
     """Парсит текст и извлекает данные об учителе."""
     text = request.text
@@ -153,7 +153,7 @@ def ai_parse_text(
         "max_days": 5,
     }
 
-    # Извлекаем имя учителя (первое предложение до "может" или "ведет")
+    # Извлекаем имя учителя
     name_match = re.search(r'^Учитель\s+([А-Яа-я\s]+?)(?:\s+может|\s+ведет|\s+преподает)', text, re.IGNORECASE)
     if name_match:
         result["teacher_name"] = name_match.group(1).strip()
@@ -176,7 +176,7 @@ def ai_parse_text(
             result["lessons"].append({
                 "subject": subject,
                 "grade": grades,
-                "hours": 2  # по умолчанию
+                "hours": 2
             })
 
     # Извлекаем доступность по дням
@@ -186,7 +186,6 @@ def ai_parse_text(
     }
     for day_ru, day_norm in days_map.items():
         if day_ru in text.lower():
-            # Ищем ограничения времени
             if "до 15" in text.lower() or "до 15:00" in text.lower():
                 if day_ru == "вторник":
                     result["availability"][day_norm] = [1, 2, 3, 4, 5]
@@ -222,8 +221,6 @@ def ai_parse_text(
                 result["availability"][day_norm] = [1, 2, 3, 4]
             elif "2 по 5 урок" in text.lower() or "2-5 урок" in text.lower():
                 result["availability"][day_norm] = [2, 3, 4, 5]
-            elif "с 6 урока" in text.lower():
-                result["availability"][day_norm] = [6, 7]
             else:
                 result["availability"][day_norm] = [1, 2, 3, 4, 5, 6, 7]
 
@@ -234,6 +231,7 @@ def ai_parse_text(
 # Генерация расписания
 # ============================================================
 def response_to_dict(result: TimetableResponse, request: TimetableRequest) -> Dict[str, Any]:
+    """Конвертирует TimetableResponse в словарь для сохранения в БД."""
     return {
         "status": result.status,
         "solution_time": result.solution_time,
@@ -246,7 +244,11 @@ def response_to_dict(result: TimetableResponse, request: TimetableRequest) -> Di
                 "schedule": {
                     day: {
                         str(slot): [
-                            {"subject": a.subject, "grade": a.grade, "teacher": a.teacher}
+                            {
+                                "subject": a.subject,
+                                "grade": a.grade,
+                                "teacher": a.teacher,
+                            }
                             for a in assignments
                         ]
                         for slot, assignments in slots.items()
@@ -262,11 +264,12 @@ def response_to_dict(result: TimetableResponse, request: TimetableRequest) -> Di
 
 @app.post("/generate")
 def generate_timetable(
-    request: TimetableRequest,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+        request: TimetableRequest,
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db),
 ):
     try:
+        # 1. Валидация
         is_valid, teacher_stats, errors = validate_teachers(request)
         if not is_valid:
             return {
@@ -276,16 +279,20 @@ def generate_timetable(
                 "teacher_stats": teacher_stats,
             }
 
+        # 2. Генерация через OR-Tools
         result: TimetableResponse = solve_timetable(request)
 
+        # 3. Если решение не найдено
         if result.status not in ("OPTIMAL", "FEASIBLE"):
             return {
                 "message": "Не удалось составить расписание",
                 "status": result.status,
                 "solution_time": result.solution_time,
-                "validation_errors": result.validation_errors or ["Проверьте ограничения"],
+                "validation_errors": result.validation_errors
+                                     or ["Проверьте ограничения и доступность учителей"],
             }
 
+        # 4. Сохранение в БД
         data_dict = response_to_dict(result, request)
         saved = SavedTimetable(
             user_id=current_user.id,
@@ -304,6 +311,9 @@ def generate_timetable(
             "validation_errors": result.validation_errors,
         }
     except Exception as e:
+        print(f"❌ Ошибка генерации: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Ошибка генерации: {str(e)}")
 
 
@@ -312,65 +322,84 @@ def generate_timetable(
 # ============================================================
 @app.get("/timetables")
 def get_timetables(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db),
 ):
-    timetables = (
-        db.query(SavedTimetable)
-        .filter(SavedTimetable.user_id == current_user.id)
-        .order_by(SavedTimetable.created_at.desc())
-        .all()
-    )
-    return [
-        {
-            "id": t.id,
-            "name": t.name,
-            "created_at": t.created_at.isoformat() if t.created_at else None,
-            "data": t.data,
-        }
-        for t in timetables
-    ]
+    try:
+        timetables = (
+            db.query(SavedTimetable)
+            .filter(SavedTimetable.user_id == current_user.id)
+            .order_by(SavedTimetable.created_at.desc())
+            .all()
+        )
+        return [
+            {
+                "id": t.id,
+                "name": t.name,
+                "created_at": t.created_at.isoformat() if t.created_at else None,
+                "data": t.data if t.data else {},
+            }
+            for t in timetables
+        ]
+    except Exception as e:
+        print(f" Ошибка получения расписаний: {e}")
+        return []
 
 
 @app.get("/timetables/{timetable_id}")
 def get_timetable(
-    timetable_id: int,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+        timetable_id: int,
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db),
 ):
-    timetable = (
-        db.query(SavedTimetable)
-        .filter(SavedTimetable.id == timetable_id, SavedTimetable.user_id == current_user.id)
-        .first()
-    )
-    if not timetable:
-        raise HTTPException(status_code=404, detail="Расписание не найдено")
-    return {
-        "id": timetable.id,
-        "name": timetable.name,
-        "created_at": timetable.created_at.isoformat() if timetable.created_at else None,
-        "data": timetable.data,
-    }
+    try:
+        timetable = (
+            db.query(SavedTimetable)
+            .filter(
+                SavedTimetable.id == timetable_id,
+                SavedTimetable.user_id == current_user.id,
+            )
+            .first()
+        )
+        if not timetable:
+            raise HTTPException(status_code=404, detail="Расписание не найдено")
+
+        return {
+            "id": timetable.id,
+            "name": timetable.name,
+            "created_at": timetable.created_at.isoformat() if timetable.created_at else None,
+            "data": timetable.data if timetable.data else {},
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f" Ошибка получения расписания {timetable_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Ошибка: {str(e)}")
 
 
 @app.put("/timetables/{timetable_id}")
 def update_timetable(
-    timetable_id: int,
-    update_data: TimetableUpdate,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+        timetable_id: int,
+        update_data: TimetableUpdate,
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db),
 ):
     timetable = (
         db.query(SavedTimetable)
-        .filter(SavedTimetable.id == timetable_id, SavedTimetable.user_id == current_user.id)
+        .filter(
+            SavedTimetable.id == timetable_id,
+            SavedTimetable.user_id == current_user.id,
+        )
         .first()
     )
     if not timetable:
         raise HTTPException(status_code=404, detail="Расписание не найдено")
+
     if update_data.name is not None:
         timetable.name = update_data.name
     if update_data.data is not None:
         timetable.data = update_data.data
+
     db.commit()
     db.refresh(timetable)
     return {"message": "Расписание обновлено", "id": timetable.id, "name": timetable.name}
@@ -378,13 +407,16 @@ def update_timetable(
 
 @app.delete("/timetables/{timetable_id}")
 def delete_timetable(
-    timetable_id: int,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+        timetable_id: int,
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db),
 ):
     timetable = (
         db.query(SavedTimetable)
-        .filter(SavedTimetable.id == timetable_id, SavedTimetable.user_id == current_user.id)
+        .filter(
+            SavedTimetable.id == timetable_id,
+            SavedTimetable.user_id == current_user.id,
+        )
         .first()
     )
     if not timetable:
@@ -395,18 +427,21 @@ def delete_timetable(
 
 
 # ============================================================
-# Экспорт
+# Экспорт в Excel
 # ============================================================
 @app.get("/timetables/{timetable_id}/export/excel")
 def export_excel(
-    timetable_id: int,
-    format: str = Query("teachers", regex="^(teachers|classes)$"),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+        timetable_id: int,
+        format: str = Query("teachers", regex="^(teachers|classes)$"),
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db),
 ):
     timetable = (
         db.query(SavedTimetable)
-        .filter(SavedTimetable.id == timetable_id, SavedTimetable.user_id == current_user.id)
+        .filter(
+            SavedTimetable.id == timetable_id,
+            SavedTimetable.user_id == current_user.id,
+        )
         .first()
     )
     if not timetable:
@@ -434,16 +469,22 @@ def export_excel(
     )
 
 
+# ============================================================
+# Экспорт в PDF
+# ============================================================
 @app.get("/timetables/{timetable_id}/export/pdf")
 def export_pdf(
-    timetable_id: int,
-    format: str = Query("teachers", regex="^(teachers|classes)$"),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+        timetable_id: int,
+        format: str = Query("teachers", regex="^(teachers|classes)$"),
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db),
 ):
     timetable = (
         db.query(SavedTimetable)
-        .filter(SavedTimetable.id == timetable_id, SavedTimetable.user_id == current_user.id)
+        .filter(
+            SavedTimetable.id == timetable_id,
+            SavedTimetable.user_id == current_user.id,
+        )
         .first()
     )
     if not timetable:
