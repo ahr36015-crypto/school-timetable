@@ -9,14 +9,11 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
-# Локальные импорты
 from database import init_db, get_db, User, SavedTimetable
 from auth import get_password_hash, verify_password, create_access_token, get_current_user
 
 
-# ==========================================
-# PYDANTIC МОДЕЛИ
-# ==========================================
+# Pydantic модели
 class UserRegister(BaseModel):
     email: str
     password: str
@@ -32,14 +29,12 @@ class UserLogin(BaseModel):
 class TimetableGenerate(BaseModel):
     name: str
     num_classes: int = 1
-    data: Optional[Dict[str, Any]] = None
 
 
-# ==========================================
-# НАСТРОЙКА ПРИЛОЖЕНИЯ
-# ==========================================
+# FastAPI приложение
 app = FastAPI(title="Генератор школьного расписания")
 
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -48,25 +43,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Статические файлы
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
+# Инициализация БД
 @app.on_event("startup")
 def startup_event():
     init_db()
     print("✅ База данных инициализирована")
 
 
-# ==========================================
-# ЭНДПОИНТЫ АВТОРИЗАЦИИ
-# ==========================================
+# Главная страница
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
     index_path = os.path.join("static", "index.html")
     if os.path.exists(index_path):
         with open(index_path, "r", encoding="utf-8") as f:
             return f.read()
-    return HTMLResponse("<h1>Файл static/index.html не найден</h1>", status_code=404)
+    return HTMLResponse("<h1>Frontend not found</h1>", status_code=404)
 
 
 @app.get("/health")
@@ -74,11 +69,12 @@ def health_check():
     return {"status": "ok"}
 
 
+# Регистрация
 @app.post("/register")
 def register(user: UserRegister, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.email == user.email).first()
     if db_user:
-        raise HTTPException(status_code=400, detail="Этот email уже зарегистрирован")
+        raise HTTPException(status_code=400, detail="Email уже зарегистрирован")
 
     new_user = User(
         email=user.email,
@@ -105,6 +101,7 @@ def register(user: UserRegister, db: Session = Depends(get_db)):
     }
 
 
+# Вход
 @app.post("/login")
 def login(user: UserLogin, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.email == user.email).first()
@@ -126,9 +123,7 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
     }
 
 
-# ==========================================
-# ЭНДПОИНТЫ РАСПИСАНИЯ (РЕАЛЬНАЯ ЛОГИКА)
-# ==========================================
+# Генерация расписания
 @app.post("/generate")
 def generate_timetable(
         timetable: TimetableGenerate,
@@ -137,7 +132,7 @@ def generate_timetable(
 ):
     """Генерирует и сохраняет расписание"""
     try:
-        # Создаем базовую структуру расписания
+        # Создаем структуру расписания
         timetable_data = {
             "name": timetable.name,
             "num_classes": timetable.num_classes,
@@ -145,23 +140,28 @@ def generate_timetable(
             "classes": []
         }
 
-        # Генерируем простые классы (заглушка для solver)
+        # Генерируем простые уроки для каждого класса
+        subjects = ["Математика", "Русский язык", "Литература", "Физика",
+                    "История", "Биология", "География", "Английский",
+                    "Физкультура", "Информатика"]
+        days = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"]
+
         for i in range(timetable.num_classes):
-            timetable_data["classes"].append({
+            class_schedule = {
                 "class_name": f"Класс {i + 1}",
-                "lessons": [
-                    {"day": "Понедельник", "time": "08:00", "subject": "Математика"},
-                    {"day": "Понедельник", "time": "09:00", "subject": "Русский язык"},
-                    {"day": "Вторник", "time": "08:00", "subject": "Физика"},
-                    {"day": "Вторник", "time": "09:00", "subject": "История"},
-                    {"day": "Среда", "time": "08:00", "subject": "Литература"},
-                    {"day": "Среда", "time": "09:00", "subject": "Английский"},
-                    {"day": "Четверг", "time": "08:00", "subject": "Биология"},
-                    {"day": "Четверг", "time": "09:00", "subject": "География"},
-                    {"day": "Пятница", "time": "08:00", "subject": "Физкультура"},
-                    {"day": "Пятница", "time": "09:00", "subject": "Информатика"}
-                ]
-            })
+                "lessons": []
+            }
+
+            for day in days:
+                for hour in range(1, 6):
+                    lesson = {
+                        "day": day,
+                        "time": f"{8 + hour}:00",
+                        "subject": subjects[(i + hour) % len(subjects)]
+                    }
+                    class_schedule["lessons"].append(lesson)
+
+            timetable_data["classes"].append(class_schedule)
 
         # Сохраняем в БД
         saved = SavedTimetable(
@@ -174,43 +174,49 @@ def generate_timetable(
         db.refresh(saved)
 
         return {
-            "message": "Расписание сгенерировано и сохранено",
+            "message": "Расписание сгенерировано",
             "id": saved.id,
             "name": saved.name,
             "data": timetable_data
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка генерации: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Ошибка: {str(e)}")
 
 
+# Получить все расписания пользователя
 @app.get("/timetables")
 def get_timetables(
         current_user: User = Depends(get_current_user),
         db: Session = Depends(get_db)
 ):
-    """Получить список расписаний пользователя"""
-    timetables = db.query(SavedTimetable).filter(
-        SavedTimetable.user_id == current_user.id
-    ).order_by(SavedTimetable.created_at.desc()).all()
+    """Получить список всех расписаний текущего пользователя"""
+    try:
+        timetables = db.query(SavedTimetable).filter(
+            SavedTimetable.user_id == current_user.id
+        ).order_by(SavedTimetable.created_at.desc()).all()
 
-    return [
-        {
-            "id": t.id,
-            "name": t.name,
-            "created_at": t.created_at.isoformat() if t.created_at else None,
-            "data": t.data
-        }
-        for t in timetables
-    ]
+        result = []
+        for t in timetables:
+            result.append({
+                "id": t.id,
+                "name": t.name,
+                "created_at": t.created_at.isoformat() if t.created_at else None,
+                "data": t.data
+            })
+
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка: {str(e)}")
 
 
+# Получить конкретное расписание
 @app.get("/timetables/{timetable_id}")
 def get_timetable(
         timetable_id: int,
         current_user: User = Depends(get_current_user),
         db: Session = Depends(get_db)
 ):
-    """Получить конкретное расписание"""
+    """Получить конкретное расписание по ID"""
     timetable = db.query(SavedTimetable).filter(
         SavedTimetable.id == timetable_id,
         SavedTimetable.user_id == current_user.id
@@ -227,6 +233,7 @@ def get_timetable(
     }
 
 
+# Удалить расписание
 @app.delete("/timetables/{timetable_id}")
 def delete_timetable(
         timetable_id: int,
