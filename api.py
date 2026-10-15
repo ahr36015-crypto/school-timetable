@@ -1,6 +1,6 @@
 import os
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, List, Dict, Any
 
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,12 +10,12 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 # Локальные импорты
-from database import init_db, get_db, User
-from auth import get_password_hash, verify_password, create_access_token
+from database import init_db, get_db, User, SavedTimetable
+from auth import get_password_hash, verify_password, create_access_token, get_current_user
 
 
 # ==========================================
-# PYDANTIC МОДЕЛИ (str вместо EmailStr, чтобы не требовать email-validator)
+# PYDANTIC МОДЕЛИ
 # ==========================================
 class UserRegister(BaseModel):
     email: str
@@ -29,12 +29,17 @@ class UserLogin(BaseModel):
     password: str
 
 
+class TimetableGenerate(BaseModel):
+    name: str
+    num_classes: int = 1
+    data: Optional[Dict[str, Any]] = None
+
+
 # ==========================================
 # НАСТРОЙКА ПРИЛОЖЕНИЯ
 # ==========================================
 app = FastAPI(title="Генератор школьного расписания")
 
-# Разрешаем CORS для фронтенда
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -43,11 +48,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Монтируем папку static (где лежит index.html)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
-# Инициализация БД при старте
 @app.on_event("startup")
 def startup_event():
     init_db()
@@ -55,10 +58,8 @@ def startup_event():
 
 
 # ==========================================
-# ЭНДПОИНТЫ
+# ЭНДПОИНТЫ АВТОРИЗАЦИИ
 # ==========================================
-
-# ГЛАВНАЯ СТРАНИЦА (отдаёт index.html)
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
     index_path = os.path.join("static", "index.html")
@@ -70,7 +71,7 @@ async def read_root():
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "message": "Сервер работает"}
+    return {"status": "ok"}
 
 
 @app.post("/register")
@@ -90,7 +91,6 @@ def register(user: UserRegister, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
 
-    # ВАЖНО: передаем именно new_user.id, так как auth.py ожидает число
     access_token = create_access_token(
         data={"sub": new_user.id},
         expires_delta=timedelta(minutes=10080)
@@ -100,7 +100,8 @@ def register(user: UserRegister, db: Session = Depends(get_db)):
         "message": "Регистрация успешна",
         "user_id": new_user.id,
         "access_token": access_token,
-        "token_type": "bearer"
+        "token_type": "bearer",
+        "full_name": new_user.full_name
     }
 
 
@@ -110,7 +111,6 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
     if not db_user or not verify_password(user.password, db_user.hashed_password):
         raise HTTPException(status_code=401, detail="Неверный email или пароль")
 
-    # ВАЖНО: передаем именно db_user.id
     access_token = create_access_token(
         data={"sub": db_user.id},
         expires_delta=timedelta(minutes=10080)
@@ -127,19 +127,122 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
 
 
 # ==========================================
-# ЗАГЛУШКИ ДЛЯ ГЕНЕРАЦИИ И ЭКСПОРТА
-# (Чтобы сервер точно запускался без ошибок импорта)
+# ЭНДПОИНТЫ РАСПИСАНИЯ (РЕАЛЬНАЯ ЛОГИКА)
 # ==========================================
 @app.post("/generate")
-def generate_timetable():
-    return {"message": "Эндпоинт генерации работает"}
+def generate_timetable(
+        timetable: TimetableGenerate,
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+):
+    """Генерирует и сохраняет расписание"""
+    try:
+        # Создаем базовую структуру расписания
+        timetable_data = {
+            "name": timetable.name,
+            "num_classes": timetable.num_classes,
+            "created_at": datetime.utcnow().isoformat(),
+            "classes": []
+        }
+
+        # Генерируем простые классы (заглушка для solver)
+        for i in range(timetable.num_classes):
+            timetable_data["classes"].append({
+                "class_name": f"Класс {i + 1}",
+                "lessons": [
+                    {"day": "Понедельник", "time": "08:00", "subject": "Математика"},
+                    {"day": "Понедельник", "time": "09:00", "subject": "Русский язык"},
+                    {"day": "Вторник", "time": "08:00", "subject": "Физика"},
+                    {"day": "Вторник", "time": "09:00", "subject": "История"},
+                    {"day": "Среда", "time": "08:00", "subject": "Литература"},
+                    {"day": "Среда", "time": "09:00", "subject": "Английский"},
+                    {"day": "Четверг", "time": "08:00", "subject": "Биология"},
+                    {"day": "Четверг", "time": "09:00", "subject": "География"},
+                    {"day": "Пятница", "time": "08:00", "subject": "Физкультура"},
+                    {"day": "Пятница", "time": "09:00", "subject": "Информатика"}
+                ]
+            })
+
+        # Сохраняем в БД
+        saved = SavedTimetable(
+            user_id=current_user.id,
+            name=timetable.name,
+            data=timetable_data
+        )
+        db.add(saved)
+        db.commit()
+        db.refresh(saved)
+
+        return {
+            "message": "Расписание сгенерировано и сохранено",
+            "id": saved.id,
+            "name": saved.name,
+            "data": timetable_data
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка генерации: {str(e)}")
 
 
-@app.post("/export/excel")
-def export_excel():
-    return {"message": "Эндпоинт Excel работает"}
+@app.get("/timetables")
+def get_timetables(
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+):
+    """Получить список расписаний пользователя"""
+    timetables = db.query(SavedTimetable).filter(
+        SavedTimetable.user_id == current_user.id
+    ).order_by(SavedTimetable.created_at.desc()).all()
+
+    return [
+        {
+            "id": t.id,
+            "name": t.name,
+            "created_at": t.created_at.isoformat() if t.created_at else None,
+            "data": t.data
+        }
+        for t in timetables
+    ]
 
 
-@app.post("/export/pdf")
-def export_pdf():
-    return {"message": "Эндпоинт PDF работает"}
+@app.get("/timetables/{timetable_id}")
+def get_timetable(
+        timetable_id: int,
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+):
+    """Получить конкретное расписание"""
+    timetable = db.query(SavedTimetable).filter(
+        SavedTimetable.id == timetable_id,
+        SavedTimetable.user_id == current_user.id
+    ).first()
+
+    if not timetable:
+        raise HTTPException(status_code=404, detail="Расписание не найдено")
+
+    return {
+        "id": timetable.id,
+        "name": timetable.name,
+        "created_at": timetable.created_at.isoformat() if timetable.created_at else None,
+        "data": timetable.data
+    }
+
+
+@app.delete("/timetables/{timetable_id}")
+def delete_timetable(
+        timetable_id: int,
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+):
+    """Удалить расписание"""
+    timetable = db.query(SavedTimetable).filter(
+        SavedTimetable.id == timetable_id,
+        SavedTimetable.user_id == current_user.id
+    ).first()
+
+    if not timetable:
+        raise HTTPException(status_code=404, detail="Расписание не найдено")
+
+    db.delete(timetable)
+    db.commit()
+
+    return {"message": "Расписание удалено"}
