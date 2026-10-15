@@ -53,7 +53,7 @@
             background: white; color: #667eea; border: 2px solid #667eea;
         }
         button.outline:hover { background: #f0f4ff; }
-        button.small { padding: 8px 14px; font-size: 13px; }
+        button.small { padding: 10px 16px; font-size: 14px; }
         button.add-btn {
             margin-top: 10px;
             padding: 12px 24px;
@@ -129,9 +129,9 @@
             gap: 5px; margin-top: 15px;
         }
         .availability-cell {
-            padding: 8px; text-align: center;
+            padding: 15px 8px; text-align: center;
             border: 1px solid #ddd; border-radius: 4px;
-            cursor: pointer; font-size: 12px;
+            cursor: pointer; font-size: 14px; font-weight: 600;
         }
         .availability-cell.header {
             background: #667eea; color: white; font-weight: 600;
@@ -222,11 +222,23 @@
             display: flex;
             gap: 10px;
         }
+
+        .teacher-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+        .teacher-info h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
     <div id="authContainer" class="container auth-container">
-        <h1>🎓 Генератор школьного расписания</h1>
+        <h1> Генератор школьного расписания</h1>
         <p class="subtitle">Войдите или создайте аккаунт</p>
         <div class="tabs">
             <button class="tab active" onclick="showLogin()">Вход</button>
@@ -258,7 +270,7 @@
                 <input type="text" id="regSchool" placeholder="Школа №123">
             </div>
             <div class="form-group">
-                <label for="regPassword">🔒 Пароль</label>
+                <label for="regPassword"> Пароль</label>
                 <input type="password" id="regPassword" placeholder="••••••••">
             </div>
             <button class="full" onclick="register()">Зарегистрироваться</button>
@@ -312,7 +324,7 @@
                 <p class="help-text">Выберите количество учебных дней</p>
             </div>
             <div class="form-group">
-                <label for="lessonsPerDay">⏰ Количество уроков в день</label>
+                <label for="lessonsPerDay"> Количество уроков в день</label>
                 <input type="number" id="lessonsPerDay" min="1" max="10" value="7">
                 <p class="help-text">Максимальное количество уроков в день (обычно 6-8)</p>
             </div>
@@ -330,7 +342,7 @@
 
             <div class="reference-tabs">
                 <button class="reference-tab active" onclick="showRefTab('classes')">📚 Классы</button>
-                <button class="reference-tab" onclick="showRefTab('teachers')">👨‍🏫 Учителя</button>
+                <button class="reference-tab" onclick="showRefTab('teachers')">‍🏫 Учителя</button>
                 <button class="reference-tab" onclick="showRefTab('subjects')">📖 Предметы</button>
                 <button class="reference-tab" onclick="showRefTab('classrooms')">🏫 Кабинеты</button>
             </div>
@@ -351,7 +363,7 @@
             </div>
 
             <div id="ref-teachers" class="reference-content">
-                <h3>👨‍🏫 Управление учителями</h3>
+                <h3>👨‍ Управление учителями</h3>
                 <div class="form-group">
                     <label for="newTeacherName">ФИО учителя *</label>
                     <input type="text" id="newTeacherName" placeholder="Например: Иванова Мария Петровна">
@@ -421,13 +433,22 @@
                         </select>
                     </div>
                     <div id="teacherCard" style="display:none">
+                        <div class="teacher-info">
+                            <h4>👨‍🏫 <span id="currentTeacherName"></span></h4>
+                            <p class="help-text">Заполните предметы и доступность для этого учителя</p>
+                        </div>
+
                         <h4>📚 Нагрузки (предметы и часы)</h4>
                         <div id="workloadList"></div>
-                        <button class="small primary" onclick="addWorkload()"> Добавить предмет</button>
+                        <button class="small primary" onclick="addWorkload()">➕ Добавить предмет</button>
 
                         <h4 style="margin-top:20px">📅 Доступность (кликните по ячейке для изменения)</h4>
                         <p class="help-text">Зеленые ячейки - учитель доступен, красные - недоступен</p>
                         <div id="availabilityGrid" class="availability-grid"></div>
+
+                        <div style="margin-top:20px; padding:15px; background:#f0f4ff; border-radius:8px;">
+                            <p style="color:#667eea; font-weight:600;">✅ Данные автоматически сохраняются при переключении учителя</p>
+                        </div>
                     </div>
                 </div>
 
@@ -435,14 +456,14 @@
                     <h3>🤖 Путь Б: AI-ввод</h3>
                     <p style="color:#666;font-size:14px;margin-bottom:15px">Вставьте текстовое описание — ИИ разберёт сам</p>
                     <div class="ai-input-section">
-                        <label for="aiInput">📝 Вставьте текст с описанием учителя:</label>
+                        <label for="aiInput"> Вставьте текст с описанием учителя:</label>
                         <textarea id="aiInput" placeholder="Учитель Асланова Самира может проводить уроки по вторникам до 15 часов и среда, пятница в любое время. Ведет урок Старт IT в 5-6 классе и в 8 классе, искусственный интеллект в 6 классе, информатику в 7-8 классе."></textarea>
-                        <button class="primary" onclick="parseAIInput()" style="margin-top:10px;width:100%"> Анализировать текст</button>
+                        <button class="primary" onclick="parseAIInput()" style="margin-top:10px;width:100%">🧠 Анализировать текст</button>
                     </div>
                     <div id="aiResult" style="margin-top:15px;display:none">
                         <h4>✅ Результат анализа:</h4>
                         <pre id="aiResultText" style="background:#f8f9fa;padding:15px;border-radius:8px;font-size:12px;overflow:auto;max-height:300px"></pre>
-                        <button class="small primary" onclick="applyAIResult()">✅ Применить результат</button>
+                        <button class="small primary" onclick="applyAIResult()" style="margin-top:10px">✅ Применить результат</button>
                     </div>
                 </div>
             </div>
@@ -453,12 +474,12 @@
         </div>
 
         <div id="step4" class="wizard-content">
-            <h2>🚀 Шаг 4: Генерация расписания</h2>
+            <h2> Шаг 4: Генерация расписания</h2>
             <p style="color:#666;margin-bottom:20px">Нажмите кнопку для запуска алгоритма Google OR-Tools</p>
 
             <div style="text-align:center;padding:40px">
                 <button id="generateBtn" onclick="generateTimetable()" style="font-size:20px;padding:20px 40px">
-                     Сгенерировать расписание
+                    🎯 Сгенерировать расписание
                 </button>
             </div>
 
@@ -489,8 +510,8 @@
                 <div id="scheduleView" style="margin-top:30px"></div>
 
                 <div class="step-actions">
-                    <button class="outline" onclick="downloadPDF('teachers')">📄 PDF (учителя)</button>
-                    <button class="outline" onclick="downloadPDF('classes')">📄 PDF (классы)</button>
+                    <button class="outline" onclick="downloadPDF('teachers')"> PDF (учителя)</button>
+                    <button class="outline" onclick="downloadPDF('classes')"> PDF (классы)</button>
                     <button class="outline" onclick="downloadExcel('teachers')">📊 Excel (учителя)</button>
                     <button class="outline" onclick="downloadExcel('classes')">📊 Excel (классы)</button>
                     <button class="primary" onclick="completeStep(4)">➡️ Перейти к редактору</button>
@@ -512,7 +533,7 @@
             <div id="timetableGrid" class="timetable-grid"></div>
 
             <div class="step-actions">
-                <button class="secondary" onclick="validateTimetable()">🔍 Проверить конфликты</button>
+                <button class="secondary" onclick="validateTimetable()"> Проверить конфликты</button>
                 <button class="primary" onclick="completeStep(5)">➡️ Перейти к публикации</button>
             </div>
         </div>
@@ -529,21 +550,21 @@
                 </div>
 
                 <div class="stat-card">
-                    <h3>📊 Excel для редактирования</h3>
+                    <h3> Excel для редактирования</h3>
                     <p style="color:#666;margin:10px 0">Файлы для дальнейшей работы</p>
-                    <button class="primary" onclick="downloadExcel('teachers')">👨‍🏫 По учителям</button>
-                    <button class="primary" onclick="downloadExcel('classes')" style="margin-top:10px">👥 По классам</button>
+                    <button class="primary" onclick="downloadExcel('teachers')">👨🏫 По учителям</button>
+                    <button class="primary" onclick="downloadExcel('classes')" style="margin-top:10px"> По классам</button>
                 </div>
 
                 <div class="stat-card">
-                    <h3> Отправка учителям</h3>
+                    <h3>📧 Отправка учителям</h3>
                     <p style="color:#666;margin:10px 0">Ссылки на расписание</p>
                     <button class="outline" onclick="sendToTeachers()">📱 Отправить в Telegram</button>
                     <button class="outline" onclick="sendToEmail()" style="margin-top:10px">📧 Отправить на почту</button>
                 </div>
 
                 <div class="stat-card">
-                    <h3>🔗 Интеграция с журналом</h3>
+                    <h3> Интеграция с журналом</h3>
                     <p style="color:#666;margin:10px 0">Выгрузка в электронный журнал</p>
                     <button class="secondary" onclick="exportToJournal()">🔗 Экспорт API</button>
                 </div>
@@ -575,6 +596,7 @@
         let currentResult = null;
         let currentTimetableId = null;
         let currentStep = 1;
+        let currentTeacherData = null;
 
         window.onload = function() {
             if (localStorage.getItem('access_token')) showMainApp();
@@ -710,7 +732,7 @@
 
         function renderClasses() {
             document.getElementById('classesTable').innerHTML = schoolData.classes.map((c,i) => `
-                <tr><td>${c.name}</td><td>${c.grade}</td><td><button class="small danger" onclick="removeClass(${i})">Удалить</button></td></tr>
+                <tr><td>${c.name}</td><td>${c.grade}</td><td><button class="small danger" onclick="removeClass(${i})" title="Удалить класс">🗑️ Удалить</button></td></tr>
             `).join('');
         }
 
@@ -741,7 +763,7 @@
 
         function renderTeachers() {
             document.getElementById('teachersTable').innerHTML = schoolData.teachers.map((t,i) => `
-                <tr><td>${t.full_name}</td><td>${t.email||'-'}</td><td><button class="small danger" onclick="removeTeacher(${i})">Удалить</button></td></tr>
+                <tr><td>${t.full_name}</td><td>${t.email||'-'}</td><td><button class="small danger" onclick="removeTeacher(${i})" title="Удалить учителя">🗑️ Удалить</button></td></tr>
             `).join('');
         }
 
@@ -770,7 +792,7 @@
 
         function renderSubjects() {
             document.getElementById('subjectsTable').innerHTML = schoolData.subjects.map((s,i) => `
-                <tr><td>${s.name}</td><td><button class="small danger" onclick="removeSubject(${i})">Удалить</button></td></tr>
+                <tr><td>${s.name}</td><td><button class="small danger" onclick="removeSubject(${i})" title="Удалить предмет">🗑️ Удалить</button></td></tr>
             `).join('');
         }
 
@@ -801,7 +823,7 @@
 
         function renderClassrooms() {
             document.getElementById('classroomsTable').innerHTML = schoolData.classrooms.map((c,i) => `
-                <tr><td>${c.number}</td><td>${c.capacity||'-'}</td><td><button class="small danger" onclick="removeClassroom(${i})">Удалить</button></td></tr>
+                <tr><td>${c.number}</td><td>${c.capacity||'-'}</td><td><button class="small danger" onclick="removeClassroom(${i})" title="Удалить кабинет">🗑️ Удалить</button></td></tr>
             `).join('');
         }
 
@@ -819,8 +841,13 @@
 
         function loadTeacherCard() {
             const teacher = document.getElementById('teacherSelect').value;
-            if (!teacher) { document.getElementById('teacherCard').style.display = 'none'; return; }
+            if (!teacher) {
+                document.getElementById('teacherCard').style.display = 'none';
+                return;
+            }
+
             document.getElementById('teacherCard').style.display = 'block';
+            document.getElementById('currentTeacherName').textContent = teacher;
             renderWorkloads(teacher);
             renderAvailabilityGrid(teacher);
         }
@@ -832,14 +859,17 @@
                     <input type="text" value="${w.subject}" placeholder="Предмет" onchange="updateWorkload(${i},'subject',this.value)">
                     <input type="text" value="${w.grade}" placeholder="Класс" onchange="updateWorkload(${i},'grade',this.value)">
                     <input type="number" value="${w.hours}" placeholder="Часы" onchange="updateWorkload(${i},'hours',this.value)" style="width:80px">
-                    <button class="small danger" onclick="removeWorkload(${i})"></button>
+                    <button class="small danger" onclick="removeWorkload(${i})" title="Удалить предмет">️ Удалить</button>
                 </div>
             `).join('');
         }
 
         function addWorkload() {
             const teacher = document.getElementById('teacherSelect').value;
-            if (!teacher) return;
+            if (!teacher) {
+                alert('Сначала выберите учителя');
+                return;
+            }
             schoolData.workloads.push({teacher, subject:'', grade:'', hours:1});
             renderWorkloads(teacher);
         }
@@ -912,11 +942,15 @@
         }
 
         function applyAIResult() {
-            if (!window._aiResult) return;
+            if (!window._aiResult) {
+                alert('Сначала проанализируйте текст');
+                return;
+            }
             const data = window._aiResult;
 
             if (data.teacher_name && !schoolData.teachers.find(t => t.full_name === data.teacher_name)) {
                 schoolData.teachers.push({full_name: data.teacher_name, email: ''});
+                renderTeachers();
             }
 
             data.lessons.forEach(l => {
@@ -930,8 +964,10 @@
 
             schoolData.availability[data.teacher_name] = data.availability;
 
-            alert('✅ Данные применены! Перейдите к выбору учителя для проверки.');
+            alert('✅ Данные применены! Теперь выберите учителя в выпадающем списке для проверки.');
             updateTeacherSelect();
+            document.getElementById('teacherSelect').value = data.teacher_name;
+            loadTeacherCard();
         }
 
         async function generateTimetable() {
@@ -949,6 +985,12 @@
                     max_days_per_week: 5
                 };
             });
+
+            if (Object.keys(teachers).length === 0) {
+                err.textContent = 'Добавьте хотя бы одного учителя с предметами';
+                err.classList.add('show');
+                return;
+            }
 
             const days = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"].slice(0, schoolData.days);
             const slots = Array.from({length: schoolData.lessonsPerDay}, (_, i) => i+1);
@@ -1015,14 +1057,18 @@
                     }
                 }
 
+                if (!fullData || !fullData.data) {
+                    throw new Error('Расписание не получено от сервера');
+                }
+
                 currentResult = fullData.data;
                 currentTimetableId = data.id;
 
-                document.getElementById('statTeachers').textContent = currentResult.teachers.length;
-                const totalLessons = currentResult.teachers.reduce((sum, t) => sum + t.total_lessons, 0);
+                document.getElementById('statTeachers').textContent = currentResult.teachers ? currentResult.teachers.length : 0;
+                const totalLessons = currentResult.teachers ? currentResult.teachers.reduce((sum, t) => sum + t.total_lessons, 0) : 0;
                 document.getElementById('statLessons').textContent = totalLessons;
-                document.getElementById('statTime').textContent = currentResult.solution_time.toFixed(2) + 'с';
-                document.getElementById('statStatus').textContent = currentResult.status;
+                document.getElementById('statTime').textContent = currentResult.solution_time ? currentResult.solution_time.toFixed(2) + 'с' : '0с';
+                document.getElementById('statStatus').textContent = currentResult.status || 'UNKNOWN';
 
                 document.getElementById('resultsSection').classList.add('active');
                 succ.textContent = '✅ Расписание успешно составлено!';
@@ -1031,16 +1077,20 @@
                 renderSchedule();
             } catch(e) {
                 document.getElementById('progressOverlay').classList.remove('active');
-                err.textContent = 'Ошибка соединения: ' + e.message + '. Убедитесь, что сервер доступен.';
+                err.textContent = 'Ошибка: ' + e.message;
                 err.classList.add('show');
             } finally {
                 btn.disabled = false;
-                btn.textContent = '🎯 Сгенерировать расписание';
+                btn.textContent = ' Сгенерировать расписание';
             }
         }
 
         function renderSchedule() {
-            if (!currentResult) return;
+            if (!currentResult || !currentResult.teachers) {
+                document.getElementById('scheduleView').innerHTML = '<p style="color:#999">Нет данных для отображения</p>';
+                return;
+            }
+
             const container = document.getElementById('scheduleView');
 
             let html = '<h3>📋 Расписание по учителям</h3>';
@@ -1071,25 +1121,35 @@
         }
 
         function renderTimetableGrid() {
-            if (!currentResult) {
+            if (!currentResult || !currentResult.teachers) {
                 document.getElementById('timetableGrid').innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#999">Сначала сгенерируйте расписание</p>';
                 return;
             }
 
             const classSelect = document.getElementById('classSelect');
-            if (classSelect.options.length === 0) {
+            if (classSelect.options.length <= 1) {
                 const grades = new Set();
                 currentResult.teachers.forEach(t => {
-                    Object.values(t.schedule).forEach(day => {
-                        Object.values(day).forEach(slot => {
-                            slot.forEach(l => grades.add(l.grade));
+                    if (t.schedule) {
+                        Object.values(t.schedule).forEach(day => {
+                            Object.values(day).forEach(slot => {
+                                if (Array.isArray(slot)) {
+                                    slot.forEach(l => grades.add(l.grade));
+                                }
+                            });
                         });
-                    });
+                    }
                 });
-                classSelect.innerHTML = Array.from(grades).map(g => `<option value="${g}">${g} класс</option>`).join('');
+                classSelect.innerHTML = '<option value="">-- Выберите класс --</option>' +
+                    Array.from(grades).map(g => `<option value="${g}">${g} класс</option>`).join('');
             }
 
             const grade = classSelect.value;
+            if (!grade) {
+                document.getElementById('timetableGrid').innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#999">Выберите класс</p>';
+                return;
+            }
+
             const days = currentResult.days;
             const slots = currentResult.slots;
 
@@ -1103,7 +1163,7 @@
                     let lessonData = null;
 
                     currentResult.teachers.forEach(t => {
-                        if (t.schedule[day] && t.schedule[day][String(slot)]) {
+                        if (t.schedule && t.schedule[day] && t.schedule[day][String(slot)]) {
                             t.schedule[day][String(slot)].forEach(l => {
                                 if (l.grade === grade) {
                                     lessonText = `${l.subject}<br><small>${l.teacher}</small>`;
