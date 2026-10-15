@@ -4,6 +4,8 @@ from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
@@ -13,7 +15,7 @@ from auth import get_password_hash, verify_password, create_access_token
 
 
 # ==========================================
-# PYDANTIC МОДЕЛИ (Используем обычный str вместо EmailStr)
+# PYDANTIC МОДЕЛИ
 # ==========================================
 class UserRegister(BaseModel):
     email: str
@@ -32,7 +34,7 @@ class UserLogin(BaseModel):
 # ==========================================
 app = FastAPI(title="Генератор школьного расписания")
 
-# Разрешаем CORS (чтобы фронтенд мог обращаться к бэкенду)
+# Разрешаем CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -40,6 +42,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Монтируем папку static (где лежит index.html, css, js)
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 # Инициализация БД при старте
@@ -53,6 +58,16 @@ def startup_event():
 # ЭНДПОИНТЫ
 # ==========================================
 
+# ГЛАВНАЯ СТРАНИЦА (отдаёт index.html)
+@app.get("/", response_class=HTMLResponse)
+async def read_root():
+    index_path = os.path.join("static", "index.html")
+    if os.path.exists(index_path):
+        with open(index_path, "r", encoding="utf-8") as f:
+            return f.read()
+    return HTMLResponse("<h1>Файл static/index.html не найден</h1>", status_code=404)
+
+
 @app.get("/health")
 def health_check():
     return {"status": "ok", "message": "Сервер работает"}
@@ -60,12 +75,10 @@ def health_check():
 
 @app.post("/register")
 def register(user: UserRegister, db: Session = Depends(get_db)):
-    # Проверяем, есть ли такой email
     db_user = db.query(User).filter(User.email == user.email).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Этот email уже зарегистрирован")
 
-    # Создаем нового пользователя
     new_user = User(
         email=user.email,
         hashed_password=get_password_hash(user.password),
@@ -77,7 +90,6 @@ def register(user: UserRegister, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
 
-    # Генерируем токен
     access_token = create_access_token(
         data={"sub": new_user.email},
         secret_key=os.getenv("SECRET_KEY", "my-super-secret-key-12345-abc"),
@@ -116,21 +128,17 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
     }
 
 
-# ==========================================
-# ЗАГЛУШКИ ДЛЯ ГЕНЕРАЦИИ И ЭКСПОРТА
-# (Чтобы сервер точно запустился без ошибок импорта)
-# ==========================================
-
+# Заглушки для генерации и экспорта (чтобы сервер точно запустился)
 @app.post("/generate")
 def generate_timetable():
-    return {"message": "Эндпоинт генерации работает. (Проверь названия функций в solver.py)"}
+    return {"message": "Эндпоинт генерации работает"}
 
 
 @app.post("/export/excel")
 def export_excel():
-    return {"message": "Эндпоинт Excel работает. (Проверь названия функций в excel_generator.py)"}
+    return {"message": "Эндпоинт Excel работает"}
 
 
 @app.post("/export/pdf")
 def export_pdf():
-    return {"message": "Эндпоинт PDF работает. (Проверь названия функций в pdf_generator.py)"}
+    return {"message": "Эндпоинт PDF работает"}
