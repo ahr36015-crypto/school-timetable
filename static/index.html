@@ -221,6 +221,7 @@
             border-top: 2px solid #eee;
             display: flex;
             gap: 10px;
+            flex-wrap: wrap;
         }
 
         .teacher-info {
@@ -269,7 +270,7 @@
 </head>
 <body>
     <div id="authContainer" class="container auth-container">
-        <h1>🎓 Генератор школьного расписания</h1>
+        <h1> Генератор школьного расписания</h1>
         <p class="subtitle">Войдите или создайте аккаунт</p>
         <div class="tabs">
             <button class="tab active" onclick="showLogin()">Вход</button>
@@ -277,7 +278,7 @@
         </div>
         <div id="loginForm" class="form-section active">
             <div class="form-group">
-                <label for="loginEmail"> Email</label>
+                <label for="loginEmail">📧 Email</label>
                 <input type="email" id="loginEmail" placeholder="your@email.com">
             </div>
             <div class="form-group">
@@ -289,7 +290,7 @@
         </div>
         <div id="registerForm" class="form-section">
             <div class="form-group">
-                <label for="regFullName">👤 ФИО</label>
+                <label for="regFullName"> ФИО</label>
                 <input type="text" id="regFullName" placeholder="Иванов Иван Иванович">
             </div>
             <div class="form-group">
@@ -297,11 +298,11 @@
                 <input type="email" id="regEmail" placeholder="your@email.com">
             </div>
             <div class="form-group">
-                <label for="regSchool"> Школа</label>
+                <label for="regSchool">🏫 Школа</label>
                 <input type="text" id="regSchool" placeholder="Школа №123">
             </div>
             <div class="form-group">
-                <label for="regPassword">🔒 Пароль</label>
+                <label for="regPassword"> Пароль</label>
                 <input type="password" id="regPassword" placeholder="••••••••">
             </div>
             <button class="full" onclick="register()">Зарегистрироваться</button>
@@ -340,9 +341,9 @@
         </div>
 
         <div id="step1" class="wizard-content active">
-            <h2>📋 Шаг 1: Профиль школы и сетка времени</h2>
+            <h2> Шаг 1: Профиль школы и сетка времени</h2>
             <div class="form-group">
-                <label for="schoolName">🏫 Название школы</label>
+                <label for="schoolName"> Название школы</label>
                 <input type="text" id="schoolName" placeholder="Например: Школа №123">
                 <p class="help-text">Введите полное название вашей школы</p>
             </div>
@@ -355,7 +356,7 @@
                 <p class="help-text">Выберите количество учебных дней</p>
             </div>
             <div class="form-group">
-                <label for="lessonsPerDay"> Количество уроков в день</label>
+                <label for="lessonsPerDay">⏰ Количество уроков в день</label>
                 <input type="number" id="lessonsPerDay" min="1" max="10" value="7">
                 <p class="help-text">Максимальное количество уроков в день (обычно 6-8)</p>
             </div>
@@ -373,7 +374,7 @@
 
             <div class="reference-tabs">
                 <button class="reference-tab active" onclick="showRefTab('classes')">📚 Классы</button>
-                <button class="reference-tab" onclick="showRefTab('teachers')">‍🏫 Учителя</button>
+                <button class="reference-tab" onclick="showRefTab('teachers')">👨‍🏫 Учителя</button>
                 <button class="reference-tab" onclick="showRefTab('subjects')">📖 Предметы</button>
                 <button class="reference-tab" onclick="showRefTab('classrooms')"> Кабинеты</button>
             </div>
@@ -455,7 +456,7 @@
 
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
                 <div>
-                    <h3> Путь А: Классический (таблицы)</h3>
+                    <h3>📋 Путь А: Классический (таблицы)</h3>
                     <p style="color:#666;font-size:14px;margin-bottom:15px">Заполните карточку учителя вручную</p>
                     <div class="form-group">
                         <label for="teacherSelect">Выберите учителя</label>
@@ -487,7 +488,7 @@
                     <h3>🤖 Путь Б: AI-ввод</h3>
                     <p style="color:#666;font-size:14px;margin-bottom:15px">Вставьте текстовое описание — ИИ разберёт сам</p>
                     <div class="ai-input-section">
-                        <label for="aiInput"> Вставьте текст с описанием учителя:</label>
+                        <label for="aiInput">📝 Вставьте текст с описанием учителя:</label>
                         <textarea id="aiInput" placeholder="Учитель Асланова Самира может проводить уроки по вторникам до 15 часов и среда, пятница в любое время. Ведет урок Старт IT в 5-6 классе и в 8 классе, искусственный интеллект в 6 классе, информатику в 7-8 классе."></textarea>
                         <button class="primary" onclick="parseAIInput()" style="margin-top:10px;width:100%">🧠 Анализировать текст</button>
                     </div>
@@ -541,11 +542,11 @@
                 <div id="scheduleView" style="margin-top:30px"></div>
 
                 <div class="step-actions">
-                    <button class="outline" onclick="downloadPDF('teachers')">📄 PDF (учителя)</button>
+                    <button class="outline" onclick="downloadPDF('teachers')"> PDF (учителя)</button>
                     <button class="outline" onclick="downloadPDF('classes')">📄 PDF (классы)</button>
                     <button class="outline" onclick="downloadExcel('teachers')">📊 Excel (учителя)</button>
-                    <button class="outline" onclick="downloadExcel('classes')"> Excel (классы)</button>
-                    <button class="primary" onclick="completeStep(4)">️ Перейти к редактору</button>
+                    <button class="outline" onclick="downloadExcel('classes')">📊 Excel (классы)</button>
+                    <button class="primary" onclick="completeStep(4)">➡️ Перейти к редактору</button>
                 </div>
             </div>
         </div>
@@ -581,23 +582,23 @@
                 </div>
 
                 <div class="stat-card">
-                    <h3> Excel для редактирования</h3>
+                    <h3>📊 Excel для редактирования</h3>
                     <p style="color:#666;margin:10px 0">Файлы для дальнейшей работы</p>
                     <button class="primary" onclick="downloadExcel('teachers')">👨‍🏫 По учителям</button>
                     <button class="primary" onclick="downloadExcel('classes')" style="margin-top:10px">👥 По классам</button>
                 </div>
 
                 <div class="stat-card">
-                    <h3>📧 Отправка учителям</h3>
+                    <h3> Отправка учителям</h3>
                     <p style="color:#666;margin:10px 0">Ссылки на расписание</p>
                     <button class="outline" onclick="sendToTeachers()">📱 Отправить в Telegram</button>
-                    <button class="outline" onclick="sendToEmail()" style="margin-top:10px"> Отправить на почту</button>
+                    <button class="outline" onclick="sendToEmail()" style="margin-top:10px">📧 Отправить на почту</button>
                 </div>
 
                 <div class="stat-card">
-                    <h3>🔗 Интеграция с журналом</h3>
+                    <h3> Интеграция с журналом</h3>
                     <p style="color:#666;margin:10px 0">Выгрузка в электронный журнал</p>
-                    <button class="secondary" onclick="exportToJournal()">🔗 Экспорт API</button>
+                    <button class="secondary" onclick="exportToJournal()"> Экспорт API</button>
                 </div>
             </div>
 
@@ -899,9 +900,13 @@
                                onfocus="showAutocomplete(this, 'classes')">
                         <div class="autocomplete-list" style="display:none"></div>
                     </div>
-                    <input type="number" class="workload-hours" value="${w.hours}" placeholder="Часы"
-                           data-idx="${i}" data-field="hours" style="width:80px" min="1" max="20">
-                    <button class="small danger" onclick="removeWorkload(${i})" title="Удалить предмет">🗑️ Удалить</button>
+                    <div style="min-width:80px">
+                        <label for="hours-${i}" style="font-size:12px;color:#666">Часы</label>
+                        <input type="number" class="workload-hours" id="hours-${i}" value="${w.hours}"
+                               data-idx="${i}" data-field="hours" style="width:100%" min="1" max="20"
+                               onchange="updateWorkloadFromInput(this)">
+                    </div>
+                    <button class="small danger" onclick="removeWorkload(${i})" title="Удалить предмет" style="margin-top:18px">🗑️ Удалить</button>
                 </div>
             `).join('');
         }
@@ -1082,7 +1087,7 @@
             err.classList.remove('show');
             succ.classList.remove('show');
             btn.disabled = true;
-            btn.textContent = ' Генерация...';
+            btn.textContent = '⏳ Генерация...';
             document.getElementById('progressOverlay').classList.add('active');
 
             try {
@@ -1163,7 +1168,7 @@
                 err.classList.add('show');
             } finally {
                 btn.disabled = false;
-                btn.textContent = '🎯 Сгенерировать расписание';
+                btn.textContent = ' Сгенерировать расписание';
             }
         }
 
@@ -1178,7 +1183,7 @@
             let html = '<h3>📋 Расписание по учителям</h3>';
             currentResult.teachers.forEach(teacher => {
                 html += '<div style="background:#f8f9fa;padding:20px;border-radius:10px;margin-bottom:20px">';
-                html += '<h4 style="color:#667eea;margin-bottom:15px">👨‍🏫 ' + teacher.teacher + ' (' + teacher.total_lessons + ' уроков)</h4>';
+                html += '<h4 style="color:#667eea;margin-bottom:15px">‍🏫 ' + teacher.teacher + ' (' + teacher.total_lessons + ' уроков)</h4>';
 
                 const days = Object.keys(teacher.schedule).sort();
                 days.forEach(day => {
@@ -1285,13 +1290,23 @@
         }
 
         function downloadPDF(format) {
-            if (!currentTimetableId) { alert('Сначала сгенерируйте расписание'); return; }
-            window.open('/timetables/' + currentTimetableId + '/export/pdf?format=' + format, '_blank');
+            if (!currentTimetableId) {
+                alert('Сначала сгенерируйте расписание');
+                return;
+            }
+            const url = `/timetables/${currentTimetableId}/export/pdf?format=${format}`;
+            console.log('Downloading PDF:', url);
+            window.open(url, '_blank');
         }
 
         function downloadExcel(format) {
-            if (!currentTimetableId) { alert('Сначала сгенерируйте расписание'); return; }
-            window.open('/timetables/' + currentTimetableId + '/export/excel?format=' + format, '_blank');
+            if (!currentTimetableId) {
+                alert('Сначала сгенерируйте расписание');
+                return;
+            }
+            const url = `/timetables/${currentTimetableId}/export/excel?format=${format}`;
+            console.log('Downloading Excel:', url);
+            window.open(url, '_blank');
         }
 
         function sendToTeachers() {
