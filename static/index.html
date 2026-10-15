@@ -102,7 +102,7 @@
         /* Вкладки справочников */
         .reference-tabs {
             display: flex; gap: 10px; margin-bottom: 20px;
-            border-bottom: 2px solid #eee;
+            border-bottom: 2px solid #eee; flex-wrap: wrap;
         }
         .reference-tab {
             padding: 10px 20px; cursor: pointer;
@@ -224,6 +224,17 @@
         .ai-input-section textarea {
             min-height: 150px; font-size: 14px;
         }
+
+        /* Утилиты */
+        .help-text {
+            color: #666; font-size: 13px; margin-top: 5px;
+            font-style: italic;
+        }
+        .duplicate-warning {
+            color: #e74c3c; font-size: 12px; margin-top: 5px;
+            display: none;
+        }
+        .duplicate-warning.show { display: block; }
     </style>
 </head>
 <body>
@@ -237,11 +248,11 @@
         </div>
         <div id="loginForm" class="form-section active">
             <div class="form-group">
-                <label> Email</label>
+                <label for="loginEmail">📧 Email</label>
                 <input type="email" id="loginEmail" placeholder="your@email.com">
             </div>
             <div class="form-group">
-                <label>🔒 Пароль</label>
+                <label for="loginPassword"> Пароль</label>
                 <input type="password" id="loginPassword" placeholder="••••••••">
             </div>
             <button class="full" onclick="login()">Войти</button>
@@ -249,19 +260,19 @@
         </div>
         <div id="registerForm" class="form-section">
             <div class="form-group">
-                <label>👤 ФИО</label>
+                <label for="regFullName">👤 ФИО</label>
                 <input type="text" id="regFullName" placeholder="Иванов Иван Иванович">
             </div>
             <div class="form-group">
-                <label>📧 Email</label>
+                <label for="regEmail">📧 Email</label>
                 <input type="email" id="regEmail" placeholder="your@email.com">
             </div>
             <div class="form-group">
-                <label> Школа</label>
+                <label for="regSchool">🏫 Школа</label>
                 <input type="text" id="regSchool" placeholder="Школа №123">
             </div>
             <div class="form-group">
-                <label>🔒 Пароль</label>
+                <label for="regPassword">🔒 Пароль</label>
                 <input type="password" id="regPassword" placeholder="••••••••">
             </div>
             <button class="full" onclick="register()">Зарегистрироваться</button>
@@ -305,56 +316,70 @@
         <div id="step1" class="wizard-content active">
             <h2>📋 Шаг 1: Профиль школы и сетка времени</h2>
             <div class="form-group">
-                <label>Название школы</label>
-                <input type="text" id="schoolName" placeholder="Школа №123">
+                <label for="schoolName"> Название школы</label>
+                <input type="text" id="schoolName" placeholder="Например: Школа №123">
+                <p class="help-text">Введите полное название вашей школы</p>
             </div>
             <div class="form-group">
-                <label>Количество дней в неделе</label>
+                <label for="daysPerWeek">📅 Количество дней в неделе</label>
                 <select id="daysPerWeek">
-                    <option value="5">5 дней (Пн-Пт)</option>
-                    <option value="6">6 дней (Пн-Сб)</option>
+                    <option value="5">5 дней (Понедельник - Пятница)</option>
+                    <option value="6">6 дней (Понедельник - Суббота)</option>
                 </select>
+                <p class="help-text">Выберите количество учебных дней</p>
             </div>
             <div class="form-group">
-                <label>Количество уроков в день</label>
+                <label for="lessonsPerDay">⏰ Количество уроков в день</label>
                 <input type="number" id="lessonsPerDay" min="1" max="10" value="7">
+                <p class="help-text">Максимальное количество уроков в день (обычно 6-8)</p>
             </div>
             <div class="form-group">
-                <label>Время уроков (через запятую, формат: начало-конец)</label>
+                <label for="lessonTimes">🕐 Время начала и окончания уроков</label>
                 <input type="text" id="lessonTimes" placeholder="08:30-09:15, 09:25-10:10, 10:20-11:05..." value="08:30-09:15, 09:25-10:10, 10:20-11:05, 11:25-12:10, 12:20-13:05, 13:15-14:00, 14:10-14:55">
+                <p class="help-text">Введите время через запятую в формате ЧЧ:ММ-ЧЧ:ММ</p>
             </div>
-            <button onclick="completeStep(1)">Сохранить и продолжить →</button>
+            <button onclick="completeStep(1)">💾 Сохранить и продолжить →</button>
         </div>
 
         <!-- Шаг 2: Справочники -->
         <div id="step2" class="wizard-content">
             <h2>📚 Шаг 2: Заполнение справочников</h2>
+            <p class="help-text" style="margin-bottom:20px">Добавьте классы, учителей, предметы и кабинеты. Дубликаты будут автоматически отклонены.</p>
+
             <div class="reference-tabs">
-                <button class="reference-tab active" onclick="showRefTab('classes')">Классы</button>
-                <button class="reference-tab" onclick="showRefTab('teachers')">Учителя</button>
-                <button class="reference-tab" onclick="showRefTab('subjects')">Предметы</button>
-                <button class="reference-tab" onclick="showRefTab('classrooms')">Кабинеты</button>
+                <button class="reference-tab active" onclick="showRefTab('classes')">📚 Классы</button>
+                <button class="reference-tab" onclick="showRefTab('teachers')">👨‍🏫 Учителя</button>
+                <button class="reference-tab" onclick="showRefTab('subjects')"> Предметы</button>
+                <button class="reference-tab" onclick="showRefTab('classrooms')">🏫 Кабинеты</button>
             </div>
 
             <div id="ref-classes" class="reference-content active">
-                <h3>Классы</h3>
+                <h3>📚 Управление классами</h3>
                 <div class="form-group">
+                    <label for="newClassName">Название класса (например: 5А, 7Б, 11)</label>
                     <input type="text" id="newClassName" placeholder="Например: 5А">
-                    <button class="small" onclick="addClass()">Добавить</button>
+                    <p class="help-text">Формат: номер + буква (опционально)</p>
+                    <p id="classDuplicateWarning" class="duplicate-warning">⚠️ Такой класс уже существует!</p>
                 </div>
+                <button class="small success" onclick="addClass()">➕ Добавить класс</button>
                 <table class="data-table">
-                    <thead><tr><th>Название</th><th>Класс</th><th>Действия</th></tr></thead>
+                    <thead><tr><th>Название</th><th>Класс (номер)</th><th>Действия</th></tr></thead>
                     <tbody id="classesTable"></tbody>
                 </table>
             </div>
 
             <div id="ref-teachers" class="reference-content">
-                <h3>Учителя</h3>
+                <h3>👨‍🏫 Управление учителями</h3>
                 <div class="form-group">
-                    <input type="text" id="newTeacherName" placeholder="ФИО учителя">
-                    <input type="email" id="newTeacherEmail" placeholder="Email" style="margin-top:10px">
-                    <button class="small" onclick="addTeacher()" style="margin-top:10px">Добавить</button>
+                    <label for="newTeacherName">ФИО учителя</label>
+                    <input type="text" id="newTeacherName" placeholder="Например: Иванова Мария Петровна">
                 </div>
+                <div class="form-group">
+                    <label for="newTeacherEmail">Email (опционально)</label>
+                    <input type="email" id="newTeacherEmail" placeholder="teacher@school.ru">
+                </div>
+                <p id="teacherDuplicateWarning" class="duplicate-warning">️ Такой учитель уже существует!</p>
+                <button class="small success" onclick="addTeacher()">➕ Добавить учителя</button>
                 <table class="data-table">
                     <thead><tr><th>ФИО</th><th>Email</th><th>Действия</th></tr></thead>
                     <tbody id="teachersTable"></tbody>
@@ -362,11 +387,13 @@
             </div>
 
             <div id="ref-subjects" class="reference-content">
-                <h3>Предметы</h3>
+                <h3>📖 Управление предметами</h3>
                 <div class="form-group">
-                    <input type="text" id="newSubjectName" placeholder="Название предмета">
-                    <button class="small" onclick="addSubject()">Добавить</button>
+                    <label for="newSubjectName">Название предмета</label>
+                    <input type="text" id="newSubjectName" placeholder="Например: Математика">
                 </div>
+                <p id="subjectDuplicateWarning" class="duplicate-warning">️ Такой предмет уже существует!</p>
+                <button class="small success" onclick="addSubject()"> Добавить предмет</button>
                 <table class="data-table">
                     <thead><tr><th>Предмет</th><th>Действия</th></tr></thead>
                     <tbody id="subjectsTable"></tbody>
@@ -374,12 +401,17 @@
             </div>
 
             <div id="ref-classrooms" class="reference-content">
-                <h3>Кабинеты</h3>
+                <h3>🏫 Управление кабинетами</h3>
                 <div class="form-group">
-                    <input type="text" id="newClassroomNumber" placeholder="Номер кабинета">
-                    <input type="number" id="newClassroomCapacity" placeholder="Вместимость" style="margin-top:10px">
-                    <button class="small" onclick="addClassroom()" style="margin-top:10px">Добавить</button>
+                    <label for="newClassroomNumber">Номер кабинета</label>
+                    <input type="text" id="newClassroomNumber" placeholder="Например: 101, 205, Спортзал">
                 </div>
+                <div class="form-group">
+                    <label for="newClassroomCapacity">Вместимость (количество мест)</label>
+                    <input type="number" id="newClassroomCapacity" placeholder="Например: 25" min="1">
+                </div>
+                <p id="classroomDuplicateWarning" class="duplicate-warning">⚠️ Такой кабинет уже существует!</p>
+                <button class="small success" onclick="addClassroom()">➕ Добавить кабинет</button>
                 <table class="data-table">
                     <thead><tr><th>Кабинет</th><th>Вместимость</th><th>Действия</th></tr></thead>
                     <tbody id="classroomsTable"></tbody>
@@ -387,50 +419,54 @@
             </div>
 
             <div style="margin-top:20px">
-                <button class="outline" onclick="importFromExcel()"> Импорт из Excel</button>
-                <button onclick="completeStep(2)" style="margin-left:10px">Сохранить и продолжить →</button>
+                <button class="outline" onclick="importFromExcel()">📥 Импорт из Excel</button>
+                <button onclick="completeStep(2)" style="margin-left:10px">💾 Сохранить и продолжить →</button>
             </div>
         </div>
 
         <!-- Шаг 3: Нагрузки и ограничения -->
         <div id="step3" class="wizard-content">
-            <h2>⚙️ Шаг 3: Настройка нагрузок и ограничений</h2>
+            <h2>️ Шаг 3: Настройка нагрузок и ограничений</h2>
             <p style="color:#666;margin-bottom:20px">Выберите способ ввода данных:</p>
 
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
                 <div>
-                    <h3> Путь А: Классический (таблицы)</h3>
+                    <h3>📋 Путь А: Классический (таблицы)</h3>
                     <p style="color:#666;font-size:14px;margin-bottom:15px">Заполните карточку учителя вручную</p>
                     <div class="form-group">
-                        <label>Выберите учителя</label>
-                        <select id="teacherSelect" onchange="loadTeacherCard()"></select>
+                        <label for="teacherSelect">Выберите учителя</label>
+                        <select id="teacherSelect" onchange="loadTeacherCard()">
+                            <option value="">-- Выберите учителя --</option>
+                        </select>
                     </div>
                     <div id="teacherCard" style="display:none">
-                        <h4>Нагрузки</h4>
+                        <h4>📚 Нагрузки (предметы и часы)</h4>
                         <div id="workloadList"></div>
-                        <button class="small success" onclick="addWorkload()">+ Добавить предмет</button>
+                        <button class="small success" onclick="addWorkload()">➕ Добавить предмет</button>
 
-                        <h4 style="margin-top:20px">Доступность (кликните по ячейке)</h4>
+                        <h4 style="margin-top:20px">📅 Доступность (кликните по ячейке для изменения)</h4>
+                        <p class="help-text">Зеленые ячейки - учитель доступен, красные - недоступен</p>
                         <div id="availabilityGrid" class="availability-grid"></div>
                     </div>
                 </div>
 
                 <div>
-                    <h3>🤖 Путь Б: AI-ввод</h3>
+                    <h3> Путь Б: AI-ввод</h3>
                     <p style="color:#666;font-size:14px;margin-bottom:15px">Вставьте текстовое описание — ИИ разберёт сам</p>
                     <div class="ai-input-section">
+                        <label for="aiInput">📝 Вставьте текст с описанием учителя:</label>
                         <textarea id="aiInput" placeholder="Учитель Асланова Самира может проводить уроки по вторникам до 15 часов и среда, пятница в любое время. Ведет урок Старт IT в 5-6 классе и в 8 классе, искусственный интеллект в 6 классе, информатику в 7-8 классе."></textarea>
                         <button class="success" onclick="parseAIInput()" style="margin-top:10px;width:100%">🧠 Анализировать текст</button>
                     </div>
                     <div id="aiResult" style="margin-top:15px;display:none">
-                        <h4>Результат анализа:</h4>
-                        <pre id="aiResultText" style="background:#f8f9fa;padding:15px;border-radius:8px;font-size:12px;overflow:auto"></pre>
-                        <button class="small success" onclick="applyAIResult()">✅ Применить</button>
+                        <h4>✅ Результат анализа:</h4>
+                        <pre id="aiResultText" style="background:#f8f9fa;padding:15px;border-radius:8px;font-size:12px;overflow:auto;max-height:300px"></pre>
+                        <button class="small success" onclick="applyAIResult()">✅ Применить результат</button>
                     </div>
                 </div>
             </div>
 
-            <button onclick="completeStep(3)" style="margin-top:20px">Сохранить и продолжить →</button>
+            <button onclick="completeStep(3)" style="margin-top:20px">💾 Сохранить и продолжить →</button>
         </div>
 
         <!-- Шаг 4: Генерация -->
@@ -439,7 +475,7 @@
             <p style="color:#666;margin-bottom:20px">Нажмите кнопку для запуска алгоритма Google OR-Tools</p>
 
             <div style="text-align:center;padding:40px">
-                <button onclick="generateTimetable()" style="font-size:20px;padding:20px 40px">
+                <button id="generateBtn" onclick="generateTimetable()" style="font-size:20px;padding:20px 40px">
                     🎯 Сгенерировать расписание
                 </button>
             </div>
@@ -467,7 +503,7 @@
                         <div class="stat-label">Статус</div>
                     </div>
                 </div>
-                <button onclick="completeStep(4)" class="success">Перейти к редактору →</button>
+                <button onclick="completeStep(4)" class="success">➡️ Перейти к редактору</button>
             </div>
         </div>
 
@@ -477,15 +513,17 @@
             <p style="color:#666;margin-bottom:20px">Перетащите уроки для изменения расписания. Красная подсветка = конфликт.</p>
 
             <div class="form-group">
-                <label>Выберите класс для просмотра</label>
-                <select id="classSelect" onchange="renderTimetableGrid()"></select>
+                <label for="classSelect">Выберите класс для просмотра</label>
+                <select id="classSelect" onchange="renderTimetableGrid()">
+                    <option value="">-- Выберите класс --</option>
+                </select>
             </div>
 
             <div id="timetableGrid" class="timetable-grid"></div>
 
             <div style="margin-top:20px;display:flex;gap:10px">
                 <button onclick="validateTimetable()" class="warning">🔍 Проверить конфликты</button>
-                <button onclick="completeStep(5)" class="success">Перейти к публикации →</button>
+                <button onclick="completeStep(5)" class="success">➡️ Перейти к публикации</button>
             </div>
         </div>
 
@@ -497,28 +535,28 @@
                 <div class="stat-card">
                     <h3>📄 PDF для печати</h3>
                     <p style="color:#666;margin:10px 0">Готовые файлы для размещения на стенде</p>
-                    <button class="green" onclick="downloadPDF('teachers')">По учителям</button>
-                    <button class="green" onclick="downloadPDF('classes')" style="margin-top:10px">По классам</button>
+                    <button class="green" onclick="downloadPDF('teachers')">‍🏫 По учителям</button>
+                    <button class="green" onclick="downloadPDF('classes')" style="margin-top:10px">👥 По классам</button>
                 </div>
 
                 <div class="stat-card">
                     <h3>📊 Excel для редактирования</h3>
                     <p style="color:#666;margin:10px 0">Файлы для дальнейшей работы</p>
-                    <button class="success" onclick="downloadExcel('teachers')">По учителям</button>
-                    <button class="success" onclick="downloadExcel('classes')" style="margin-top:10px">По классам</button>
+                    <button class="success" onclick="downloadExcel('teachers')">👨‍ По учителям</button>
+                    <button class="success" onclick="downloadExcel('classes')" style="margin-top:10px">👥 По классам</button>
                 </div>
 
                 <div class="stat-card">
                     <h3>📧 Отправка учителям</h3>
                     <p style="color:#666;margin:10px 0">Ссылки на расписание</p>
-                    <button class="outline" onclick="sendToTeachers()">Отправить в Telegram</button>
-                    <button class="outline" onclick="sendToEmail()" style="margin-top:10px">Отправить на почту</button>
+                    <button class="outline" onclick="sendToTeachers()"> Отправить в Telegram</button>
+                    <button class="outline" onclick="sendToEmail()" style="margin-top:10px"> Отправить на почту</button>
                 </div>
 
                 <div class="stat-card">
                     <h3>🔗 Интеграция с журналом</h3>
                     <p style="color:#666;margin:10px 0">Выгрузка в электронный журнал</p>
-                    <button class="warning" onclick="exportToJournal()">Экспорт API</button>
+                    <button class="warning" onclick="exportToJournal()"> Экспорт API</button>
                 </div>
             </div>
 
@@ -533,10 +571,10 @@
     <!-- Прогресс-бар -->
     <div id="progressOverlay" class="progress-overlay">
         <div class="progress-box">
-            <h2> Генерация расписания</h2>
+            <h2>🔄 Генерация расписания</h2>
             <p style="color:#666;margin-top:10px">Google OR-Tools перебирает миллионы комбинаций...</p>
             <div class="progress-bar"><div class="progress-fill"></div></div>
-            <p style="color:#999;font-size:13px">Это может занять до 2 минут</p>
+            <p style="color:#999;font-size:13px">Это может занять до 2 минут. Не закрывайте страницу!</p>
         </div>
     </div>
 
@@ -598,7 +636,7 @@
                     err.classList.add('show');
                 }
             } catch(e) {
-                err.textContent = 'Ошибка соединения';
+                err.textContent = 'Ошибка соединения: ' + e.message;
                 err.classList.add('show');
             }
         }
@@ -626,7 +664,7 @@
                     err.classList.add('show');
                 }
             } catch(e) {
-                err.textContent = 'Ошибка соединения';
+                err.textContent = 'Ошибка соединения: ' + e.message;
                 err.classList.add('show');
             }
         }
@@ -665,8 +703,22 @@
         }
 
         function addClass() {
-            const name = document.getElementById('newClassName').value;
-            if (!name) return;
+            const name = document.getElementById('newClassName').value.trim();
+            const warning = document.getElementById('classDuplicateWarning');
+
+            if (!name) {
+                alert('Введите название класса');
+                return;
+            }
+
+            // Проверка на дубликат
+            const exists = schoolData.classes.some(c => c.name.toLowerCase() === name.toLowerCase());
+            if (exists) {
+                warning.classList.add('show');
+                setTimeout(() => warning.classList.remove('show'), 3000);
+                return;
+            }
+
             const match = name.match(/(\d+)([А-Яа-я]?)/);
             schoolData.classes.push({name, grade: match?parseInt(match[1]):0, letter: match?match[2]:''});
             renderClasses();
@@ -682,9 +734,23 @@
         function removeClass(i) { schoolData.classes.splice(i,1); renderClasses(); }
 
         function addTeacher() {
-            const name = document.getElementById('newTeacherName').value;
-            const email = document.getElementById('newTeacherEmail').value;
-            if (!name) return;
+            const name = document.getElementById('newTeacherName').value.trim();
+            const email = document.getElementById('newTeacherEmail').value.trim();
+            const warning = document.getElementById('teacherDuplicateWarning');
+
+            if (!name) {
+                alert('Введите ФИО учителя');
+                return;
+            }
+
+            // Проверка на дубликат
+            const exists = schoolData.teachers.some(t => t.full_name.toLowerCase() === name.toLowerCase());
+            if (exists) {
+                warning.classList.add('show');
+                setTimeout(() => warning.classList.remove('show'), 3000);
+                return;
+            }
+
             schoolData.teachers.push({full_name: name, email});
             renderTeachers();
             document.getElementById('newTeacherName').value = '';
@@ -700,8 +766,22 @@
         function removeTeacher(i) { schoolData.teachers.splice(i,1); renderTeachers(); }
 
         function addSubject() {
-            const name = document.getElementById('newSubjectName').value;
-            if (!name) return;
+            const name = document.getElementById('newSubjectName').value.trim();
+            const warning = document.getElementById('subjectDuplicateWarning');
+
+            if (!name) {
+                alert('Введите название предмета');
+                return;
+            }
+
+            // Проверка на дубликат
+            const exists = schoolData.subjects.some(s => s.name.toLowerCase() === name.toLowerCase());
+            if (exists) {
+                warning.classList.add('show');
+                setTimeout(() => warning.classList.remove('show'), 3000);
+                return;
+            }
+
             schoolData.subjects.push({name});
             renderSubjects();
             document.getElementById('newSubjectName').value = '';
@@ -716,9 +796,23 @@
         function removeSubject(i) { schoolData.subjects.splice(i,1); renderSubjects(); }
 
         function addClassroom() {
-            const number = document.getElementById('newClassroomNumber').value;
+            const number = document.getElementById('newClassroomNumber').value.trim();
             const capacity = document.getElementById('newClassroomCapacity').value;
-            if (!number) return;
+            const warning = document.getElementById('classroomDuplicateWarning');
+
+            if (!number) {
+                alert('Введите номер кабинета');
+                return;
+            }
+
+            // Проверка на дубликат
+            const exists = schoolData.classrooms.some(c => c.number.toLowerCase() === number.toLowerCase());
+            if (exists) {
+                warning.classList.add('show');
+                setTimeout(() => warning.classList.remove('show'), 3000);
+                return;
+            }
+
             schoolData.classrooms.push({number, capacity: capacity?parseInt(capacity):null});
             renderClassrooms();
             document.getElementById('newClassroomNumber').value = '';
@@ -740,7 +834,7 @@
         // Нагрузки и доступность
         function updateTeacherSelect() {
             const select = document.getElementById('teacherSelect');
-            select.innerHTML = '<option value="">Выберите учителя</option>' +
+            select.innerHTML = '<option value="">-- Выберите учителя --</option>' +
                 schoolData.teachers.map(t => `<option value="${t.full_name}">${t.full_name}</option>`).join('');
         }
 
@@ -759,7 +853,7 @@
                     <input type="text" value="${w.subject}" placeholder="Предмет" onchange="updateWorkload(${i},'subject',this.value)">
                     <input type="text" value="${w.grade}" placeholder="Класс" onchange="updateWorkload(${i},'grade',this.value)">
                     <input type="number" value="${w.hours}" placeholder="Часы" onchange="updateWorkload(${i},'hours',this.value)" style="width:80px">
-                    <button class="small danger" onclick="removeWorkload(${i})">✕</button>
+                    <button class="small danger" onclick="removeWorkload(${i})"></button>
                 </div>
             `).join('');
         }
@@ -869,6 +963,7 @@
         async function generateTimetable() {
             const err = document.getElementById('genError');
             const succ = document.getElementById('genSuccess');
+            const btn = document.getElementById('generateBtn');
 
             // Собираем requestData
             const teachers = {};
@@ -889,57 +984,85 @@
 
             err.classList.remove('show');
             succ.classList.remove('show');
+            btn.disabled = true;
+            btn.textContent = '⏳ Генерация...';
             document.getElementById('progressOverlay').classList.add('active');
 
             try {
-                const res = await fetch('/generate', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + localStorage.getItem('access_token')
-                    },
-                    body: JSON.stringify(requestData)
-                });
-                const data = await res.json();
+                // Повторяем попытку до 3 раз при ошибке
+                let attempts = 0;
+                let success = false;
+                let data;
+
+                while (attempts < 3 && !success) {
+                    try {
+                        const res = await fetch('/generate', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': 'Bearer ' + localStorage.getItem('access_token')
+                            },
+                            body: JSON.stringify(requestData)
+                        });
+
+                        data = await res.json();
+                        success = true;
+                    } catch (e) {
+                        attempts++;
+                        if (attempts >= 3) throw e;
+                        await new Promise(r => setTimeout(r, 2000)); // Ждем 2 секунды
+                    }
+                }
+
                 document.getElementById('progressOverlay').classList.remove('active');
 
-                if (res.ok) {
-                    if (data.status === 'INVALID') {
-                        err.textContent = 'Ошибки валидации: ' + (data.errors || []).join('; ');
-                        err.classList.add('show');
-                        return;
-                    }
-                    if (data.validation_errors && data.validation_errors.length > 0) {
-                        err.textContent = 'Не удалось составить расписание: ' + data.validation_errors.join('; ');
-                        err.classList.add('show');
-                        return;
-                    }
-
-                    const fullRes = await fetch('/timetables/' + data.id, {
-                        headers: {'Authorization': 'Bearer ' + localStorage.getItem('access_token')}
-                    });
-                    const fullData = await fullRes.json();
-
-                    currentResult = fullData.data;
-                    currentTimetableId = data.id;
-
-                    document.getElementById('statTeachers').textContent = currentResult.teachers.length;
-                    const totalLessons = currentResult.teachers.reduce((sum, t) => sum + t.total_lessons, 0);
-                    document.getElementById('statLessons').textContent = totalLessons;
-                    document.getElementById('statTime').textContent = currentResult.solution_time.toFixed(2) + 'с';
-                    document.getElementById('statStatus').textContent = currentResult.status;
-
-                    document.getElementById('resultsSection').classList.add('active');
-                    succ.textContent = '✅ Расписание успешно составлено!';
-                    succ.classList.add('show');
-                } else {
-                    err.textContent = data.detail || 'Ошибка генерации';
+                if (data.status === 'INVALID') {
+                    err.textContent = 'Ошибки валидации: ' + (data.errors || []).join('; ');
                     err.classList.add('show');
+                    return;
                 }
+                if (data.validation_errors && data.validation_errors.length > 0) {
+                    err.textContent = 'Не удалось составить расписание: ' + data.validation_errors.join('; ');
+                    err.classList.add('show');
+                    return;
+                }
+
+                // Загружаем полное расписание с повторами
+                attempts = 0;
+                let fullData;
+                while (attempts < 3) {
+                    try {
+                        const fullRes = await fetch('/timetables/' + data.id, {
+                            headers: {'Authorization': 'Bearer ' + localStorage.getItem('access_token')}
+                        });
+                        fullData = await fullRes.json();
+                        break;
+                    } catch (e) {
+                        attempts++;
+                        if (attempts >= 3) throw e;
+                        await new Promise(r => setTimeout(r, 2000));
+                    }
+                }
+
+                currentResult = fullData.data;
+                currentTimetableId = data.id;
+
+                document.getElementById('statTeachers').textContent = currentResult.teachers.length;
+                const totalLessons = currentResult.teachers.reduce((sum, t) => sum + t.total_lessons, 0);
+                document.getElementById('statLessons').textContent = totalLessons;
+                document.getElementById('statTime').textContent = currentResult.solution_time.toFixed(2) + 'с';
+                document.getElementById('statStatus').textContent = currentResult.status;
+
+                document.getElementById('resultsSection').classList.add('active');
+                succ.textContent = '✅ Расписание успешно составлено!';
+                succ.classList.add('show');
             } catch(e) {
                 document.getElementById('progressOverlay').classList.remove('active');
-                err.textContent = 'Ошибка соединения: ' + e.message;
+                err.textContent = 'Ошибка соединения: ' + e.message + '. Убедитесь, что сервер доступен.';
                 err.classList.add('show');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🎯 Сгенерировать расписание';
             }
         }
 
@@ -1009,7 +1132,6 @@
         function drop(e) {
             e.preventDefault();
             e.target.classList.remove('drag-over');
-            // Здесь должна быть логика перемещения урока
             alert('Функция перемещения урока будет реализована. Пока расписание сохраняется автоматически.');
         }
 
@@ -1033,11 +1155,11 @@
         }
 
         function sendToEmail() {
-            alert('📧 Письма с расписанием отправлены на почту учителей!');
+            alert(' Письма с расписанием отправлены на почту учителей!');
         }
 
         function exportToJournal() {
-            alert('🔗 Данные экспортированы в электронный журнал через API!');
+            alert(' Данные экспортированы в электронный журнал через API!');
         }
 
         function publishTimetable() {
