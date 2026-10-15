@@ -1,5 +1,5 @@
 import os
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Depends
@@ -15,7 +15,7 @@ from auth import get_password_hash, verify_password, create_access_token
 
 
 # ==========================================
-# PYDANTIC МОДЕЛИ
+# PYDANTIC МОДЕЛИ (str вместо EmailStr, чтобы не требовать email-validator)
 # ==========================================
 class UserRegister(BaseModel):
     email: str
@@ -34,7 +34,7 @@ class UserLogin(BaseModel):
 # ==========================================
 app = FastAPI(title="Генератор школьного расписания")
 
-# Разрешаем CORS
+# Разрешаем CORS для фронтенда
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -43,7 +43,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Монтируем папку static (где лежит index.html, css, js)
+# Монтируем папку static (где лежит index.html)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
@@ -90,11 +90,10 @@ def register(user: UserRegister, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
 
+    # ВАЖНО: передаем именно new_user.id, так как auth.py ожидает число
     access_token = create_access_token(
-        data={"sub": new_user.email},
-        secret_key=os.getenv("SECRET_KEY", "my-super-secret-key-12345-abc"),
-        algorithm=os.getenv("ALGORITHM", "HS256"),
-        expires_delta=timedelta(minutes=int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "10080")))
+        data={"sub": new_user.id},
+        expires_delta=timedelta(minutes=10080)
     )
 
     return {
@@ -111,11 +110,10 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
     if not db_user or not verify_password(user.password, db_user.hashed_password):
         raise HTTPException(status_code=401, detail="Неверный email или пароль")
 
+    # ВАЖНО: передаем именно db_user.id
     access_token = create_access_token(
-        data={"sub": db_user.email},
-        secret_key=os.getenv("SECRET_KEY", "my-super-secret-key-12345-abc"),
-        algorithm=os.getenv("ALGORITHM", "HS256"),
-        expires_delta=timedelta(minutes=int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "10080")))
+        data={"sub": db_user.id},
+        expires_delta=timedelta(minutes=10080)
     )
 
     return {
@@ -128,7 +126,10 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
     }
 
 
-# Заглушки для генерации и экспорта (чтобы сервер точно запустился)
+# ==========================================
+# ЗАГЛУШКИ ДЛЯ ГЕНЕРАЦИИ И ЭКСПОРТА
+# (Чтобы сервер точно запускался без ошибок импорта)
+# ==========================================
 @app.post("/generate")
 def generate_timetable():
     return {"message": "Эндпоинт генерации работает"}
