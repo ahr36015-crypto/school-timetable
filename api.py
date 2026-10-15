@@ -74,7 +74,7 @@ async def read_root():
     if os.path.exists(index_path):
         with open(index_path, "r", encoding="utf-8") as f:
             return f.read()
-    return HTMLResponse("<h1>Frontend not found</h1>, status_code=404)
+    return HTMLResponse("<h1>Frontend not found</h1>", status_code=404)
 
 
 @app.get("/health")
