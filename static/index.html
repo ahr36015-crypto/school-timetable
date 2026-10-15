@@ -27,6 +27,9 @@
             max-width: 450px;
             width: 100%;
         }
+        .dashboard {
+            max-width: 900px;
+        }
         h1 {
             text-align: center;
             color: #333;
@@ -69,7 +72,7 @@
             color: #333;
             font-weight: 500;
         }
-        input, textarea {
+        input, textarea, select {
             width: 100%;
             padding: 12px 15px;
             border: 2px solid #e0e0e0;
@@ -77,7 +80,7 @@
             font-size: 15px;
             transition: border-color 0.3s;
         }
-        input:focus, textarea:focus {
+        input:focus, textarea:focus, select:focus {
             outline: none;
             border-color: #667eea;
         }
@@ -129,10 +132,55 @@
         .form-section.active {
             display: block;
         }
+        #dashboard {
+            display: none;
+        }
+        #dashboard.active {
+            display: block;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #eee;
+        }
+        .logout-btn {
+            width: auto;
+            padding: 8px 20px;
+            background: #e74c3c;
+        }
+        .section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        .section h2 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .card h3 {
+            margin-bottom: 10px;
+            color: #667eea;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
+    <!-- Форма входа/регистрации -->
+    <div id="authContainer" class="container">
         <h1>🎓 Генератор школьного расписания</h1>
         <p class="subtitle">Войдите или создайте аккаунт</p>
 
@@ -144,7 +192,7 @@
         <!-- Форма входа -->
         <div id="loginForm" class="form-section active">
             <div class="form-group">
-                <label>📧 Email</label>
+                <label> Email</label>
                 <input type="email" id="loginEmail" placeholder="your@email.com" required>
             </div>
             <div class="form-group">
@@ -179,7 +227,58 @@
         </div>
     </div>
 
+    <!-- Дашборд (основной интерфейс) -->
+    <div id="dashboard" class="container dashboard">
+        <div class="header">
+            <div>
+                <h1>🎓 Панель управления</h1>
+                <p class="subtitle" id="userInfo">Загрузка...</p>
+            </div>
+            <button class="logout-btn" onclick="logout()">Выйти</button>
+        </div>
+
+        <div class="grid">
+            <div class="section">
+                <h2> Генерация расписания</h2>
+                <div class="form-group">
+                    <label>Название расписания</label>
+                    <input type="text" id="timetableName" placeholder="Например: 5А класс">
+                </div>
+                <div class="form-group">
+                    <label>Количество классов</label>
+                    <input type="number" id="numClasses" min="1" max="20" value="1">
+                </div>
+                <button onclick="generateTimetable()">Сгенерировать расписание</button>
+                <div id="generateError" class="error"></div>
+                <div id="generateSuccess" class="success"></div>
+            </div>
+
+            <div class="section">
+                <h2> Мои расписания</h2>
+                <div id="savedTimetables">
+                    <p style="color: #999; text-align: center;">Загрузка...</p>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>📊 Статистика</h2>
+                <div class="card">
+                    <h3>Всего расписаний</h3>
+                    <p id="totalTimetables" style="font-size: 32px; color: #667eea; font-weight: bold;">0</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
+        // Проверка авторизации при загрузке страницы
+        window.onload = function() {
+            const token = localStorage.getItem('access_token');
+            if (token) {
+                showDashboard();
+            }
+        };
+
         // Переключение между формами
         function showLogin() {
             document.querySelectorAll('.tab').forEach((t, i) => {
@@ -199,6 +298,25 @@
             });
         }
 
+        // Показ дашборда
+        function showDashboard() {
+            document.getElementById('authContainer').style.display = 'none';
+            document.getElementById('dashboard').classList.add('active');
+
+            const fullName = localStorage.getItem('full_name') || 'Пользователь';
+            document.getElementById('userInfo').textContent = `Добро пожаловать, ${fullName}!`;
+
+            loadTimetables();
+        }
+
+        // Выход
+        function logout() {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('user_id');
+            localStorage.removeItem('full_name');
+            location.reload();
+        }
+
         // Функция входа
         async function login() {
             const email = document.getElementById('loginEmail').value.trim();
@@ -215,9 +333,9 @@
                 const response = await fetch('/login', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'  // ВАЖНО: JSON!
+                        'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({  // ВАЖНО: JSON.stringify!
+                    body: JSON.stringify({
                         email: email,
                         password: password
                     })
@@ -226,20 +344,13 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    // Сохраняем токен
+                    // Сохраняем токен и данные
                     localStorage.setItem('access_token', data.access_token);
                     localStorage.setItem('user_id', data.user_id);
                     localStorage.setItem('full_name', data.full_name);
 
-                    // Показываем успех и перенаправляем
-                    errorDiv.textContent = '✅ Вход выполнен успешно!';
-                    errorDiv.classList.remove('error');
-                    errorDiv.classList.add('success', 'show');
-
-                    setTimeout(() => {
-                        // Здесь можно перенаправить на главную страницу
-                        alert('Добро пожаловать, ' + data.full_name + '!');
-                    }, 500);
+                    // Показываем дашборд
+                    showDashboard();
                 } else {
                     errorDiv.textContent = data.detail || 'Ошибка входа';
                     errorDiv.classList.remove('success');
@@ -271,9 +382,9 @@
                 const response = await fetch('/register', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'  // ВАЖНО: JSON!
+                        'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({  // ВАЖНО: JSON.stringify!
+                    body: JSON.stringify({
                         full_name: fullName,
                         email: email,
                         password: password,
@@ -284,23 +395,14 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    // Показываем успех
-                    successDiv.textContent = '✅ Регистрация успешна! Теперь войдите.';
+                    successDiv.textContent = '✅ Регистрация успешна! Вход...';
                     successDiv.classList.add('show');
                     errorDiv.classList.remove('show');
 
-                    // Очищаем форму
-                    document.getElementById('regFullName').value = '';
-                    document.getElementById('regEmail').value = '';
-                    document.getElementById('regSchool').value = '';
-                    document.getElementById('regPassword').value = '';
-
-                    // Переключаем на вход через 2 секунды
+                    // Автоматический вход через 1 секунду
                     setTimeout(() => {
-                        showLogin();
-                        successDiv.classList.remove('show');
-                        document.getElementById('loginEmail').value = email;
-                    }, 2000);
+                        loginWithCredentials(email, password);
+                    }, 1000);
                 } else {
                     errorDiv.textContent = data.detail || 'Ошибка регистрации';
                     errorDiv.classList.add('show');
@@ -313,12 +415,117 @@
             }
         }
 
-        // Обработка Enter в полях ввода
+        // Вход после регистрации
+        async function loginWithCredentials(email, password) {
+            try {
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        password: password
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    localStorage.setItem('access_token', data.access_token);
+                    localStorage.setItem('user_id', data.user_id);
+                    localStorage.setItem('full_name', data.full_name);
+                    showDashboard();
+                }
+            } catch (error) {
+                console.error('Auto-login error:', error);
+            }
+        }
+
+        // Генерация расписания
+        async function generateTimetable() {
+            const name = document.getElementById('timetableName').value.trim();
+            const numClasses = parseInt(document.getElementById('numClasses').value) || 1;
+            const errorDiv = document.getElementById('generateError');
+            const successDiv = document.getElementById('generateSuccess');
+
+            if (!name) {
+                errorDiv.textContent = 'Введите название расписания';
+                errorDiv.classList.add('show');
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('access_token');
+                const response = await fetch('/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        num_classes: numClasses
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    successDiv.textContent = '✅ Расписание сгенерировано!';
+                    successDiv.classList.add('show');
+                    errorDiv.classList.remove('show');
+                    loadTimetables();
+                } else {
+                    errorDiv.textContent = data.detail || 'Ошибка генерации';
+                    errorDiv.classList.add('show');
+                    successDiv.classList.remove('show');
+                }
+            } catch (error) {
+                console.error('Generate error:', error);
+                errorDiv.textContent = 'Ошибка соединения с сервером';
+                errorDiv.classList.add('show');
+            }
+        }
+
+        // Загрузка сохраненных расписаний
+        async function loadTimetables() {
+            try {
+                const token = localStorage.getItem('access_token');
+                const response = await fetch('/timetables', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+                const container = document.getElementById('savedTimetables');
+
+                if (response.ok && Array.isArray(data) && data.length > 0) {
+                    container.innerHTML = data.map(t => `
+                        <div class="card" style="margin-bottom: 10px;">
+                            <h3>${t.name || 'Расписание'}</h3>
+                            <p style="color: #666; font-size: 14px;">ID: ${t.id}</p>
+                        </div>
+                    `).join('');
+                    document.getElementById('totalTimetables').textContent = data.length;
+                } else {
+                    container.innerHTML = '<p style="color: #999; text-align: center;">Нет сохраненных расписаний</p>';
+                    document.getElementById('totalTimetables').textContent = '0';
+                }
+            } catch (error) {
+                console.error('Load timetables error:', error);
+                document.getElementById('savedTimetables').innerHTML = '<p style="color: #c33; text-align: center;">Ошибка загрузки</p>';
+            }
+        }
+
+        // Обработка Enter
         document.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 if (document.getElementById('loginForm').classList.contains('active')) {
                     login();
-                } else {
+                } else if (document.getElementById('registerForm').classList.contains('active')) {
                     register();
                 }
             }
