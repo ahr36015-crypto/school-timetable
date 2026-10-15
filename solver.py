@@ -27,9 +27,9 @@ def validate_teachers(request: TimetableRequest):
 
 def solve_timetable(request: TimetableRequest):
     model = cp_model.CpModel()
-
     lesson_vars = {}
 
+    # Создаем переменные для каждого урока
     for teacher_id, teacher in request.teachers.items():
         for lesson_idx, lesson in enumerate(teacher.lessons):
             lesson_id = f"{teacher_id}_{lesson.subject}_{lesson.grade}_{lesson_idx}"
@@ -41,7 +41,7 @@ def solve_timetable(request: TimetableRequest):
                     var = model.NewBoolVar(var_name)
                     lesson_vars[lesson_id][(day, slot)] = var
 
-    # Ограничение 1: количество часов
+    # Ограничение 1: количество часов должно совпадать
     for teacher_id, teacher in request.teachers.items():
         for lesson_idx, lesson in enumerate(teacher.lessons):
             lesson_id = f"{teacher_id}_{lesson.subject}_{lesson.grade}_{lesson_idx}"
@@ -118,7 +118,7 @@ def solve_timetable(request: TimetableRequest):
 
     # Решение
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 120
+    solver.parameters.max_time_in_seconds = 120  # Максимум 2 минуты на поиск
 
     status = solver.Solve(model)
 
@@ -137,10 +137,13 @@ def solve_timetable(request: TimetableRequest):
                         if solver.Value(lesson_vars[lesson_id][(day, slot)]) == 1:
                             if day not in schedule:
                                 schedule[day] = {}
-                            if slot not in schedule[day]:
-                                schedule[day][slot] = []
 
-                            schedule[day][slot].append(
+                            # ИСПРАВЛЕНО: преобразуем slot в строку для совместимости с Pydantic/JSON
+                            slot_str = str(slot)
+                            if slot_str not in schedule[day]:
+                                schedule[day][slot_str] = []
+
+                            schedule[day][slot_str].append(
                                 LessonAssignment(
                                     subject=lesson.subject,
                                     grade=lesson.grade,
@@ -166,5 +169,5 @@ def solve_timetable(request: TimetableRequest):
             status=solver.StatusName(status),
             solution_time=solver.WallTime(),
             teachers=[],
-            validation_errors=["Не удалось составить расписание. Проверьте ограничения."]
+            validation_errors=["Не удалось составить расписание. Проверьте ограничения и доступность учителей."]
         )
