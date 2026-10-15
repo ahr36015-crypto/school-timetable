@@ -234,11 +234,42 @@
             color: #667eea;
             margin-bottom: 10px;
         }
+
+        /* Autocomplete стили */
+        .autocomplete-wrapper {
+            position: relative;
+        }
+        .autocomplete-list {
+            position: absolute;
+            border: 1px solid #ddd;
+            border-top: none;
+            z-index: 99;
+            top: 100%;
+            left: 0;
+            right: 0;
+            max-height: 200px;
+            overflow-y: auto;
+            background: white;
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .autocomplete-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+        .autocomplete-item:hover {
+            background-color: #f0f4ff;
+        }
+        .autocomplete-item.active {
+            background-color: #667eea;
+            color: white;
+        }
     </style>
 </head>
 <body>
     <div id="authContainer" class="container auth-container">
-        <h1> Генератор школьного расписания</h1>
+        <h1>🎓 Генератор школьного расписания</h1>
         <p class="subtitle">Войдите или создайте аккаунт</p>
         <div class="tabs">
             <button class="tab active" onclick="showLogin()">Вход</button>
@@ -246,7 +277,7 @@
         </div>
         <div id="loginForm" class="form-section active">
             <div class="form-group">
-                <label for="loginEmail">📧 Email</label>
+                <label for="loginEmail"> Email</label>
                 <input type="email" id="loginEmail" placeholder="your@email.com">
             </div>
             <div class="form-group">
@@ -266,11 +297,11 @@
                 <input type="email" id="regEmail" placeholder="your@email.com">
             </div>
             <div class="form-group">
-                <label for="regSchool">🏫 Школа</label>
+                <label for="regSchool"> Школа</label>
                 <input type="text" id="regSchool" placeholder="Школа №123">
             </div>
             <div class="form-group">
-                <label for="regPassword"> Пароль</label>
+                <label for="regPassword">🔒 Пароль</label>
                 <input type="password" id="regPassword" placeholder="••••••••">
             </div>
             <button class="full" onclick="register()">Зарегистрироваться</button>
@@ -344,11 +375,11 @@
                 <button class="reference-tab active" onclick="showRefTab('classes')">📚 Классы</button>
                 <button class="reference-tab" onclick="showRefTab('teachers')">‍🏫 Учителя</button>
                 <button class="reference-tab" onclick="showRefTab('subjects')">📖 Предметы</button>
-                <button class="reference-tab" onclick="showRefTab('classrooms')">🏫 Кабинеты</button>
+                <button class="reference-tab" onclick="showRefTab('classrooms')"> Кабинеты</button>
             </div>
 
             <div id="ref-classes" class="reference-content active">
-                <h3>📚 Управление классами</h3>
+                <h3> Управление классами</h3>
                 <div class="form-group">
                     <label for="newClassName">Название класса (например: 5А, 7Б, 11)</label>
                     <input type="text" id="newClassName" placeholder="Например: 5А">
@@ -363,7 +394,7 @@
             </div>
 
             <div id="ref-teachers" class="reference-content">
-                <h3>👨‍ Управление учителями</h3>
+                <h3>👨‍🏫 Управление учителями</h3>
                 <div class="form-group">
                     <label for="newTeacherName">ФИО учителя *</label>
                     <input type="text" id="newTeacherName" placeholder="Например: Иванова Мария Петровна">
@@ -385,7 +416,7 @@
                 <div class="form-group">
                     <label for="newSubjectName">Название предмета *</label>
                     <input type="text" id="newSubjectName" placeholder="Например: Математика">
-                    <p id="subjectDuplicateWarning" class="duplicate-warning">️ Такой предмет уже существует!</p>
+                    <p id="subjectDuplicateWarning" class="duplicate-warning">⚠️ Такой предмет уже существует!</p>
                     <button class="add-btn" onclick="addSubject()">➕ Добавить предмет</button>
                 </div>
                 <table class="data-table">
@@ -424,7 +455,7 @@
 
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
                 <div>
-                    <h3>📋 Путь А: Классический (таблицы)</h3>
+                    <h3> Путь А: Классический (таблицы)</h3>
                     <p style="color:#666;font-size:14px;margin-bottom:15px">Заполните карточку учителя вручную</p>
                     <div class="form-group">
                         <label for="teacherSelect">Выберите учителя</label>
@@ -474,7 +505,7 @@
         </div>
 
         <div id="step4" class="wizard-content">
-            <h2> Шаг 4: Генерация расписания</h2>
+            <h2>🚀 Шаг 4: Генерация расписания</h2>
             <p style="color:#666;margin-bottom:20px">Нажмите кнопку для запуска алгоритма Google OR-Tools</p>
 
             <div style="text-align:center;padding:40px">
@@ -510,11 +541,11 @@
                 <div id="scheduleView" style="margin-top:30px"></div>
 
                 <div class="step-actions">
-                    <button class="outline" onclick="downloadPDF('teachers')"> PDF (учителя)</button>
-                    <button class="outline" onclick="downloadPDF('classes')"> PDF (классы)</button>
+                    <button class="outline" onclick="downloadPDF('teachers')">📄 PDF (учителя)</button>
+                    <button class="outline" onclick="downloadPDF('classes')">📄 PDF (классы)</button>
                     <button class="outline" onclick="downloadExcel('teachers')">📊 Excel (учителя)</button>
-                    <button class="outline" onclick="downloadExcel('classes')">📊 Excel (классы)</button>
-                    <button class="primary" onclick="completeStep(4)">➡️ Перейти к редактору</button>
+                    <button class="outline" onclick="downloadExcel('classes')"> Excel (классы)</button>
+                    <button class="primary" onclick="completeStep(4)">️ Перейти к редактору</button>
                 </div>
             </div>
         </div>
@@ -533,7 +564,7 @@
             <div id="timetableGrid" class="timetable-grid"></div>
 
             <div class="step-actions">
-                <button class="secondary" onclick="validateTimetable()"> Проверить конфликты</button>
+                <button class="secondary" onclick="validateTimetable()">🔍 Проверить конфликты</button>
                 <button class="primary" onclick="completeStep(5)">➡️ Перейти к публикации</button>
             </div>
         </div>
@@ -552,19 +583,19 @@
                 <div class="stat-card">
                     <h3> Excel для редактирования</h3>
                     <p style="color:#666;margin:10px 0">Файлы для дальнейшей работы</p>
-                    <button class="primary" onclick="downloadExcel('teachers')">👨🏫 По учителям</button>
-                    <button class="primary" onclick="downloadExcel('classes')" style="margin-top:10px"> По классам</button>
+                    <button class="primary" onclick="downloadExcel('teachers')">👨‍🏫 По учителям</button>
+                    <button class="primary" onclick="downloadExcel('classes')" style="margin-top:10px">👥 По классам</button>
                 </div>
 
                 <div class="stat-card">
                     <h3>📧 Отправка учителям</h3>
                     <p style="color:#666;margin:10px 0">Ссылки на расписание</p>
                     <button class="outline" onclick="sendToTeachers()">📱 Отправить в Telegram</button>
-                    <button class="outline" onclick="sendToEmail()" style="margin-top:10px">📧 Отправить на почту</button>
+                    <button class="outline" onclick="sendToEmail()" style="margin-top:10px"> Отправить на почту</button>
                 </div>
 
                 <div class="stat-card">
-                    <h3> Интеграция с журналом</h3>
+                    <h3>🔗 Интеграция с журналом</h3>
                     <p style="color:#666;margin:10px 0">Выгрузка в электронный журнал</p>
                     <button class="secondary" onclick="exportToJournal()">🔗 Экспорт API</button>
                 </div>
@@ -855,13 +886,64 @@
         function renderWorkloads(teacher) {
             const workloads = schoolData.workloads.filter(w => w.teacher === teacher);
             document.getElementById('workloadList').innerHTML = workloads.map((w,i) => `
-                <div style="display:flex;gap:10px;margin-bottom:10px;align-items:center">
-                    <input type="text" value="${w.subject}" placeholder="Предмет" onchange="updateWorkload(${i},'subject',this.value)">
-                    <input type="text" value="${w.grade}" placeholder="Класс" onchange="updateWorkload(${i},'grade',this.value)">
-                    <input type="number" value="${w.hours}" placeholder="Часы" onchange="updateWorkload(${i},'hours',this.value)" style="width:80px">
-                    <button class="small danger" onclick="removeWorkload(${i})" title="Удалить предмет">️ Удалить</button>
+                <div style="display:flex;gap:10px;margin-bottom:10px;align-items:center;flex-wrap:wrap">
+                    <div class="autocomplete-wrapper" style="flex:1;min-width:150px">
+                        <input type="text" class="workload-subject" value="${w.subject}" placeholder="Предмет"
+                               data-idx="${i}" data-field="subject" oninput="filterAutocomplete(this)"
+                               onfocus="showAutocomplete(this, 'subjects')">
+                        <div class="autocomplete-list" style="display:none"></div>
+                    </div>
+                    <div class="autocomplete-wrapper" style="flex:1;min-width:100px">
+                        <input type="text" class="workload-grade" value="${w.grade}" placeholder="Класс"
+                               data-idx="${i}" data-field="grade" oninput="filterAutocomplete(this)"
+                               onfocus="showAutocomplete(this, 'classes')">
+                        <div class="autocomplete-list" style="display:none"></div>
+                    </div>
+                    <input type="number" class="workload-hours" value="${w.hours}" placeholder="Часы"
+                           data-idx="${i}" data-field="hours" style="width:80px" min="1" max="20">
+                    <button class="small danger" onclick="removeWorkload(${i})" title="Удалить предмет">🗑️ Удалить</button>
                 </div>
             `).join('');
+        }
+
+        function showAutocomplete(input, type) {
+            const list = input.nextElementSibling;
+            const items = type === 'subjects' ? schoolData.subjects.map(s => s.name) : schoolData.classes.map(c => c.name);
+            const value = input.value.toLowerCase();
+
+            list.innerHTML = '';
+            items.filter(item => item.toLowerCase().includes(value)).forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'autocomplete-item';
+                div.textContent = item;
+                div.onclick = () => {
+                    input.value = item;
+                    list.style.display = 'none';
+                    updateWorkloadFromInput(input);
+                };
+                list.appendChild(div);
+            });
+
+            if (list.children.length > 0) {
+                list.style.display = 'block';
+            }
+        }
+
+        function filterAutocomplete(input) {
+            const list = input.nextElementSibling;
+            if (list.style.display === 'block') {
+                showAutocomplete(input, input.classList.contains('workload-subject') ? 'subjects' : 'classes');
+            }
+        }
+
+        function updateWorkloadFromInput(input) {
+            const idx = parseInt(input.dataset.idx);
+            const field = input.dataset.field;
+            const teacher = document.getElementById('teacherSelect').value;
+            const workloads = schoolData.workloads.filter(w => w.teacher === teacher);
+            if (workloads[idx]) {
+                workloads[idx][field] = field === 'hours' ? parseInt(input.value) : input.value;
+            }
         }
 
         function addWorkload() {
@@ -1000,7 +1082,7 @@
             err.classList.remove('show');
             succ.classList.remove('show');
             btn.disabled = true;
-            btn.textContent = '⏳ Генерация...';
+            btn.textContent = ' Генерация...';
             document.getElementById('progressOverlay').classList.add('active');
 
             try {
@@ -1081,7 +1163,7 @@
                 err.classList.add('show');
             } finally {
                 btn.disabled = false;
-                btn.textContent = ' Сгенерировать расписание';
+                btn.textContent = '🎯 Сгенерировать расписание';
             }
         }
 
@@ -1213,7 +1295,7 @@
         }
 
         function sendToTeachers() {
-            alert('📱 Ссылки на расписание отправлены учителям в Telegram!');
+            alert(' Ссылки на расписание отправлены учителям в Telegram!');
         }
 
         function sendToEmail() {
@@ -1229,6 +1311,15 @@
                 alert('✅ Расписание опубликовано! Все участники получили уведомления.');
             }
         }
+
+        // Закрытие autocomplete при клике вне
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.autocomplete-wrapper')) {
+                document.querySelectorAll('.autocomplete-list').forEach(list => {
+                    list.style.display = 'none';
+                });
+            }
+        });
     </script>
 </body>
 </html>
