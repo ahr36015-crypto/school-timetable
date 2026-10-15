@@ -12,7 +12,7 @@ class Teacher(BaseModel):
     max_days_per_week: Optional[int] = None
 
 class TimetableRequest(BaseModel):
-    days: List[str] = ["Пн", "Вт", "Ср", "Чт", "Пт"]
+    days: List[str] = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"]
     slots: List[int] = [1, 2, 3, 4, 5, 6, 7]
     teachers: Dict[str, Teacher]
 
@@ -41,4 +41,4 @@ class TeacherValidation(BaseModel):
 class ValidationResponse(BaseModel):
     is_valid: bool
     teachers: List[TeacherValidation]
-    errors: List[str]
+    errors: List[str] = []

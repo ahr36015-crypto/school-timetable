@@ -28,7 +28,7 @@
             border: none; background: none; font-size: 16px; color: #666;
         }
         .tab.active { color: #667eea; border-bottom: 3px solid #667eea; font-weight: 600; }
-        .form-group { margin-bottom: 20px; }
+        .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 8px; color: #333; font-weight: 500; }
         input, select, textarea {
             width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0;
@@ -46,6 +46,7 @@
         button.small { padding: 6px 12px; font-size: 12px; }
         button.danger { background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); }
         button.success { background: linear-gradient(135deg, #27ae60 0%, #229954 100%); }
+        button.warning { background: linear-gradient(135deg, #f39c12 0%, #d68910 100%); }
         .error {
             background: #fee; color: #c33; padding: 12px;
             border-radius: 8px; margin-top: 15px;
@@ -74,12 +75,12 @@
             background: white; padding: 15px; border-radius: 8px;
             margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
             display: flex; justify-content: space-between; align-items: center;
+            flex-wrap: wrap; gap: 10px;
         }
         .timetable-card h3 { color: #667eea; margin-bottom: 5px; }
         .timetable-card p { color: #999; font-size: 12px; }
-        .actions { display: flex; gap: 5px; }
+        .actions { display: flex; gap: 5px; flex-wrap: wrap; }
 
-        /* Модальное окно */
         .modal {
             display: none; position: fixed; top: 0; left: 0;
             width: 100%; height: 100%; background: rgba(0,0,0,0.7);
@@ -101,7 +102,6 @@
         }
         .close-btn:hover { color: #333; transform: none; }
 
-        /* Таблица расписания */
         .timetable-table {
             width: 100%; border-collapse: collapse; margin-top: 15px;
         }
@@ -123,12 +123,78 @@
 
         .stat-card { background: white; padding: 20px; border-radius: 10px; text-align: center; }
         .stat-value { font-size: 36px; font-weight: bold; color: #667eea; }
+
+        /* Форма ввода учителей */
+        .teacher-input {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border: 2px solid #e0e0e0;
+        }
+        .teacher-input h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        .lesson-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr auto;
+            gap: 10px;
+            margin-bottom: 8px;
+            align-items: center;
+        }
+        .availability-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        .availability-row label {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 10px;
+            background: #f0f0f0;
+            border-radius: 5px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .availability-row input[type="checkbox"] {
+            width: auto;
+        }
+        .remove-btn {
+            background: #e74c3c;
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+        .add-btn {
+            background: #27ae60;
+            padding: 8px 15px;
+            font-size: 13px;
+            margin-top: 10px;
+        }
+        .days-selector {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        .days-selector label {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 10px;
+            background: #f0f0f0;
+            border-radius: 5px;
+            font-size: 13px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
     <!-- Авторизация -->
     <div id="authContainer" class="container">
-        <h1> Генератор школьного расписания</h1>
+        <h1>🎓 Генератор школьного расписания</h1>
         <p class="subtitle">Войдите или создайте аккаунт</p>
         <div class="tabs">
             <button class="tab active" onclick="showLogin()">Вход</button>
@@ -152,15 +218,15 @@
                 <input type="text" id="regFullName" placeholder="Иванов Иван Иванович">
             </div>
             <div class="form-group">
-                <label> Email</label>
+                <label>📧 Email</label>
                 <input type="email" id="regEmail" placeholder="your@email.com">
             </div>
             <div class="form-group">
-                <label> Школа</label>
+                <label>🏫 Школа</label>
                 <input type="text" id="regSchool" placeholder="Школа №123">
             </div>
             <div class="form-group">
-                <label> Пароль</label>
+                <label>🔒 Пароль</label>
                 <input type="password" id="regPassword" placeholder="••••••••">
             </div>
             <button onclick="register()">Зарегистрироваться</button>
@@ -172,26 +238,34 @@
     <div id="dashboard" class="container">
         <div class="header">
             <div>
-                <h1> Панель управления</h1>
+                <h1>🎓 Панель управления</h1>
                 <p class="subtitle" id="userInfo">Загрузка...</p>
             </div>
             <button class="logout-btn" onclick="logout()">Выйти</button>
         </div>
         <div class="grid">
-            <div class="section">
-                <h2>📅 Генерация расписания</h2>
+            <div class="section" style="grid-column: 1 / -1;">
+                <h2>📝 Ввод данных учителей</h2>
+                <div id="teachersContainer"></div>
+                <button class="add-btn" onclick="addTeacher()">+ Добавить учителя</button>
+
+                <h3 style="margin-top: 20px;">️ Настройки</h3>
                 <div class="form-group">
-                    <label>Название</label>
-                    <input type="text" id="timetableName" placeholder="5А класс">
+                    <label>Дни недели:</label>
+                    <div class="days-selector" id="daysSelector"></div>
                 </div>
                 <div class="form-group">
-                    <label>Количество классов</label>
-                    <input type="number" id="numClasses" min="1" max="20" value="1">
+                    <label>Количество уроков в день:</label>
+                    <input type="number" id="numSlots" min="1" max="10" value="7" onchange="updateSlots()">
                 </div>
-                <button onclick="generateTimetable()">Сгенерировать</button>
+
+                <button onclick="generateTimetable()" style="margin-top: 20px; width: 100%; padding: 15px; font-size: 16px;">
+                    🚀 Сгенерировать расписание
+                </button>
                 <div id="genError" class="error"></div>
                 <div id="genSuccess" class="success"></div>
             </div>
+
             <div class="section">
                 <h2>📋 Мои расписания</h2>
                 <div id="timetablesList">
@@ -208,7 +282,7 @@
         </div>
     </div>
 
-    <!-- Модальное окно просмотра/редактирования -->
+    <!-- Модальное окно просмотра -->
     <div id="viewModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -216,13 +290,13 @@
                 <button class="close-btn" onclick="closeModal()">&times;</button>
             </div>
             <div class="class-selector">
-                <label>Выберите класс: </label>
-                <select id="classSelect" onchange="showClassSchedule()"></select>
+                <label>Выберите учителя: </label>
+                <select id="teacherSelect" onchange="showTeacherSchedule()"></select>
             </div>
             <div id="scheduleContainer"></div>
             <div style="margin-top: 20px; text-align: center;">
                 <button onclick="closeModal()" class="danger">Закрыть</button>
-                <button onclick="editCurrentTimetable()" class="success">Редактировать название</button>
+                <button onclick="editCurrentTimetable()" class="success">Переименовать</button>
             </div>
         </div>
     </div>
@@ -230,9 +304,18 @@
     <script>
         let currentTimetable = null;
         let currentTimetableId = null;
+        let teachers = [];
+        let teacherIdCounter = 0;
+        const allDays = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
+        let selectedDays = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"];
+        let slots = [1, 2, 3, 4, 5, 6, 7];
 
         window.onload = function() {
-            if (localStorage.getItem('access_token')) showDashboard();
+            if (localStorage.getItem('access_token')) {
+                showDashboard();
+            } else {
+                renderDaysSelector();
+            }
         };
 
         function showLogin() {
@@ -248,6 +331,8 @@
             document.getElementById('dashboard').classList.add('active');
             document.getElementById('userInfo').textContent =
                 'Добро пожаловать, ' + (localStorage.getItem('full_name') || 'Пользователь') + '!';
+            renderDaysSelector();
+            if (teachers.length === 0) addTeacher();
             loadTimetables();
         }
         function logout() {
@@ -259,7 +344,6 @@
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
             const err = document.getElementById('loginError');
-
             try {
                 const res = await fetch('/login', {
                     method: 'POST',
@@ -288,7 +372,6 @@
             const school_name = document.getElementById('regSchool').value;
             const password = document.getElementById('regPassword').value;
             const err = document.getElementById('regError');
-
             try {
                 const res = await fetch('/register', {
                     method: 'POST',
@@ -311,11 +394,184 @@
             }
         }
 
+        // Управление учителями
+        function addTeacher() {
+            const id = 'teacher_' + (++teacherIdCounter);
+            teachers.push({
+                id: id,
+                name: 'Учитель ' + teacherIdCounter,
+                lessons: [{subject: '', grade: '', hours: 1}],
+                availability: {},
+                max_days: 5
+            });
+            renderTeachers();
+        }
+
+        function removeTeacher(id) {
+            teachers = teachers.filter(t => t.id !== id);
+            renderTeachers();
+        }
+
+        function addLesson(teacherId) {
+            const teacher = teachers.find(t => t.id === teacherId);
+            teacher.lessons.push({subject: '', grade: '', hours: 1});
+            renderTeachers();
+        }
+
+        function removeLesson(teacherId, lessonIdx) {
+            const teacher = teachers.find(t => t.id === teacherId);
+            teacher.lessons.splice(lessonIdx, 1);
+            renderTeachers();
+        }
+
+        function updateTeacherField(id, field, value) {
+            const teacher = teachers.find(t => t.id === id);
+            teacher[field] = field === 'max_days' ? parseInt(value) : value;
+        }
+
+        function updateLesson(teacherId, lessonIdx, field, value) {
+            const teacher = teachers.find(t => t.id === teacherId);
+            teacher.lessons[lessonIdx][field] = field === 'hours' ? parseInt(value) : value;
+        }
+
+        function toggleDayAvailability(teacherId, day, slot) {
+            const teacher = teachers.find(t => t.id === teacherId);
+            if (!teacher.availability[day]) teacher.availability[day] = [];
+            const idx = teacher.availability[day].indexOf(slot);
+            if (idx > -1) {
+                teacher.availability[day].splice(idx, 1);
+            } else {
+                teacher.availability[day].push(slot);
+                teacher.availability[day].sort((a,b) => a-b);
+            }
+        }
+
+        function isDayAvailable(teacherId, day, slot) {
+            const teacher = teachers.find(t => t.id === teacherId);
+            return teacher.availability[day] && teacher.availability[day].includes(slot);
+        }
+
+        function renderTeachers() {
+            const container = document.getElementById('teachersContainer');
+            container.innerHTML = teachers.map(t => `
+                <div class="teacher-input">
+                    <h4>
+                        <input type="text" value="${t.name}" onchange="updateTeacherField('${t.id}', 'name', this.value)"
+                               style="width: 60%; display: inline-block;">
+                        <button class="remove-btn" onclick="removeTeacher('${t.id}')">Удалить</button>
+                    </h4>
+
+                    <label>Предметы и классы:</label>
+                    ${t.lessons.map((l, idx) => `
+                        <div class="lesson-row">
+                            <input type="text" placeholder="Предмет" value="${l.subject}"
+                                   onchange="updateLesson('${t.id}', ${idx}, 'subject', this.value)">
+                            <input type="text" placeholder="Класс (5А)" value="${l.grade}"
+                                   onchange="updateLesson('${t.id}', ${idx}, 'grade', this.value)">
+                            <input type="number" placeholder="Часы" value="${l.hours}" min="1" max="20"
+                                   onchange="updateLesson('${t.id}', ${idx}, 'hours', this.value)">
+                            <button class="remove-btn" onclick="removeLesson('${t.id}', ${idx})">✕</button>
+                        </div>
+                    `).join('')}
+                    <button class="add-btn" onclick="addLesson('${t.id}')">+ Добавить предмет</button>
+
+                    <label style="margin-top: 15px;">Доступность (отметьте свободные уроки):</label>
+                    <div class="availability-row">
+                        ${selectedDays.map(day => `
+                            <div style="margin-bottom: 10px;">
+                                <strong>${day}:</strong><br>
+                                ${slots.map(slot => `
+                                    <label>
+                                        <input type="checkbox"
+                                               ${isDayAvailable(t.id, day, slot) ? 'checked' : ''}
+                                               onchange="toggleDayAvailability('${t.id}', '${day}', ${slot})">
+                                        ${slot}
+                                    </label>
+                                `).join('')}
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <div class="form-group" style="margin-top: 10px;">
+                        <label>Макс. дней в неделю:</label>
+                        <input type="number" value="${t.max_days}" min="1" max="6"
+                               onchange="updateTeacherField('${t.id}', 'max_days', this.value)" style="width: 100px;">
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderDaysSelector() {
+            const container = document.getElementById('daysSelector');
+            container.innerHTML = allDays.map(day => `
+                <label>
+                    <input type="checkbox"
+                           ${selectedDays.includes(day) ? 'checked' : ''}
+                           onchange="toggleDay('${day}')">
+                    ${day}
+                </label>
+            `).join('');
+        }
+
+        function toggleDay(day) {
+            const idx = selectedDays.indexOf(day);
+            if (idx > -1) {
+                selectedDays.splice(idx, 1);
+            } else {
+                selectedDays.push(day);
+            }
+            renderDaysSelector();
+            renderTeachers();
+        }
+
+        function updateSlots() {
+            const num = parseInt(document.getElementById('numSlots').value) || 7;
+            slots = Array.from({length: num}, (_, i) => i + 1);
+            renderTeachers();
+        }
+
+        // Генерация расписания
         async function generateTimetable() {
-            const name = document.getElementById('timetableName').value;
-            const num_classes = parseInt(document.getElementById('numClasses').value);
             const err = document.getElementById('genError');
             const succ = document.getElementById('genSuccess');
+
+            // Собираем данные
+            const teachersData = {};
+            for (const t of teachers) {
+                if (!t.name.trim()) {
+                    err.textContent = 'Заполните имя учителя';
+                    err.classList.add('show');
+                    return;
+                }
+                const lessons = t.lessons.filter(l => l.subject && l.grade && l.hours > 0);
+                if (lessons.length === 0) {
+                    err.textContent = `Учитель "${t.name}" не имеет предметов`;
+                    err.classList.add('show');
+                    return;
+                }
+
+                // Заполняем доступность по умолчанию (все слоты)
+                const availability = {};
+                for (const day of selectedDays) {
+                    if (!t.availability[day] || t.availability[day].length === 0) {
+                        availability[day] = [...slots];
+                    } else {
+                        availability[day] = t.availability[day];
+                    }
+                }
+
+                teachersData[t.name] = {
+                    lessons: lessons,
+                    availability: availability,
+                    max_days_per_week: t.max_days
+                };
+            }
+
+            const requestData = {
+                days: selectedDays,
+                slots: slots,
+                teachers: teachersData
+            };
 
             try {
                 const res = await fetch('/generate', {
@@ -324,20 +580,29 @@
                         'Content-Type': 'application/json',
                         'Authorization': 'Bearer ' + localStorage.getItem('access_token')
                     },
-                    body: JSON.stringify({name, num_classes})
+                    body: JSON.stringify(requestData)
                 });
                 const data = await res.json();
+
                 if (res.ok) {
-                    succ.textContent = '✅ Расписание создано!';
-                    succ.classList.add('show');
-                    err.classList.remove('show');
-                    loadTimetables();
+                    if (data.status === 'INVALID') {
+                        err.textContent = 'Ошибки: ' + (data.errors || []).join('; ');
+                        err.classList.add('show');
+                    } else if (data.validation_errors && data.validation_errors.length > 0) {
+                        err.textContent = 'Не удалось составить расписание: ' + data.validation_errors.join('; ');
+                        err.classList.add('show');
+                    } else {
+                        succ.textContent = `✅ Расписание создано! Статус: ${data.status}, время: ${data.solution_time.toFixed(2)}с`;
+                        succ.classList.add('show');
+                        err.classList.remove('show');
+                        loadTimetables();
+                    }
                 } else {
-                    err.textContent = data.detail;
+                    err.textContent = data.detail || 'Ошибка генерации';
                     err.classList.add('show');
                 }
             } catch(e) {
-                err.textContent = 'Ошибка';
+                err.textContent = 'Ошибка соединения';
                 err.classList.add('show');
             }
         }
@@ -355,15 +620,22 @@
                         container.innerHTML = '<p style="color:#999;text-align:center">Нет расписаний</p>';
                         document.getElementById('totalCount').textContent = '0';
                     } else {
-                        container.innerHTML = data.map(t =>
-                            '<div class="timetable-card">' +
-                            '<div><h3>' + t.name + '</h3>' +
-                            '<p>Создано: ' + new Date(t.created_at).toLocaleString('ru-RU') + '</p></div>' +
-                            '<div class="actions">' +
-                            '<button class="small success" onclick="viewTimetable(' + t.id + ')">Просмотр</button>' +
-                            '<button class="small danger" onclick="deleteTimetable(' + t.id + ')">Удалить</button>' +
-                            '</div></div>'
-                        ).join('');
+                        container.innerHTML = data.map(t => `
+                            <div class="timetable-card">
+                                <div>
+                                    <h3>${t.name}</h3>
+                                    <p>Создано: ${new Date(t.created_at).toLocaleString('ru-RU')}</p>
+                                </div>
+                                <div class="actions">
+                                    <button class="small success" onclick="viewTimetable(${t.id})"> Просмотр</button>
+                                    <button class="small" onclick="downloadExcel(${t.id}, 'teachers')">📊 Excel (учителя)</button>
+                                    <button class="small" onclick="downloadExcel(${t.id}, 'classes')"> Excel (классы)</button>
+                                    <button class="small warning" onclick="downloadPDF(${t.id}, 'teachers')">📄 PDF (учителя)</button>
+                                    <button class="small warning" onclick="downloadPDF(${t.id}, 'classes')"> PDF (классы)</button>
+                                    <button class="small danger" onclick="deleteTimetable(${t.id})">🗑 Удалить</button>
+                                </div>
+                            </div>
+                        `).join('');
                         document.getElementById('totalCount').textContent = data.length;
                     }
                 } else {
@@ -372,6 +644,16 @@
             } catch(e) {
                 container.innerHTML = '<p style="color:#c33;text-align:center">Ошибка</p>';
             }
+        }
+
+        function downloadExcel(id, format) {
+            const token = localStorage.getItem('access_token');
+            window.open(`/timetables/${id}/export/excel?format=${format}`, '_blank');
+        }
+
+        function downloadPDF(id, format) {
+            const token = localStorage.getItem('access_token');
+            window.open(`/timetables/${id}/export/pdf?format=${format}`, '_blank');
         }
 
         async function viewTimetable(id) {
@@ -386,59 +668,57 @@
                     currentTimetableId = id;
                     document.getElementById('modalTitle').textContent = '📅 ' + data.name;
 
-                    // Заполняем селектор классов
-                    const classSelect = document.getElementById('classSelect');
-                    classSelect.innerHTML = '';
-                    if (data.data && data.data.classes) {
-                        data.data.classes.forEach((cls, idx) => {
+                    const teacherSelect = document.getElementById('teacherSelect');
+                    teacherSelect.innerHTML = '';
+                    if (data.data && data.data.teachers) {
+                        data.data.teachers.forEach((t, idx) => {
                             const option = document.createElement('option');
                             option.value = idx;
-                            option.textContent = cls.class_name || 'Класс ' + (idx + 1);
-                            classSelect.appendChild(option);
+                            option.textContent = t.teacher + ' (' + t.total_lessons + ' уроков)';
+                            teacherSelect.appendChild(option);
                         });
                     }
 
                     document.getElementById('viewModal').classList.add('active');
-                    showClassSchedule();
+                    showTeacherSchedule();
                 }
             } catch(e) {
                 alert('Ошибка загрузки расписания');
             }
         }
 
-        function showClassSchedule() {
+        function showTeacherSchedule() {
             if (!currentTimetable || !currentTimetable.data) return;
 
-            const classIndex = parseInt(document.getElementById('classSelect').value);
-            const classData = currentTimetable.data.classes[classIndex];
+            const teacherIndex = parseInt(document.getElementById('teacherSelect').value);
+            const teacher = currentTimetable.data.teachers[teacherIndex];
 
-            if (!classData || !classData.lessons) {
+            if (!teacher || !teacher.schedule) {
                 document.getElementById('scheduleContainer').innerHTML = '<p>Нет данных</p>';
                 return;
             }
 
-            // Группируем уроки по дням
-            const days = {};
-            classData.lessons.forEach(lesson => {
-                if (!days[lesson.day]) days[lesson.day] = [];
-                days[lesson.day].push(lesson);
-            });
+            const days = currentTimetable.data.days || ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"];
+            const slots = currentTimetable.data.slots || [1, 2, 3, 4, 5, 6, 7];
 
-            let html = '<h3>' + classData.class_name + '</h3>';
+            let html = '<h3>' + teacher.teacher + ' (' + teacher.total_lessons + ' уроков)</h3>';
             html += '<table class="timetable-table">';
-            html += '<thead><tr><th>День</th><th>Время</th><th>Предмет</th><th>Учитель</th><th>Кабинет</th></tr></thead>';
-            html += '<tbody>';
+            html += '<thead><tr><th>День</th>';
+            slots.forEach(s => html += '<th>Урок ' + s + '</th>');
+            html += '</tr></thead><tbody>';
 
-            Object.keys(days).forEach(day => {
-                days[day].forEach(lesson => {
-                    html += '<tr>';
-                    html += '<td>' + day + '</td>';
-                    html += '<td>' + lesson.time + '</td>';
-                    html += '<td><strong>' + lesson.subject + '</strong></td>';
-                    html += '<td>' + (lesson.teacher || '-') + '</td>';
-                    html += '<td>' + (lesson.room || '-') + '</td>';
-                    html += '</tr>';
+            days.forEach(day => {
+                html += '<tr><td><strong>' + day + '</strong></td>';
+                slots.forEach(slot => {
+                    const slotStr = String(slot);
+                    let cellText = '';
+                    if (teacher.schedule[day] && teacher.schedule[day][slotStr]) {
+                        const lessons = teacher.schedule[day][slotStr];
+                        cellText = lessons.map(l => l.subject + '<br>(' + l.grade + ' кл)').join('<br>');
+                    }
+                    html += '<td>' + cellText + '</td>';
                 });
+                html += '</tr>';
             });
 
             html += '</tbody></table>';
@@ -491,7 +771,6 @@
             }
         }
 
-        // Закрытие модального окна по клику вне его
         document.getElementById('viewModal').addEventListener('click', function(e) {
             if (e.target === this) closeModal();
         });
