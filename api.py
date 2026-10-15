@@ -1,29 +1,29 @@
 import os
-from datetime import datetime, timedelta
-from typing import Optional, List
+from datetime import timedelta
+from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
-# Локальные импорты (убедись, что эти функции есть в твоих файлах)
+# Локальные импорты
 from database import init_db, get_db, User
 from auth import get_password_hash, verify_password, create_access_token
 
 
 # ==========================================
-# PYDANTIC МОДЕЛИ (Решают проблему с JSON)
+# PYDANTIC МОДЕЛИ (Используем обычный str вместо EmailStr)
 # ==========================================
 class UserRegister(BaseModel):
-    email: EmailStr
+    email: str
     password: str
     full_name: str
     school_name: Optional[str] = None
 
 
 class UserLogin(BaseModel):
-    email: EmailStr
+    email: str
     password: str
 
 
@@ -118,7 +118,7 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
 
 # ==========================================
 # ЗАГЛУШКИ ДЛЯ ГЕНЕРАЦИИ И ЭКСПОРТА
-# (Чтобы сервер точно запустился, даже если импорты сломаны)
+# (Чтобы сервер точно запустился без ошибок импорта)
 # ==========================================
 
 @app.post("/generate")
