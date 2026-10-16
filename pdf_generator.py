@@ -1,41 +1,69 @@
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib import colors
-from reportlab.lib.units import mm, cm
+from reportlab.lib.units import mm
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_CENTER, TA_LEFT
+from reportlab.lib.enums import TA_CENTER
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from datetime import datetime
 import os
 
+print("🚀 ЗАГРУЗКА МОДУЛЯ pdf_generator.py...")
 
-# Регистрация шрифта с поддержкой кириллицы
+
 def register_fonts():
     """Регистрирует шрифты с поддержкой кириллицы"""
-    font_paths = [
-        '/System/Library/Fonts/Supplemental/Arial.ttf',
-        '/System/Library/Fonts/Supplemental/Arial Bold.ttf',
-        '/Library/Fonts/Arial.ttf',
-        '/Library/Fonts/Arial Bold.ttf',
-        '/System/Library/Fonts/Helvetica.ttc',
-    ]
+    print("🔍 НАЧИНАЕМ ПОИСК ШРИФТОВ ДЛЯ КИРИЛЛИЦЫ...")
+
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    fonts_dir = os.path.join(current_dir, 'fonts')
+    print(f"📁 Проверяем папку: {fonts_dir}")
+
+    if os.path.exists(fonts_dir):
+        print(f"📂 Файлы в папке: {os.listdir(fonts_dir)}")
+    else:
+        print("❌ Папка fonts НЕ НАЙДЕНА!")
 
     registered = {'normal': False, 'bold': False}
 
-    for path in font_paths:
+    font_paths = {
+        'normal': [
+            os.path.join(fonts_dir, 'DejaVuSans.ttf'),
+            '/app/fonts/DejaVuSans.ttf',
+            '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+            '/usr/share/fonts/dejavu/DejaVuSans.ttf',
+        ],
+        'bold': [
+            os.path.join(fonts_dir, 'DejaVuSans-Bold.ttf'),
+            '/app/fonts/DejaVuSans-Bold.ttf',
+            '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+            '/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf',
+        ]
+    }
+
+    for path in font_paths['normal']:
         if os.path.exists(path):
             try:
-                if 'Bold' in path or 'bold' in path.lower():
-                    if not registered['bold']:
-                        pdfmetrics.registerFont(TTFont('CustomBold', path))
-                        registered['bold'] = True
-                else:
-                    if not registered['normal']:
-                        pdfmetrics.registerFont(TTFont('Custom', path))
-                        registered['normal'] = True
+                pdfmetrics.registerFont(TTFont('Custom', path))
+                registered['normal'] = True
+                print(f"✅✅ УСПЕХ! Зарегистрирован обычный шрифт: {path}")
+                break
             except Exception as e:
-                print(f"Не удалось загрузить шрифт {path}: {e}")
+                print(f"⚠️ Ошибка обычного шрифта {path}: {e}")
+
+    for path in font_paths['bold']:
+        if os.path.exists(path):
+            try:
+                pdfmetrics.registerFont(TTFont('CustomBold', path))
+                registered['bold'] = True
+                print(f"✅✅ УСПЕХ! Зарегистрирован жирный шрифт: {path}")
+                break
+            except Exception as e:
+                print(f"⚠️ Ошибка жирного шрифта {path}: {e}")
+
+    if not registered['normal']:
+        print("❌❌ КРИТИЧЕСКАЯ ОШИБКА: Шрифт с кириллицей НЕ НАЙДЕН! PDF будет с квадратиками.")
 
     return registered
 
@@ -45,12 +73,14 @@ FONTS_REGISTERED = register_fonts()
 
 def get_font_name(bold=False):
     if bold:
-        return 'CustomBold' if FONTS_REGISTERED['bold'] else 'Helvetica-Bold'
+        return 'CustomBold' if FONTS_REGISTERED['bold'] else 'Custom'
     return 'Custom' if FONTS_REGISTERED['normal'] else 'Helvetica'
 
 
 def generate_teachers_pdf(result_dict, days, slots):
     """Генерация PDF по учителям"""
+    print(f"📄 Генерируем PDF по учителям: {len(result_dict.get('teachers', []))} учителей")
+
     filename = '/tmp/timetable_teachers.pdf'
     doc = SimpleDocTemplate(
         filename,
@@ -108,7 +138,6 @@ def generate_teachers_pdf(result_dict, days, slots):
 
     elements = []
 
-    # Титульная страница
     elements.append(Paragraph('Расписание уроков', title_style))
     elements.append(Paragraph(
         f'По учителям • Сгенерировано: {datetime.now().strftime("%d.%m.%Y %H:%M")}',
@@ -122,10 +151,8 @@ def generate_teachers_pdf(result_dict, days, slots):
             header_style
         ))
 
-        # Создаём таблицу
         col_width = (A4[1] - 30 * mm) / (len(slots) + 1)
 
-        # Заголовок таблицы
         header_data = [Paragraph('День', day_style)]
         for slot in slots:
             header_data.append(Paragraph(f'Урок {slot}', day_style))
@@ -170,7 +197,8 @@ def generate_teachers_pdf(result_dict, days, slots):
 
 def generate_classes_pdf(result_dict, days, slots):
     """Генерация PDF по классам"""
-    # Собираем расписание по классам
+    print(f"📄 Генерируем PDF по классам")
+
     class_schedule = {}
     for teacher in result_dict['teachers']:
         for day, day_data in teacher['schedule'].items():
