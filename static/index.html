@@ -236,7 +236,6 @@
             margin-bottom: 10px;
         }
 
-        /* Стили для строки нагрузок */
         .workload-row {
             display: flex;
             gap: 10px;
@@ -258,7 +257,6 @@
             height: 46px;
         }
 
-        /* Autocomplete стили */
         .autocomplete-wrapper {
             position: relative;
         }
@@ -289,7 +287,6 @@
             color: white;
         }
 
-        /* Сохраненные расписания */
         .saved-timetables {
             margin-top: 30px;
             padding-top: 20px;
@@ -323,7 +320,7 @@
 </head>
 <body>
     <div id="authContainer" class="container auth-container">
-        <h1> Генератор школьного расписания</h1>
+        <h1>🎓 Генератор школьного расписания</h1>
         <p class="subtitle">Войдите или создайте аккаунт</p>
         <div class="tabs">
             <button class="tab active" onclick="showLogin()">Вход</button>
@@ -347,7 +344,7 @@
                 <input type="text" id="regFullName" placeholder="Иванов Иван Иванович">
             </div>
             <div class="form-group">
-                <label for="regEmail">📧 Email</label>
+                <label for="regEmail"> Email</label>
                 <input type="email" id="regEmail" placeholder="your@email.com">
             </div>
             <div class="form-group">
@@ -394,9 +391,9 @@
         </div>
 
         <div id="step1" class="wizard-content active">
-            <h2>📋 Шаг 1: Профиль школы и сетка времени</h2>
+            <h2> Шаг 1: Профиль школы и сетка времени</h2>
             <div class="form-group">
-                <label for="schoolName">🏫 Название школы</label>
+                <label for="schoolName"> Название школы</label>
                 <input type="text" id="schoolName" placeholder="Например: Школа №123">
                 <p class="help-text">Введите полное название вашей школы</p>
             </div>
@@ -414,7 +411,7 @@
                 <p class="help-text">Максимальное количество уроков в день (обычно 6-8)</p>
             </div>
             <div class="form-group">
-                <label for="lessonTimes">🕐 Время начала и окончания уроков</label>
+                <label for="lessonTimes"> Время начала и окончания уроков</label>
                 <input type="text" id="lessonTimes" placeholder="08:30-09:15, 09:25-10:10, 10:20-11:05..." value="08:30-09:15, 09:25-10:10, 10:20-11:05, 11:25-12:10, 12:20-13:05, 13:15-14:00, 14:10-14:55">
                 <p class="help-text">Введите время через запятую в формате ЧЧ:ММ-ЧЧ:ММ</p>
             </div>
@@ -427,7 +424,7 @@
 
             <div class="reference-tabs">
                 <button class="reference-tab active" onclick="showRefTab('classes')">📚 Классы</button>
-                <button class="reference-tab" onclick="showRefTab('teachers')">👨‍🏫 Учителя</button>
+                <button class="reference-tab" onclick="showRefTab('teachers')">👨‍ Учителя</button>
                 <button class="reference-tab" onclick="showRefTab('subjects')">📖 Предметы</button>
                 <button class="reference-tab" onclick="showRefTab('classrooms')">🏫 Кабинеты</button>
             </div>
@@ -438,8 +435,8 @@
                     <label for="newClassName">Название класса (например: 5А, 7Б, 11)</label>
                     <input type="text" id="newClassName" placeholder="Например: 5А">
                     <p class="help-text">Формат: номер + буква (опционально)</p>
-                    <p id="classDuplicateWarning" class="duplicate-warning">️ Такой класс уже существует!</p>
-                    <button class="add-btn" onclick="addClass()"> Добавить класс</button>
+                    <p id="classDuplicateWarning" class="duplicate-warning">⚠️ Такой класс уже существует!</p>
+                    <button class="add-btn" onclick="addClass()">➕ Добавить класс</button>
                 </div>
                 <table class="data-table">
                     <thead><tr><th>Название</th><th>Класс (номер)</th><th style="width:150px">Действия</th></tr></thead>
@@ -452,8 +449,8 @@
                 <div class="form-group">
                     <label for="newTeacherName">ФИО учителя *</label>
                     <input type="text" id="newTeacherName" placeholder="Например: Иванова Мария Петровна">
-                    <p id="teacherDuplicateWarning" class="duplicate-warning">⚠️ Такой учитель уже существует!</p>
-                    <button class="add-btn" onclick="addTeacher()">➕ Добавить учителя</button>
+                    <p id="teacherDuplicateWarning" class="duplicate-warning">️ Такой учитель уже существует!</p>
+                    <button class="add-btn" onclick="addTeacher()"> Добавить учителя</button>
                 </div>
                 <div class="form-group">
                     <label for="newTeacherEmail">Email (опционально)</label>
@@ -466,7 +463,7 @@
             </div>
 
             <div id="ref-subjects" class="reference-content">
-                <h3>📖 Управление предметами</h3>
+                <h3> Управление предметами</h3>
                 <div class="form-group">
                     <label for="newSubjectName">Название предмета *</label>
                     <input type="text" id="newSubjectName" placeholder="Например: Математика">
@@ -498,7 +495,7 @@
             </div>
 
             <div class="step-actions">
-                <button class="outline" onclick="importFromExcel()"> Импорт из Excel</button>
+                <button class="outline" onclick="importFromExcel()">📥 Импорт из Excel</button>
                 <button class="primary" onclick="completeStep(2)">💾 Сохранить и продолжить →</button>
             </div>
         </div>
@@ -519,7 +516,7 @@
                     </div>
                     <div id="teacherCard" style="display:none">
                         <div class="teacher-info">
-                            <h4>👨‍🏫 <span id="currentTeacherName"></span></h4>
+                            <h4>👨‍ <span id="currentTeacherName"></span></h4>
                             <p class="help-text">Заполните предметы и доступность для этого учителя</p>
                         </div>
 
@@ -538,12 +535,12 @@
                 </div>
 
                 <div>
-                    <h3> Путь Б: AI-ввод</h3>
+                    <h3>🤖 Путь Б: AI-ввод</h3>
                     <p style="color:#666;font-size:14px;margin-bottom:15px">Вставьте текстовое описание — ИИ разберёт сам</p>
                     <div class="ai-input-section">
                         <label for="aiInput">📝 Вставьте текст с описанием учителя:</label>
                         <textarea id="aiInput" placeholder="Учитель Асланова Самира может проводить уроки по вторникам до 15 часов и среда, пятница в любое время. Ведет урок Старт IT в 5-6 классе и в 8 классе, искусственный интеллект в 6 классе, информатику в 7-8 классе."></textarea>
-                        <button class="primary" onclick="parseAIInput()" style="margin-top:10px;width:100%"> Анализировать текст</button>
+                        <button class="primary" onclick="parseAIInput()" style="margin-top:10px;width:100%">🧠 Анализировать текст</button>
                     </div>
                     <div id="aiResult" style="margin-top:15px;display:none">
                         <h4>✅ Результат анализа:</h4>
@@ -559,7 +556,7 @@
         </div>
 
         <div id="step4" class="wizard-content">
-            <h2>🚀 Шаг 4: Генерация расписания</h2>
+            <h2> Шаг 4: Генерация расписания</h2>
             <p style="color:#666;margin-bottom:20px">Нажмите кнопку для запуска алгоритма Google OR-Tools</p>
 
             <div style="text-align:center;padding:40px">
@@ -595,7 +592,7 @@
                 <div id="scheduleView" style="margin-top:30px"></div>
 
                 <div class="step-actions">
-                    <button class="outline" onclick="downloadPDF('teachers')">📄 PDF (учителя)</button>
+                    <button class="outline" onclick="downloadPDF('teachers')"> PDF (учителя)</button>
                     <button class="outline" onclick="downloadPDF('classes')"> PDF (классы)</button>
                     <button class="outline" onclick="downloadExcel('teachers')">📊 Excel (учителя)</button>
                     <button class="outline" onclick="downloadExcel('classes')">📊 Excel (классы)</button>
@@ -610,7 +607,7 @@
         </div>
 
         <div id="step5" class="wizard-content">
-            <h2>️ Шаг 5: Ручная корректировка (Drag-and-Drop)</h2>
+            <h2>✏️ Шаг 5: Ручная корректировка (Drag-and-Drop)</h2>
             <p style="color:#666;margin-bottom:20px">Перетащите уроки для изменения расписания. Красная подсветка = конфликт.</p>
 
             <div class="form-group">
@@ -629,25 +626,25 @@
         </div>
 
         <div id="step6" class="wizard-content">
-            <h2> Шаг 6: Публикация и экспорт</h2>
+            <h2>📢 Шаг 6: Публикация и экспорт</h2>
 
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px">
                 <div class="stat-card">
-                    <h3>📄 PDF для печати</h3>
+                    <h3> PDF для печати</h3>
                     <p style="color:#666;margin:10px 0">Готовые файлы для размещения на стенде</p>
-                    <button class="primary" onclick="downloadPDF('teachers')">👨‍🏫 По учителям</button>
+                    <button class="primary" onclick="downloadPDF('teachers')">👨‍ По учителям</button>
                     <button class="primary" onclick="downloadPDF('classes')" style="margin-top:10px">👥 По классам</button>
                 </div>
 
                 <div class="stat-card">
-                    <h3> Excel для редактирования</h3>
+                    <h3>📊 Excel для редактирования</h3>
                     <p style="color:#666;margin:10px 0">Файлы для дальнейшей работы</p>
                     <button class="primary" onclick="downloadExcel('teachers')">👨‍🏫 По учителям</button>
-                    <button class="primary" onclick="downloadExcel('classes')" style="margin-top:10px">👥 По классам</button>
+                    <button class="primary" onclick="downloadExcel('classes')" style="margin-top:10px"> По классам</button>
                 </div>
 
                 <div class="stat-card">
-                    <h3> Отправка учителям</h3>
+                    <h3>📧 Отправка учителям</h3>
                     <p style="color:#666;margin:10px 0">Ссылки на расписание</p>
                     <button class="outline" onclick="sendToTeachers()">📱 Отправить в Telegram</button>
                     <button class="outline" onclick="sendToEmail()" style="margin-top:10px">📧 Отправить на почту</button>
@@ -687,12 +684,10 @@
         let currentTimetableId = null;
         let currentStep = 1;
 
-        // Функция для получения токена
         function getToken() {
             return localStorage.getItem('access_token');
         }
 
-        // Функция проверки аутентификации
         function checkAuth() {
             const token = getToken();
             if (!token) {
@@ -703,7 +698,6 @@
             return true;
         }
 
-        // Загрузка данных из localStorage
         window.onload = function() {
             const savedData = localStorage.getItem('schoolData');
             if (savedData) {
@@ -838,19 +832,13 @@
         function addClass() {
             const name = document.getElementById('newClassName').value.trim();
             const warning = document.getElementById('classDuplicateWarning');
-
-            if (!name) {
-                alert('Введите название класса');
-                return;
-            }
-
+            if (!name) { alert('Введите название класса'); return; }
             const exists = schoolData.classes.some(c => c.name.toLowerCase() === name.toLowerCase());
             if (exists) {
                 warning.classList.add('show');
                 setTimeout(() => warning.classList.remove('show'), 3000);
                 return;
             }
-
             const match = name.match(/(\d+)([А-Яа-я]?)/);
             schoolData.classes.push({name, grade: match?parseInt(match[1]):0, letter: match?match[2]:''});
             renderClasses();
@@ -860,29 +848,22 @@
 
         function renderClasses() {
             document.getElementById('classesTable').innerHTML = schoolData.classes.map((c,i) => `
-                <tr><td>${c.name}</td><td>${c.grade}</td><td><button class="small danger" onclick="removeClass(${i})" title="Удалить класс">🗑️ Удалить</button></td></tr>
+                <tr><td>${c.name}</td><td>${c.grade}</td><td><button class="small danger" onclick="removeClass(${i})">🗑️ Удалить</button></td></tr>
             `).join('');
         }
-
         function removeClass(i) { schoolData.classes.splice(i,1); renderClasses(); saveSchoolData(); }
 
         function addTeacher() {
             const name = document.getElementById('newTeacherName').value.trim();
             const email = document.getElementById('newTeacherEmail').value.trim();
             const warning = document.getElementById('teacherDuplicateWarning');
-
-            if (!name) {
-                alert('Введите ФИО учителя');
-                return;
-            }
-
+            if (!name) { alert('Введите ФИО учителя'); return; }
             const exists = schoolData.teachers.some(t => t.full_name.toLowerCase() === name.toLowerCase());
             if (exists) {
                 warning.classList.add('show');
                 setTimeout(() => warning.classList.remove('show'), 3000);
                 return;
             }
-
             schoolData.teachers.push({full_name: name, email});
             renderTeachers();
             saveSchoolData();
@@ -892,28 +873,21 @@
 
         function renderTeachers() {
             document.getElementById('teachersTable').innerHTML = schoolData.teachers.map((t,i) => `
-                <tr><td>${t.full_name}</td><td>${t.email||'-'}</td><td><button class="small danger" onclick="removeTeacher(${i})" title="Удалить учителя">️ Удалить</button></td></tr>
+                <tr><td>${t.full_name}</td><td>${t.email||'-'}</td><td><button class="small danger" onclick="removeTeacher(${i})">️ Удалить</button></td></tr>
             `).join('');
         }
-
         function removeTeacher(i) { schoolData.teachers.splice(i,1); renderTeachers(); saveSchoolData(); }
 
         function addSubject() {
             const name = document.getElementById('newSubjectName').value.trim();
             const warning = document.getElementById('subjectDuplicateWarning');
-
-            if (!name) {
-                alert('Введите название предмета');
-                return;
-            }
-
+            if (!name) { alert('Введите название предмета'); return; }
             const exists = schoolData.subjects.some(s => s.name.toLowerCase() === name.toLowerCase());
             if (exists) {
                 warning.classList.add('show');
                 setTimeout(() => warning.classList.remove('show'), 3000);
                 return;
             }
-
             schoolData.subjects.push({name});
             renderSubjects();
             saveSchoolData();
@@ -922,29 +896,22 @@
 
         function renderSubjects() {
             document.getElementById('subjectsTable').innerHTML = schoolData.subjects.map((s,i) => `
-                <tr><td>${s.name}</td><td><button class="small danger" onclick="removeSubject(${i})" title="Удалить предмет">🗑️ Удалить</button></td></tr>
+                <tr><td>${s.name}</td><td><button class="small danger" onclick="removeSubject(${i})">🗑️ Удалить</button></td></tr>
             `).join('');
         }
-
         function removeSubject(i) { schoolData.subjects.splice(i,1); renderSubjects(); saveSchoolData(); }
 
         function addClassroom() {
             const number = document.getElementById('newClassroomNumber').value.trim();
             const capacity = document.getElementById('newClassroomCapacity').value;
             const warning = document.getElementById('classroomDuplicateWarning');
-
-            if (!number) {
-                alert('Введите номер кабинета');
-                return;
-            }
-
+            if (!number) { alert('Введите номер кабинета'); return; }
             const exists = schoolData.classrooms.some(c => c.number.toLowerCase() === number.toLowerCase());
             if (exists) {
                 warning.classList.add('show');
                 setTimeout(() => warning.classList.remove('show'), 3000);
                 return;
             }
-
             schoolData.classrooms.push({number, capacity: capacity?parseInt(capacity):null});
             renderClassrooms();
             saveSchoolData();
@@ -954,10 +921,9 @@
 
         function renderClassrooms() {
             document.getElementById('classroomsTable').innerHTML = schoolData.classrooms.map((c,i) => `
-                <tr><td>${c.number}</td><td>${c.capacity||'-'}</td><td><button class="small danger" onclick="removeClassroom(${i})" title="Удалить кабинет">️ Удалить</button></td></tr>
+                <tr><td>${c.number}</td><td>${c.capacity||'-'}</td><td><button class="small danger" onclick="removeClassroom(${i})">🗑️ Удалить</button></td></tr>
             `).join('');
         }
-
         function removeClassroom(i) { schoolData.classrooms.splice(i,1); renderClassrooms(); saveSchoolData(); }
 
         function importFromExcel() {
@@ -972,11 +938,7 @@
 
         function loadTeacherCard() {
             const teacher = document.getElementById('teacherSelect').value;
-            if (!teacher) {
-                document.getElementById('teacherCard').style.display = 'none';
-                return;
-            }
-
+            if (!teacher) { document.getElementById('teacherCard').style.display = 'none'; return; }
             document.getElementById('teacherCard').style.display = 'block';
             document.getElementById('currentTeacherName').textContent = teacher;
             renderWorkloads(teacher);
@@ -1007,7 +969,7 @@
                                data-idx="${i}" data-field="hours" min="1" max="20"
                                onchange="updateWorkloadFromInput(this)">
                     </div>
-                    <button class="small danger" onclick="removeWorkload(${i})" title="Удалить предмет">🗑️ Удалить</button>
+                    <button class="small danger" onclick="removeWorkload(${i})">🗑️ Удалить</button>
                 </div>
             `).join('');
         }
@@ -1016,7 +978,6 @@
             const list = input.nextElementSibling;
             const items = type === 'subjects' ? schoolData.subjects.map(s => s.name) : schoolData.classes.map(c => c.name);
             const value = input.value.toLowerCase();
-
             list.innerHTML = '';
             items.filter(item => item.toLowerCase().includes(value)).forEach(item => {
                 const div = document.createElement('div');
@@ -1029,10 +990,7 @@
                 };
                 list.appendChild(div);
             });
-
-            if (list.children.length > 0) {
-                list.style.display = 'block';
-            }
+            if (list.children.length > 0) list.style.display = 'block';
         }
 
         function filterAutocomplete(input) {
@@ -1055,10 +1013,7 @@
 
         function addWorkload() {
             const teacher = document.getElementById('teacherSelect').value;
-            if (!teacher) {
-                alert('Сначала выберите учителя');
-                return;
-            }
+            if (!teacher) { alert('Сначала выберите учителя'); return; }
             schoolData.workloads.push({teacher, subject:'', grade:'', hours:1});
             renderWorkloads(teacher);
             saveSchoolData();
@@ -1085,15 +1040,12 @@
         function renderAvailabilityGrid(teacher) {
             const days = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"];
             const slots = Array.from({length: schoolData.lessonsPerDay}, (_, i) => i+1);
-
             if (!schoolData.availability[teacher]) {
                 schoolData.availability[teacher] = {};
                 days.forEach(d => schoolData.availability[teacher][d] = [...slots]);
             }
-
             let html = '<div class="availability-cell header"></div>';
             slots.forEach(s => html += `<div class="availability-cell header">Урок ${s}</div>`);
-
             days.forEach(day => {
                 html += `<div class="availability-cell header">${day}</div>`;
                 slots.forEach(slot => {
@@ -1102,7 +1054,6 @@
                              onclick="toggleAvailability('${teacher}','${day}',${slot})">${slot}</div>`;
                 });
             });
-
             document.getElementById('availabilityGrid').innerHTML = html;
         }
 
@@ -1117,7 +1068,6 @@
         async function parseAIInput() {
             const text = document.getElementById('aiInput').value;
             if (!text) { alert('Введите текст'); return; }
-
             try {
                 const res = await fetch('/api/ai-parse', {
                     method: 'POST',
@@ -1137,17 +1087,12 @@
         }
 
         function applyAIResult() {
-            if (!window._aiResult) {
-                alert('Сначала проанализируйте текст');
-                return;
-            }
+            if (!window._aiResult) { alert('Сначала проанализируйте текст'); return; }
             const data = window._aiResult;
-
             if (data.teacher_name && !schoolData.teachers.find(t => t.full_name === data.teacher_name)) {
                 schoolData.teachers.push({full_name: data.teacher_name, email: ''});
                 renderTeachers();
             }
-
             data.lessons.forEach(l => {
                 schoolData.workloads.push({
                     teacher: data.teacher_name,
@@ -1156,10 +1101,8 @@
                     hours: l.hours
                 });
             });
-
             schoolData.availability[data.teacher_name] = data.availability;
             saveSchoolData();
-
             alert('✅ Данные применены! Теперь выберите учителя в выпадающем списке для проверки.');
             updateTeacherSelect();
             document.getElementById('teacherSelect').value = data.teacher_name;
@@ -1168,7 +1111,6 @@
 
         async function generateTimetable() {
             if (!checkAuth()) return;
-
             const err = document.getElementById('genError');
             const succ = document.getElementById('genSuccess');
             const btn = document.getElementById('generateBtn');
@@ -1192,7 +1134,6 @@
 
             const days = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"].slice(0, schoolData.days);
             const slots = Array.from({length: schoolData.lessonsPerDay}, (_, i) => i+1);
-
             const requestData = { days, slots, teachers };
 
             err.classList.remove('show');
@@ -1205,7 +1146,6 @@
                 let attempts = 0;
                 let success = false;
                 let data;
-
                 while (attempts < 3 && !success) {
                     try {
                         const res = await fetch('/generate', {
@@ -1216,7 +1156,6 @@
                             },
                             body: JSON.stringify(requestData)
                         });
-
                         data = await res.json();
                         success = true;
                     } catch (e) {
@@ -1271,7 +1210,6 @@
                 document.getElementById('resultsSection').classList.add('active');
                 succ.textContent = '✅ Расписание успешно составлено!';
                 succ.classList.add('show');
-
                 renderSchedule();
                 loadSavedTimetables();
             } catch(e) {
@@ -1289,14 +1227,11 @@
                 document.getElementById('scheduleView').innerHTML = '<p style="color:#999">Нет данных для отображения</p>';
                 return;
             }
-
             const container = document.getElementById('scheduleView');
-
             let html = '<h3>📋 Расписание по учителям</h3>';
             currentResult.teachers.forEach(teacher => {
                 html += '<div style="background:#f8f9fa;padding:20px;border-radius:10px;margin-bottom:20px">';
-                html += '<h4 style="color:#667eea;margin-bottom:15px">👨‍🏫 ' + teacher.teacher + ' (' + teacher.total_lessons + ' уроков)</h4>';
-
+                html += '<h4 style="color:#667eea;margin-bottom:15px">👨🏫 ' + teacher.teacher + ' (' + teacher.total_lessons + ' уроков)</h4>';
                 const days = Object.keys(teacher.schedule).sort();
                 days.forEach(day => {
                     html += '<div style="margin-bottom:10px">';
@@ -1315,22 +1250,18 @@
                 });
                 html += '</div>';
             });
-
             container.innerHTML = html;
         }
 
         async function loadSavedTimetables() {
             if (!checkAuth()) return;
-
             const container = document.getElementById('savedTimetablesList');
             if (!container) return;
-
             try {
                 const res = await fetch('/timetables', {
                     headers: {'Authorization': 'Bearer ' + getToken()}
                 });
                 const data = await res.json();
-
                 if (res.ok && Array.isArray(data) && data.length > 0) {
                     container.innerHTML = data.map(t => `
                         <div class="saved-timetable-item">
@@ -1357,34 +1288,26 @@
             }
         }
 
-        // Делаем функции глобально доступными
         window.loadSavedTimetable = async function(id) {
             console.log('Loading timetable:', id);
             if (!checkAuth()) return;
-
             try {
                 const res = await fetch('/timetables/' + id, {
                     headers: {'Authorization': 'Bearer ' + getToken()}
                 });
                 const data = await res.json();
                 console.log('Loaded data:', data);
-
                 if (res.ok && data.data) {
                     currentResult = data.data;
                     currentTimetableId = id;
-
                     document.getElementById('statTeachers').textContent = currentResult.teachers ? currentResult.teachers.length : 0;
                     const totalLessons = currentResult.teachers ? currentResult.teachers.reduce((sum, t) => sum + t.total_lessons, 0) : 0;
                     document.getElementById('statLessons').textContent = totalLessons;
                     document.getElementById('statTime').textContent = currentResult.solution_time ? currentResult.solution_time.toFixed(2) + 'с' : '0с';
                     document.getElementById('statStatus').textContent = currentResult.status || 'UNKNOWN';
-
                     document.getElementById('resultsSection').classList.add('active');
                     renderSchedule();
-
-                    // Прокрутка к результатам
                     document.getElementById('resultsSection').scrollIntoView({behavior: 'smooth'});
-
                     alert('✅ Расписание загружено!');
                 } else {
                     alert('Ошибка загрузки расписания: ' + (data.detail || 'Неизвестная ошибка'));
@@ -1399,7 +1322,6 @@
             console.log('Deleting timetable:', id);
             if (!checkAuth()) return;
             if (!confirm('Удалить это расписание?')) return;
-
             try {
                 const res = await fetch('/timetables/' + id, {
                     method: 'DELETE',
@@ -1418,26 +1340,71 @@
             }
         };
 
-        window.downloadSavedPDF = function(id, format) {
+        window.downloadSavedPDF = async function(id, format) {
             console.log('Downloading PDF:', id, format);
             if (!checkAuth()) return;
-            const url = `/timetables/${id}/export/pdf?format=${format}`;
-            window.open(url, '_blank');
+            try {
+                const token = getToken();
+                const response = await fetch(`/timetables/${id}/export/pdf?format=${format}`, {
+                    headers: {'Authorization': 'Bearer ' + token}
+                });
+                if (!response.ok) throw new Error('Ошибка скачивания');
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `timetable_${id}_teachers.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } catch(e) {
+                console.error('Error:', e);
+                alert('Ошибка скачивания: ' + e.message);
+            }
         };
 
-        window.downloadSavedExcel = function(id, format) {
+        window.downloadSavedExcel = async function(id, format) {
             console.log('Downloading Excel:', id, format);
             if (!checkAuth()) return;
-            const url = `/timetables/${id}/export/excel?format=${format}`;
-            window.open(url, '_blank');
+            try {
+                const token = getToken();
+                const response = await fetch(`/timetables/${id}/export/excel?format=${format}`, {
+                    headers: {'Authorization': 'Bearer ' + token}
+                });
+                if (!response.ok) throw new Error('Ошибка скачивания');
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `timetable_${id}_teachers.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } catch(e) {
+                console.error('Error:', e);
+                alert('Ошибка скачивания: ' + e.message);
+            }
         };
+
+        function downloadPDF(format) {
+            if (!currentTimetableId) { alert('Сначала сгенерируйте расписание'); return; }
+            if (!checkAuth()) return;
+            window.downloadSavedPDF(currentTimetableId, format);
+        }
+
+        function downloadExcel(format) {
+            if (!currentTimetableId) { alert('Сначала сгенерируйте расписание'); return; }
+            if (!checkAuth()) return;
+            window.downloadSavedExcel(currentTimetableId, format);
+        }
 
         function renderTimetableGrid() {
             if (!currentResult || !currentResult.teachers) {
                 document.getElementById('timetableGrid').innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#999">Сначала сгенерируйте расписание</p>';
                 return;
             }
-
             const classSelect = document.getElementById('classSelect');
             if (classSelect.options.length <= 1) {
                 const grades = new Set();
@@ -1445,9 +1412,7 @@
                     if (t.schedule) {
                         Object.values(t.schedule).forEach(day => {
                             Object.values(day).forEach(slot => {
-                                if (Array.isArray(slot)) {
-                                    slot.forEach(l => grades.add(l.grade));
-                                }
+                                if (Array.isArray(slot)) slot.forEach(l => grades.add(l.grade));
                             });
                         });
                     }
@@ -1455,25 +1420,20 @@
                 classSelect.innerHTML = '<option value="">-- Выберите класс --</option>' +
                     Array.from(grades).map(g => `<option value="${g}">${g} класс</option>`).join('');
             }
-
             const grade = classSelect.value;
             if (!grade) {
                 document.getElementById('timetableGrid').innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#999">Выберите класс</p>';
                 return;
             }
-
             const days = currentResult.days;
             const slots = currentResult.slots;
-
             let html = '<div class="timetable-cell header"></div>';
             slots.forEach(s => html += `<div class="timetable-cell header">Урок ${s}</div>`);
-
             days.forEach(day => {
                 html += `<div class="timetable-cell header">${day}</div>`;
                 slots.forEach(slot => {
                     let lessonText = '';
                     let lessonData = null;
-
                     currentResult.teachers.forEach(t => {
                         if (t.schedule && t.schedule[day] && t.schedule[day][String(slot)]) {
                             t.schedule[day][String(slot)].forEach(l => {
@@ -1484,26 +1444,22 @@
                             });
                         }
                     });
-
                     html += `<div class="timetable-cell ${lessonData?'lesson':''}"
                              draggable="${lessonData?'true':'false'}"
                              ondragstart="dragStart(event)" ondragover="dragOver(event)" ondrop="drop(event)"
                              data-day="${day}" data-slot="${slot}">${lessonText}</div>`;
                 });
             });
-
             document.getElementById('timetableGrid').innerHTML = html;
         }
 
         function dragStart(e) {
             e.dataTransfer.setData('text/plain', e.target.dataset.day + ',' + e.target.dataset.slot);
         }
-
         function dragOver(e) {
             e.preventDefault();
             e.target.classList.add('drag-over');
         }
-
         function drop(e) {
             e.preventDefault();
             e.target.classList.remove('drag-over');
@@ -1514,49 +1470,21 @@
             alert('✅ Конфликтов не найдено! Расписание корректно.');
         }
 
-        function downloadPDF(format) {
-            if (!currentTimetableId) {
-                alert('Сначала сгенерируйте расписание');
-                return;
-            }
-            if (!checkAuth()) return;
-
-            const url = `/timetables/${currentTimetableId}/export/pdf?format=${format}`;
-            console.log('Downloading PDF:', url);
-            window.open(url, '_blank');
-        }
-
-        function downloadExcel(format) {
-            if (!currentTimetableId) {
-                alert('Сначала сгенерируйте расписание');
-                return;
-            }
-            if (!checkAuth()) return;
-
-            const url = `/timetables/${currentTimetableId}/export/excel?format=${format}`;
-            console.log('Downloading Excel:', url);
-            window.open(url, '_blank');
-        }
-
         function sendToTeachers() {
-            alert('📱 Ссылки на расписание отправлены учителям в Telegram!');
+            alert(' Ссылки на расписание отправлены учителям в Telegram!');
         }
-
         function sendToEmail() {
             alert('📧 Письма с расписанием отправлены на почту учителей!');
         }
-
         function exportToJournal() {
             alert('🔗 Данные экспортированы в электронный журнал через API!');
         }
-
         function publishTimetable() {
             if (confirm('Опубликовать расписание? После публикации изменения будут недоступны.')) {
                 alert('✅ Расписание опубликовано! Все участники получили уведомления.');
             }
         }
 
-        // Закрытие autocomplete при клике вне
         document.addEventListener('click', function(e) {
             if (!e.target.closest('.autocomplete-wrapper')) {
                 document.querySelectorAll('.autocomplete-list').forEach(list => {
