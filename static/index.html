@@ -116,6 +116,28 @@
         .master-table .break-row td { background: #fff3cd; font-style: italic; color: #856404; text-align: center; font-weight: bold; }
         .lesson-subject { font-weight: bold; color: #333; margin-bottom: 4px; display: block; }
         .lesson-details { font-size: 11px; color: #666; display: block; line-height: 1.4; }
+
+        /* Стили для шаблонов AI */
+        .template-selector { margin-bottom: 20px; }
+        .template-card {
+            background: white; border: 2px solid #e0e0e0; border-radius: 8px;
+            padding: 15px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s;
+        }
+        .template-card:hover { border-color: #667eea; background: #f8f9ff; }
+        .template-card.selected { border-color: #667eea; background: #f0f4ff; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2); }
+        .template-card h4 { color: #333; margin-bottom: 5px; font-size: 15px; }
+        .template-card p { color: #666; font-size: 13px; margin-bottom: 10px; }
+        .template-fields { display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee; }
+        .template-card.selected .template-fields { display: block; }
+        .template-field { margin-bottom: 12px; }
+        .template-field label { font-size: 13px; color: #555; margin-bottom: 5px; }
+        .template-field input, .template-field select { font-size: 14px; padding: 10px; }
+        .checkbox-group { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 5px; }
+        .checkbox-group label {
+            display: flex; align-items: center; gap: 5px; font-size: 13px;
+            background: #f8f9fa; padding: 6px 12px; border-radius: 6px; cursor: pointer;
+        }
+        .checkbox-group input[type="checkbox"] { width: auto; }
     </style>
 </head>
 <body>
@@ -127,7 +149,7 @@
             <button class="tab" onclick="showRegister()">Регистрация</button>
         </div>
         <div id="loginForm" class="form-section active">
-            <div class="form-group"><label for="loginEmail">📧 Email</label><input type="email" id="loginEmail" placeholder="your@email.com"></div>
+            <div class="form-group"><label for="loginEmail"> Email</label><input type="email" id="loginEmail" placeholder="your@email.com"></div>
             <div class="form-group"><label for="loginPassword">🔒 Пароль</label><input type="password" id="loginPassword" placeholder="••••••••"></div>
             <button class="full" onclick="login()">Войти</button>
             <div id="loginError" class="error"></div>
@@ -170,7 +192,7 @@
             <p class="help-text" style="margin-bottom:20px">Добавьте классы, учителей, предметы и кабинеты. Дубликаты будут автоматически отклонены.</p>
             <div class="reference-tabs">
                 <button class="reference-tab active" onclick="showRefTab('classes')">📚 Классы</button>
-                <button class="reference-tab" onclick="showRefTab('teachers')">👨‍ Учителя</button>
+                <button class="reference-tab" onclick="showRefTab('teachers')">👨‍🏫 Учителя</button>
                 <button class="reference-tab" onclick="showRefTab('subjects')">📖 Предметы</button>
                 <button class="reference-tab" onclick="showRefTab('classrooms')">🏫 Кабинеты</button>
             </div>
@@ -183,7 +205,7 @@
 
             <div id="ref-teachers" class="reference-content">
                 <h3>👨‍🏫 Управление учителями</h3>
-                <div class="form-group"><label for="newTeacherName">ФИО учителя *</label><input type="text" id="newTeacherName" placeholder="Например: Иванова Мария Петровна"><p id="teacherDuplicateWarning" class="duplicate-warning">⚠️ Такой учитель уже существует!</p><button class="add-btn" onclick="addTeacher()"> Добавить учителя</button></div>
+                <div class="form-group"><label for="newTeacherName">ФИО учителя *</label><input type="text" id="newTeacherName" placeholder="Например: Иванова Мария Петровна"><p id="teacherDuplicateWarning" class="duplicate-warning">⚠️ Такой учитель уже существует!</p><button class="add-btn" onclick="addTeacher()">➕ Добавить учителя</button></div>
                 <div class="form-group"><label for="newTeacherEmail">Email (опционально)</label><input type="email" id="newTeacherEmail" placeholder="teacher@school.ru"></div>
                 <table class="data-table"><thead><tr><th>ФИО</th><th>Email</th><th style="width:150px">Действия</th></tr></thead><tbody id="teachersTable"></tbody></table>
             </div>
@@ -196,7 +218,7 @@
 
             <div id="ref-classrooms" class="reference-content">
                 <h3>🏫 Управление кабинетами</h3>
-                <div class="form-group"><label for="newClassroomNumber">Номер кабинета *</label><input type="text" id="newClassroomNumber" placeholder="Например: 101, 205"><p id="classroomDuplicateWarning" class="duplicate-warning">⚠️ Такой кабинет уже существует!</p><button class="add-btn" onclick="addClassroom()">➕ Добавить кабинет</button></div>
+                <div class="form-group"><label for="newClassroomNumber">Номер кабинета *</label><input type="text" id="newClassroomNumber" placeholder="Например: 101, 205"><p id="classroomDuplicateWarning" class="duplicate-warning">⚠️ Такой кабинет уже существует!</p><button class="add-btn" onclick="addClassroom()"> Добавить кабинет</button></div>
                 <div class="form-group"><label for="newClassroomCapacity">Вместимость (количество мест)</label><input type="number" id="newClassroomCapacity" placeholder="Например: 25" min="1"></div>
                 <table class="data-table"><thead><tr><th>Кабинет</th><th>Вместимость</th><th style="width:150px">Действия</th></tr></thead><tbody id="classroomsTable"></tbody></table>
 
@@ -227,17 +249,108 @@
                     </div>
                 </div>
                 <div>
-                    <h3>🤖 Путь Б: AI-ввод</h3>
-                    <p style="color:#666;font-size:14px;margin-bottom:15px">Вставьте текстовое описание — ИИ разберёт сам</p>
-                    <div class="ai-input-section">
-                        <label for="aiInput">📝 Вставьте текст с описанием учителя:</label>
-                        <textarea id="aiInput" placeholder="Учитель Асланова Самира может проводить уроки по вторникам до 15 часов..."></textarea>
-                        <button class="primary" onclick="parseAIInput()" style="margin-top:10px;width:100%">🧠 Анализировать текст</button>
-                    </div>
-                    <div id="aiResult" style="margin-top:15px;display:none">
-                        <h4>✅ Результат анализа:</h4>
-                        <pre id="aiResultText" style="background:#f8f9fa;padding:15px;border-radius:8px;font-size:12px;overflow:auto;max-height:300px"></pre>
-                        <button class="small primary" onclick="applyAIResult()" style="margin-top:10px">✅ Применить результат</button>
+                    <h3>🤖 Путь Б: Быстрый ввод через шаблоны</h3>
+                    <p style="color:#666;font-size:14px;margin-bottom:15px">Выберите шаблон и заполните поля — данные применятся мгновенно</p>
+
+                    <div class="template-selector">
+                        <!-- Шаблон 1: Доступность по времени -->
+                        <div class="template-card" onclick="selectTemplate(this, 'time_range')">
+                            <h4>⏰ Указать время доступности</h4>
+                            <p>Учитель может работать в определённые часы в выбранные дни</p>
+                            <div class="template-fields">
+                                <div class="template-field">
+                                    <label>ФИО учителя</label>
+                                    <input type="text" id="tmpl_name" placeholder="Например: Сидорова Т">
+                                </div>
+                                <div class="template-field">
+                                    <label>Дни недели</label>
+                                    <div class="checkbox-group">
+                                        <label><input type="checkbox" class="tmpl-day" value="Понедельник"> Пн</label>
+                                        <label><input type="checkbox" class="tmpl-day" value="Вторник"> Вт</label>
+                                        <label><input type="checkbox" class="tmpl-day" value="Среда"> Ср</label>
+                                        <label><input type="checkbox" class="tmpl-day" value="Четверг"> Чт</label>
+                                        <label><input type="checkbox" class="tmpl-day" value="Пятница"> Пт</label>
+                                        <label><input type="checkbox" class="tmpl-day" value="Суббота"> Сб</label>
+                                    </div>
+                                </div>
+                                <div class="template-field" style="display:flex;gap:10px">
+                                    <div style="flex:1">
+                                        <label>Начало (часы)</label>
+                                        <select id="tmpl_start">
+                                            <option value="08:30">08:30</option>
+                                            <option value="09:25">09:25</option>
+                                            <option value="10:20">10:20</option>
+                                            <option value="11:25">11:25</option>
+                                            <option value="12:20">12:20</option>
+                                            <option value="13:15">13:15</option>
+                                            <option value="14:10">14:10</option>
+                                        </select>
+                                    </div>
+                                    <div style="flex:1">
+                                        <label>Окончание (часы)</label>
+                                        <select id="tmpl_end">
+                                            <option value="09:15">09:15</option>
+                                            <option value="10:10">10:10</option>
+                                            <option value="11:05">11:05</option>
+                                            <option value="12:10">12:10</option>
+                                            <option value="13:05">13:05</option>
+                                            <option value="14:00">14:00</option>
+                                            <option value="14:55" selected>14:55</option>
+                                            <option value="15:50">15:50</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <button class="primary full" onclick="applyTimeTemplate()">✅ Применить доступность</button>
+                            </div>
+                        </div>
+
+                        <!-- Шаблон 2: Только конкретные дни -->
+                        <div class="template-card" onclick="selectTemplate(this, 'specific_days')">
+                            <h4>📅 Указать конкретные дни</h4>
+                            <p>Учитель работает только в выбранные дни (все уроки)</p>
+                            <div class="template-fields">
+                                <div class="template-field">
+                                    <label>ФИО учителя</label>
+                                    <input type="text" id="tmpl_name2" placeholder="Например: Петров А.В.">
+                                </div>
+                                <div class="template-field">
+                                    <label>Дни недели</label>
+                                    <div class="checkbox-group">
+                                        <label><input type="checkbox" class="tmpl-day2" value="Понедельник"> Пн</label>
+                                        <label><input type="checkbox" class="tmpl-day2" value="Вторник"> Вт</label>
+                                        <label><input type="checkbox" class="tmpl-day2" value="Среда"> Ср</label>
+                                        <label><input type="checkbox" class="tmpl-day2" value="Четверг"> Чт</label>
+                                        <label><input type="checkbox" class="tmpl-day2" value="Пятница"> Пт</label>
+                                        <label><input type="checkbox" class="tmpl-day2" value="Суббота"> Сб</label>
+                                    </div>
+                                </div>
+                                <button class="primary full" onclick="applyDaysTemplate()">✅ Применить дни</button>
+                            </div>
+                        </div>
+
+                        <!-- Шаблон 3: Исключить дни -->
+                        <div class="template-card" onclick="selectTemplate(this, 'exclude_days')">
+                            <h4>🚫 Работает во все дни КРОМЕ указанных</h4>
+                            <p>Учитель НЕ работает в выбранные дни</p>
+                            <div class="template-fields">
+                                <div class="template-field">
+                                    <label>ФИО учителя</label>
+                                    <input type="text" id="tmpl_name3" placeholder="Например: Иванов И.И.">
+                                </div>
+                                <div class="template-field">
+                                    <label>Дни НЕдоступности</label>
+                                    <div class="checkbox-group">
+                                        <label><input type="checkbox" class="tmpl-day3" value="Понедельник"> Пн</label>
+                                        <label><input type="checkbox" class="tmpl-day3" value="Вторник"> Вт</label>
+                                        <label><input type="checkbox" class="tmpl-day3" value="Среда"> Ср</label>
+                                        <label><input type="checkbox" class="tmpl-day3" value="Четверг"> Чт</label>
+                                        <label><input type="checkbox" class="tmpl-day3" value="Пятница"> Пт</label>
+                                        <label><input type="checkbox" class="tmpl-day3" value="Суббота"> Сб</label>
+                                    </div>
+                                </div>
+                                <button class="primary full" onclick="applyExcludeTemplate()">✅ Применить</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -245,7 +358,7 @@
         </div>
 
         <div id="step4" class="wizard-content">
-            <h2> Шаг 4: Генерация расписания</h2>
+            <h2>🚀 Шаг 4: Генерация расписания</h2>
             <p style="color:#666;margin-bottom:20px">Нажмите кнопку для запуска алгоритма Google OR-Tools</p>
             <div style="text-align:center;padding:40px"><button id="generateBtn" onclick="generateTimetable()" style="font-size:20px;padding:20px 40px">🎯 Сгенерировать расписание</button></div>
             <div id="genError" class="error"></div><div id="genSuccess" class="success"></div>
@@ -262,7 +375,7 @@
                 <div id="masterViewContainer" style="display: none; margin-top: 30px;"></div>
 
                 <div class="step-actions">
-                    <button class="outline" onclick="downloadPDF('teachers')"> PDF (учителя)</button>
+                    <button class="outline" onclick="downloadPDF('teachers')">📄 PDF (учителя)</button>
                     <button class="outline" onclick="downloadPDF('classes')">📄 PDF (классы)</button>
                     <button class="outline" onclick="downloadExcel('teachers')">📊 Excel (учителя)</button>
                     <button class="outline" onclick="downloadExcel('classes')">📊 Excel (классы)</button>
@@ -279,7 +392,7 @@
             <div class="form-group"><label for="classSelect">Выберите класс для просмотра</label><select id="classSelect" onchange="renderTimetableGrid()"><option value="">-- Выберите класс --</option></select></div>
             <div id="timetableGrid" class="timetable-grid"></div>
             <div class="step-actions">
-                <button class="secondary" onclick="validateTimetable()">🔍 Проверить конфликты</button>
+                <button class="secondary" onclick="validateTimetable()"> Проверить конфликты</button>
                 <button class="primary" onclick="completeStep(5)">➡️ Перейти к публикации</button>
             </div>
         </div>
@@ -288,9 +401,9 @@
             <h2>📢 Шаг 6: Публикация и экспорт</h2>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px">
                 <div class="stat-card"><h3>📄 PDF для печати</h3><p style="color:#666;margin:10px 0">Готовые файлы для размещения на стенде</p><button class="primary" onclick="downloadPDF('teachers')">👨‍🏫 По учителям</button><button class="primary" onclick="downloadPDF('classes')" style="margin-top:10px">👥 По классам</button></div>
-                <div class="stat-card"><h3>📊 Excel для редактирования</h3><p style="color:#666;margin:10px 0">Файлы для дальнейшей работы</p><button class="primary" onclick="downloadExcel('teachers')">👨‍ По учителям</button><button class="primary" onclick="downloadExcel('classes')" style="margin-top:10px">👥 По классам</button></div>
+                <div class="stat-card"><h3>📊 Excel для редактирования</h3><p style="color:#666;margin:10px 0">Файлы для дальнейшей работы</p><button class="primary" onclick="downloadExcel('teachers')">‍🏫 По учителям</button><button class="primary" onclick="downloadExcel('classes')" style="margin-top:10px">👥 По классам</button></div>
                 <div class="stat-card"><h3>📧 Отправка учителям</h3><p style="color:#666;margin:10px 0">Ссылки на расписание</p><button class="outline" onclick="sendToTeachers()">📱 Отправить в Telegram</button><button class="outline" onclick="sendToEmail()" style="margin-top:10px">📧 Отправить на почту</button></div>
-                <div class="stat-card"><h3> Интеграция с журналом</h3><p style="color:#666;margin:10px 0">Выгрузка в электронный журнал</p><button class="secondary" onclick="exportToJournal()">🔗 Экспорт API</button></div>
+                <div class="stat-card"><h3>🔗 Интеграция с журналом</h3><p style="color:#666;margin:10px 0">Выгрузка в электронный журнал</p><button class="secondary" onclick="exportToJournal()">🔗 Экспорт API</button></div>
             </div>
             <div style="text-align:center;margin-top:30px"><button onclick="publishTimetable()" style="font-size:18px;padding:20px 40px">✅ Опубликовать расписание</button></div>
         </div>
@@ -400,7 +513,7 @@
             schoolData.teachers.push({full_name: name, email}); renderTeachers(); saveSchoolData();
             document.getElementById('newTeacherName').value = ''; document.getElementById('newTeacherEmail').value = '';
         }
-        function renderTeachers() { document.getElementById('teachersTable').innerHTML = schoolData.teachers.map((t,i) => `<tr><td>${t.full_name}</td><td>${t.email||'-'}</td><td><button class="small danger" onclick="removeTeacher(${i})">🗑️ Удалить</button></td></tr>`).join(''); }
+        function renderTeachers() { document.getElementById('teachersTable').innerHTML = schoolData.teachers.map((t,i) => `<tr><td>${t.full_name}</td><td>${t.email||'-'}</td><td><button class="small danger" onclick="removeTeacher(${i})">️ Удалить</button></td></tr>`).join(''); }
         function removeTeacher(i) { schoolData.teachers.splice(i,1); renderTeachers(); saveSchoolData(); }
 
         function addSubject() {
@@ -410,7 +523,7 @@
             if (exists) { warning.classList.add('show'); setTimeout(() => warning.classList.remove('show'), 3000); return; }
             schoolData.subjects.push({name}); renderSubjects(); saveSchoolData(); document.getElementById('newSubjectName').value = '';
         }
-        function renderSubjects() { document.getElementById('subjectsTable').innerHTML = schoolData.subjects.map((s,i) => `<tr><td>${s.name}</td><td><button class="small danger" onclick="removeSubject(${i})">🗑️ Удалить</button></td></tr>`).join(''); }
+        function renderSubjects() { document.getElementById('subjectsTable').innerHTML = schoolData.subjects.map((s,i) => `<tr><td>${s.name}</td><td><button class="small danger" onclick="removeSubject(${i})">️ Удалить</button></td></tr>`).join(''); }
         function removeSubject(i) { schoolData.subjects.splice(i,1); renderSubjects(); saveSchoolData(); }
 
         function addClassroom() {
@@ -457,7 +570,7 @@
             document.getElementById('workloadList').innerHTML = workloads.map((w,i) => `
                 <div class="workload-row">
                     <div class="form-group autocomplete-wrapper">
-                        <label for="subject-${i}">📚 Предмет</label>
+                        <label for="subject-${i}"> Предмет</label>
                         <input type="text" id="subject-${i}" class="workload-subject" value="${w.subject}" placeholder="Например: Математика" data-idx="${i}" data-field="subject" oninput="filterAutocomplete(this)" onfocus="showAutocomplete(this, 'subjects')">
                         <div class="autocomplete-list" style="display:none"></div>
                     </div>
@@ -501,7 +614,7 @@
         function renderAvailabilityGrid(teacher) {
             const days = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"];
             const slots = Array.from({length: schoolData.lessonsPerDay}, (_, i) => i+1);
-            const times = schoolData.lessonTimes; // Берем время из профиля школы
+            const times = schoolData.lessonTimes;
 
             if (!schoolData.availability[teacher]) {
                 schoolData.availability[teacher] = {};
@@ -509,8 +622,6 @@
             }
 
             let html = '<div class="availability-cell header"></div>';
-
-            // Заголовки с временем
             slots.forEach((s, index) => {
                 const timeStr = times[index] ? `<div class="time-label">${times[index]}</div>` : '';
                 html += `<div class="availability-cell header">Урок ${s}${timeStr}</div>`;
@@ -534,41 +645,110 @@
             renderAvailabilityGrid(teacher); saveSchoolData();
         }
 
-        async function parseAIInput() {
-            const text = document.getElementById('aiInput').value; if (!text) { alert('Введите текст'); return; }
-            try {
-                const res = await fetch('/api/ai-parse', { method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken()}, body: JSON.stringify({text}) });
-                const data = await res.json();
-                document.getElementById('aiResult').style.display = 'block'; document.getElementById('aiResultText').textContent = JSON.stringify(data, null, 2); window._aiResult = data;
-            } catch(e) { alert('Ошибка: ' + e.message); }
+        // ============================================================
+        // ФУНКЦИИ ДЛЯ ШАБЛОНОВ AI-ВВОДА
+        // ============================================================
+        function selectTemplate(card, type) {
+            document.querySelectorAll('.template-card').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
         }
 
-        // ✅ ОБНОВЛЕННАЯ ФУНКЦИЯ ПРИМЕНЕНИЯ РЕЗУЛЬТАТА AI
-        function applyAIResult() {
-            if (!window._aiResult) { alert('Сначала проанализируйте текст'); return; }
-            const data = window._aiResult;
+        function getSelectedDays(selector) {
+            return Array.from(document.querySelectorAll(selector)).filter(cb => cb.checked).map(cb => cb.value);
+        }
 
-            if (data.teacher_name && !schoolData.teachers.find(t => t.full_name === data.teacher_name)) {
-                schoolData.teachers.push({full_name: data.teacher_name, email: ''});
+        function ensureTeacherExists(name) {
+            if (!name) { alert('Введите ФИО учителя'); return false; }
+            if (!schoolData.teachers.find(t => t.full_name.toLowerCase() === name.toLowerCase())) {
+                schoolData.teachers.push({full_name: name, email: ''});
                 renderTeachers();
+                updateTeacherSelect();
             }
+            return true;
+        }
 
-            data.lessons.forEach(l => {
-                schoolData.workloads.push({teacher: data.teacher_name, subject: l.subject, grade: l.grade, hours: l.hours});
+        function refreshTeacherCard(name) {
+            const select = document.getElementById('teacherSelect');
+            select.value = name;
+            loadTeacherCard();
+        }
+
+        function applyTimeTemplate() {
+            const name = document.getElementById('tmpl_name').value.trim();
+            if (!ensureTeacherExists(name)) return;
+
+            const days = getSelectedDays('.tmpl-day');
+            if (days.length === 0) { alert('Выберите хотя бы один день'); return; }
+
+            const startTime = document.getElementById('tmpl_start').value;
+            const endTime = document.getElementById('tmpl_end').value;
+
+            // Преобразуем время в номера уроков
+            const LESSON_TIMES = [
+                ("08:30", "09:15"), ("09:25", "10:10"), ("10:20", "11:05"),
+                ("11:25", "12:10"), ("12:20", "13:05"), ("13:15", "14:00"),
+                ("14:10", "14:55"), ("15:05", "15:50")
+            ];
+
+            const startParts = startTime.split(':');
+            const endParts = endTime.split(':');
+            const startMin = parseInt(startParts[0])*60 + parseInt(startParts[1]);
+            const endMin = parseInt(endParts[0])*60 + parseInt(endParts[1]);
+
+            const slots = [];
+            LESSON_TIMES.forEach((times, i) => {
+                const ls = times[0].split(':'); const le = times[1].split(':');
+                const lStart = parseInt(ls[0])*60 + parseInt(ls[1]);
+                const lEnd = parseInt(le[0])*60 + parseInt(le[1]);
+                if (lStart >= startMin && lEnd <= endMin) slots.push(i+1);
             });
 
-            schoolData.availability[data.teacher_name] = data.availability;
+            if (slots.length === 0) { alert('Выбранное время не попадает ни на один урок'); return; }
+
+            // Применяем доступность
+            if (!schoolData.availability[name]) schoolData.availability[name] = {};
+            days.forEach(day => { schoolData.availability[name][day] = [...slots]; });
+
             saveSchoolData();
+            refreshTeacherCard(name);
+            alert(`✅ Доступность применена для ${name}: ${days.join(', ')} с ${startTime} до ${endTime} (${slots.length} уроков)`);
+        }
 
-            // Обновляем селект и принудительно выбираем учителя
-            updateTeacherSelect();
-            const select = document.getElementById('teacherSelect');
-            select.value = data.teacher_name;
+        function applyDaysTemplate() {
+            const name = document.getElementById('tmpl_name2').value.trim();
+            if (!ensureTeacherExists(name)) return;
 
-            // Перерисовываем карточку учителя (предметы и сетку)
-            loadTeacherCard();
+            const days = getSelectedDays('.tmpl-day2');
+            if (days.length === 0) { alert('Выберите хотя бы один день'); return; }
 
-            alert('✅ Данные применены! Карточка учителя обновлена.');
+            const allSlots = Array.from({length: schoolData.lessonsPerDay}, (_, i) => i+1);
+
+            if (!schoolData.availability[name]) schoolData.availability[name] = {};
+            days.forEach(day => { schoolData.availability[name][day] = [...allSlots]; });
+
+            saveSchoolData();
+            refreshTeacherCard(name);
+            alert(`✅ Дни применены для ${name}: ${days.join(', ')} (все уроки)`);
+        }
+
+        function applyExcludeTemplate() {
+            const name = document.getElementById('tmpl_name3').value.trim();
+            if (!ensureTeacherExists(name)) return;
+
+            const excludedDays = getSelectedDays('.tmpl-day3');
+            if (excludedDays.length === 0) { alert('Выберите хотя бы один день для исключения'); return; }
+
+            const allDays = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
+            const workingDays = allDays.filter(d => !excludedDays.includes(d));
+            const allSlots = Array.from({length: schoolData.lessonsPerDay}, (_, i) => i+1);
+
+            if (!schoolData.availability[name]) schoolData.availability[name] = {};
+            workingDays.forEach(day => { schoolData.availability[name][day] = [...allSlots]; });
+            excludedDays.forEach(day => { schoolData.availability[name][day] = []; });
+
+            saveSchoolData();
+            refreshTeacherCard(name);
+            alert(`✅ Исключения применены для ${name}. НЕ работает: ${excludedDays.join(', ')}`);
         }
 
         async function generateTimetable() {
@@ -715,19 +895,18 @@
         function renderSchedule() {
             if (!currentResult || !currentResult.teachers) { document.getElementById('scheduleView').innerHTML = '<p style="color:#999">Нет данных для отображения</p>'; return; }
             const container = document.getElementById('scheduleView');
-            let html = '<h3>📋 Расписание по учителям</h3>';
+            let html = '<h3> Расписание по учителям</h3>';
             currentResult.teachers.forEach(teacher => {
                 html += '<div style="background:#f8f9fa;padding:20px;border-radius:10px;margin-bottom:20px">';
-                html += '<h4 style="color:#667eea;margin-bottom:15px">👨‍🏫 ' + teacher.teacher + ' (' + teacher.total_lessons + ' уроков)</h4>';
+                html += '<h4 style="color:#667eea;margin-bottom:15px">👨‍ ' + teacher.teacher + ' (' + teacher.total_lessons + ' уроков)</h4>';
                 const days = Object.keys(teacher.schedule).sort();
                 days.forEach(day => {
-                    html += '<div style="margin-bottom:10px"><strong>📅 ' + day + ':</strong><br>';
+                    html += '<div style="margin-bottom:10px"><strong> ' + day + ':</strong><br>';
                     const slots = Object.keys(teacher.schedule[day]).map(s => parseInt(s)).sort((a,b) => a-b);
                     slots.forEach(slot => {
                         const lessons = teacher.schedule[day][String(slot)];
                         lessons.forEach(lesson => {
-                            const classroom = lesson.classroom ? ` | 🏫 ${lesson.classroom}` : '';
-                            // Добавляем время, если оно есть в профиле школы
+                            const classroom = lesson.classroom ? ` |  ${lesson.classroom}` : '';
                             const timeStr = schoolData.lessonTimes[slot-1] ? ` (${schoolData.lessonTimes[slot-1]})` : '';
                             html += '<div style="background:#f0f4ff;padding:8px;margin:5px 0;border-left:3px solid #667eea;border-radius:4px"><strong>Урок ' + slot + timeStr + ':</strong> ' + lesson.subject + ' <span style="color:#666">(' + lesson.grade + ' класс' + classroom + ')</span></div>';
                         });
@@ -802,7 +981,6 @@
                 slots.forEach((slot, index) => {
                     const timeLabel = times[index] ? times[index] : '';
 
-                    // Строка урока
                     html += `<tr>`;
                     html += `<td style="font-weight: bold; text-align: center; background: #fafafa;">
                                 <div>Урок ${slot}</div>
@@ -826,7 +1004,6 @@
                     });
                     html += `</tr>`;
 
-                    // Строка перемены (если это не последний урок)
                     if (index < slots.length - 1) {
                         const nextTime = times[index+1] ? times[index+1].split('-')[0] : '';
                         const currEndTime = timeLabel ? timeLabel.split('-')[1] : '';
@@ -841,7 +1018,7 @@
             });
 
             html += `</tbody></table></div>`;
-            html += `<button class="outline" style="margin-top: 15px;" onclick="hideMasterView()">️ Вернуться к виду по учителям</button>`;
+            html += `<button class="outline" style="margin-top: 15px;" onclick="hideMasterView()">⬅️ Вернуться к виду по учителям</button>`;
 
             container.innerHTML = html;
         }
@@ -876,9 +1053,9 @@
                                 <button class="small primary" onclick="window.loadSavedTimetable(${t.id})">👁️ Открыть</button>
                                 <button class="small outline" onclick="window.downloadSavedPDF(${t.id}, 'teachers')">📄 PDF (уч.)</button>
                                 <button class="small outline" onclick="window.downloadSavedPDF(${t.id}, 'classes')">📄 PDF (кл.)</button>
-                                <button class="small outline" onclick="window.downloadSavedExcel(${t.id}, 'teachers')"> Excel (уч.)</button>
-                                <button class="small outline" onclick="window.downloadSavedExcel(${t.id}, 'classes')"> Excel (кл.)</button>
-                                <button class="small danger" onclick="window.deleteSavedTimetable(${t.id})">🗑️ Удалить</button>
+                                <button class="small outline" onclick="window.downloadSavedExcel(${t.id}, 'teachers')">📊 Excel (уч.)</button>
+                                <button class="small outline" onclick="window.downloadSavedExcel(${t.id}, 'classes')">📊 Excel (кл.)</button>
+                                <button class="small danger" onclick="window.deleteSavedTimetable(${t.id})">️ Удалить</button>
                             </div>
                         </div>
                     `).join('');
@@ -1011,7 +1188,7 @@
                             if (t.schedule[day][slotKey]) {
                                 t.schedule[day][slotKey].forEach(l => {
                                     if (l && l.grade === grade) {
-                                        const classroom = l.classroom ? `<br><small style="color:#888">🏫 ${l.classroom}</small>` : '';
+                                        const classroom = l.classroom ? `<br><small style="color:#888"> ${l.classroom}</small>` : '';
                                         cellContent = `<strong>${l.subject}</strong><br><small>👨‍🏫 ${t.teacher}</small>${classroom}`;
                                         isDraggable = true;
                                         lessonInfo = {
