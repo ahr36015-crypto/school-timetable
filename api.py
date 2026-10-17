@@ -136,9 +136,10 @@ def response_to_dict(result: TimetableResponse, request: TimetableRequest) -> Di
         "status": result.status, "solution_time": result.solution_time, "days": request.days, "slots": request.slots,
         "teachers": [{
             "teacher": t.teacher, "total_lessons": t.total_lessons,
-            "schedule": {
-                day: {str(slot): [{"subject": a.subject, "grade": a.grade, "teacher": a.teacher} for a in assignments]
-                      for slot, assignments in slots.items()} for day, slots in t.schedule.items()}
+            "schedule": {day: {
+                str(slot): [{"subject": a.subject, "grade": a.grade, "teacher": a.teacher, "classroom": a.classroom} for
+                            a in assignments] for slot, assignments in slots.items()} for day, slots in
+                         t.schedule.items()}
         } for t in result.teachers],
         "validation_errors": result.validation_errors
     }
@@ -148,8 +149,8 @@ def response_to_dict(result: TimetableResponse, request: TimetableRequest) -> Di
 def generate_timetable(request: TimetableRequest, current_user: User = Depends(get_current_user),
                        db: Session = Depends(get_db)):
     try:
-        print(f"🚀 НАЧАЛО ГЕНЕРАЦИИ для пользователя {current_user.id}")
-        print(f"📊 Данные: {len(request.teachers)} учителей, {len(request.days)} дней, {len(request.slots)} слотов")
+        print(f" НАЧАЛО ГЕНЕРАЦИИ для пользователя {current_user.id}")
+        print(f" Данные: {len(request.teachers)} учителей, {len(request.days)} дней, {len(request.slots)} слотов")
 
         is_valid, teacher_stats, errors = validate_teachers(request)
         if not is_valid:
@@ -236,6 +237,57 @@ def delete_timetable(timetable_id: int, current_user: User = Depends(get_current
     return {"message": "Расписание удалено"}
 
 
+# ============================================================
+# НОВЫЙ ЭНДПОИНТ ДЛЯ ОБЩЕГО РАСПИСАНИЯ (MASTER VIEW)
+# ============================================================
+@app.get("/timetables/{timetable_id}/master-view")
+def get_master_view(
+        timetable_id: int,
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+):
+    """Возвращает расписание в формате: День -> Урок -> {Класс: {subject, teacher, classroom}}"""
+    timetable = db.query(SavedTimetable).filter(
+        SavedTimetable.id == timetable_id,
+        SavedTimetable.user_id == current_user.id
+    ).first()
+
+    if not timetable:
+        raise HTTPException(status_code=404, detail="Расписание не найдено")
+
+    data = timetable.data
+    days = data.get("days", [])
+    slots = data.get("slots", [])
+    teachers = data.get("teachers", [])
+
+    # Структура результата: { day: { slot: { grade: {subject, teacher, classroom} } } }
+    master_schedule = {}
+
+    for day in days:
+        master_schedule[day] = {}
+        for slot in slots:
+            slot_str = str(slot)
+            master_schedule[day][slot_str] = {}
+
+            # Проходим по всем учителям и собираем уроки для этого времени
+            for t in teachers:
+                t_sched = t.get('schedule', {})
+                if day in t_sched and slot_str in t_sched[day]:
+                    for lesson in t_sched[day][slot_str]:
+                        grade = lesson['grade']
+                        master_schedule[day][slot_str][grade] = {
+                            'subject': lesson['subject'],
+                            'teacher': lesson['teacher'],
+                            'classroom': lesson.get('classroom', '')
+                        }
+
+    return {
+        "days": days,
+        "slots": slots,
+        "schedule": master_schedule
+    }
+
+
 @app.post("/timetables/{timetable_id}/move-lesson")
 def move_lesson(
         timetable_id: int,
@@ -256,7 +308,6 @@ def move_lesson(
         data = timetable.data
         teachers = data.get('teachers', [])
 
-        # Находим учителя и удаляем урок со старого места
         target_teacher = None
         for t in teachers:
             if t['teacher'] == move_data['teacher']:
@@ -283,16 +334,13 @@ def move_lesson(
                 if not old_schedule[from_day]:
                     del old_schedule[from_day]
 
-        # Проверяем конфликт на новом месте
         to_day = move_data['to_day']
         to_slot = str(move_data['to_slot'])
 
-        # 1. Конфликт у этого же учителя
         if to_day in old_schedule and to_slot in old_schedule[to_day]:
             raise HTTPException(status_code=409,
                                 detail=f"Конфликт: {move_data['teacher']} уже занят в {to_day} на {to_slot} уроке")
 
-        # 2. Конфликт у класса (проверяем всех остальных учителей)
         for t in teachers:
             if t['teacher'] == move_data['teacher']: continue
             t_sched = t.get('schedule', {})
@@ -302,7 +350,6 @@ def move_lesson(
                         raise HTTPException(status_code=409,
                                             detail=f"Конфликт: Класс {move_data['grade']} уже имеет урок в это время у учителя {t['teacher']}")
 
-        # Если конфликтов нет, добавляем урок на новое место
         if to_day not in old_schedule:
             old_schedule[to_day] = {}
         if to_slot not in old_schedule[to_day]:
@@ -311,7 +358,8 @@ def move_lesson(
         old_schedule[to_day][to_slot].append({
             'subject': move_data['subject'],
             'grade': move_data['grade'],
-            'teacher': move_data['teacher']
+            'teacher': move_data['teacher'],
+            'classroom': move_data.get('classroom', '')  # Сохраняем кабинет при перемещении
         })
 
         timetable.data = data
@@ -322,7 +370,7 @@ def move_lesson(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Ошибка при перемещении урока: {e}")
+        print(f" Ошибка при перемещении урока: {e}")
         import traceback;
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Внутренняя ошибка сервера: {str(e)}")
