@@ -198,7 +198,7 @@
             </div>
 
             <div id="ref-classes" class="reference-content active">
-                <h3>📚 Управление классами</h3>
+                <h3> Управление классами</h3>
                 <div class="form-group"><label for="newClassName">Название класса</label><input type="text" id="newClassName" placeholder="Например: 5А"><p class="help-text">Формат: номер + буква (опционально)</p><p id="classDuplicateWarning" class="duplicate-warning">⚠️ Такой класс уже существует!</p><button class="add-btn" onclick="addClass()"> Добавить класс</button></div>
                 <table class="data-table"><thead><tr><th>Название</th><th>Класс (номер)</th><th style="width:150px">Действия</th></tr></thead><tbody id="classesTable"></tbody></table>
             </div>
@@ -218,7 +218,7 @@
 
             <div id="ref-classrooms" class="reference-content">
                 <h3>🏫 Управление кабинетами</h3>
-                <div class="form-group"><label for="newClassroomNumber">Номер кабинета *</label><input type="text" id="newClassroomNumber" placeholder="Например: 101, 205"><p id="classroomDuplicateWarning" class="duplicate-warning">⚠️ Такой кабинет уже существует!</p><button class="add-btn" onclick="addClassroom()"> Добавить кабинет</button></div>
+                <div class="form-group"><label for="newClassroomNumber">Номер кабинета *</label><input type="text" id="newClassroomNumber" placeholder="Например: 101, 205"><p id="classroomDuplicateWarning" class="duplicate-warning">️ Такой кабинет уже существует!</p><button class="add-btn" onclick="addClassroom()"> Добавить кабинет</button></div>
                 <div class="form-group"><label for="newClassroomCapacity">Вместимость (количество мест)</label><input type="number" id="newClassroomCapacity" placeholder="Например: 25" min="1"></div>
                 <table class="data-table"><thead><tr><th>Кабинет</th><th>Вместимость</th><th style="width:150px">Действия</th></tr></thead><tbody id="classroomsTable"></tbody></table>
 
@@ -363,7 +363,7 @@
         <div id="step4" class="wizard-content">
             <h2> Шаг 4: Генерация расписания</h2>
             <p style="color:#666;margin-bottom:20px">Нажмите кнопку для запуска алгоритма Google OR-Tools</p>
-            <div style="text-align:center;padding:40px"><button id="generateBtn" onclick="generateTimetable()" style="font-size:20px;padding:20px 40px">🎯 Сгенерировать расписание</button></div>
+            <div style="text-align:center;padding:40px"><button id="generateBtn" onclick="generateTimetable()" style="font-size:20px;padding:20px 40px"> Сгенерировать расписание</button></div>
             <div id="genError" class="error"></div><div id="genSuccess" class="success"></div>
             <div id="resultsSection" class="results-section">
                 <h3>✅ Результаты генерации</h3>
@@ -379,8 +379,8 @@
 
                 <div class="step-actions">
                     <button class="outline" onclick="downloadPDF('teachers')"> PDF (учителя)</button>
-                    <button class="outline" onclick="downloadPDF('classes')">📄 PDF (классы)</button>
-                    <button class="outline" onclick="downloadExcel('teachers')">📊 Excel (учителя)</button>
+                    <button class="outline" onclick="downloadPDF('classes')"> PDF (классы)</button>
+                    <button class="outline" onclick="downloadExcel('teachers')"> Excel (учителя)</button>
                     <button class="outline" onclick="downloadExcel('classes')">📊 Excel (классы)</button>
                     <button class="primary" onclick="showMasterView()">📋 Общее расписание</button>
                     <button class="secondary" onclick="completeStep(4)">➡️ Перейти к редактору</button>
@@ -406,7 +406,7 @@
                 <div class="stat-card"><h3>📄 PDF для печати</h3><p style="color:#666;margin:10px 0">Готовые файлы для размещения на стенде</p><button class="primary" onclick="downloadPDF('teachers')">👨🏫 По учителям</button><button class="primary" onclick="downloadPDF('classes')" style="margin-top:10px">👥 По классам</button></div>
                 <div class="stat-card"><h3>📊 Excel для редактирования</h3><p style="color:#666;margin:10px 0">Файлы для дальнейшей работы</p><button class="primary" onclick="downloadExcel('teachers')">👨‍ По учителям</button><button class="primary" onclick="downloadExcel('classes')" style="margin-top:10px"> По классам</button></div>
                 <div class="stat-card"><h3>📧 Отправка учителям</h3><p style="color:#666;margin:10px 0">Ссылки на расписание</p><button class="outline" onclick="sendToTeachers()">📱 Отправить в Telegram</button><button class="outline" onclick="sendToEmail()" style="margin-top:10px">📧 Отправить на почту</button></div>
-                <div class="stat-card"><h3> Интеграция с журналом</h3><p style="color:#666;margin:10px 0">Выгрузка в электронный журнал</p><button class="secondary" onclick="exportToJournal()">🔗 Экспорт API</button></div>
+                <div class="stat-card"><h3> Интеграция с журналом</h3><p style="color:#666;margin:10px 0">Выгрузка в электронный журнал</p><button class="secondary" onclick="exportToJournal()"> Экспорт API</button></div>
             </div>
             <div style="text-align:center;margin-top:30px"><button onclick="publishTimetable()" style="font-size:18px;padding:20px 40px">✅ Опубликовать расписание</button></div>
         </div>
@@ -583,7 +583,7 @@
             document.getElementById('workloadList').innerHTML = workloads.map((w,i) => `
                 <div class="workload-row">
                     <div class="form-group autocomplete-wrapper">
-                        <label for="subject-${i}">📚 Предмет</label>
+                        <label for="subject-${i}"> Предмет</label>
                         <input type="text" id="subject-${i}" class="workload-subject" value="${w.subject}" placeholder="Например: Математика" data-idx="${i}" data-field="subject" oninput="filterAutocomplete(this)" onfocus="showAutocomplete(this, 'subjects')">
                         <div class="autocomplete-list" style="display:none"></div>
                     </div>
@@ -687,7 +687,7 @@
             loadTeacherCard();
         }
 
-        // ✅ ИСПРАВЛЕННАЯ ЛОГИКА ВРЕМЕНИ: "Мягкий" поиск уроков
+        // ✅ ЖЕЛЕЗОБЕТОННАЯ ЛОГИКА ВРЕМЕНИ
         function applyTimeTemplate() {
             const name = document.getElementById('tmpl_name').value.trim();
             if (!ensureTeacherExists(name)) return;
@@ -698,11 +698,12 @@
             const startTime = document.getElementById('tmpl_start').value;
             const endTime = document.getElementById('tmpl_end').value;
 
-            const LESSON_TIMES = [
-                ("08:30", "09:15"), ("09:25", "10:10"), ("10:20", "11:05"),
-                ("11:25", "12:10"), ("12:20", "13:05"), ("13:15", "14:00"),
-                ("14:10", "14:55"), ("15:05", "15:50")
-            ];
+            // Берем время ИЗ ПРОФИЛЯ ШКОЛЫ (Шаг 1), а не хардкодим
+            const lessonTimes = schoolData.lessonTimes;
+            if (!lessonTimes || lessonTimes.length === 0) {
+                alert(' Сначала заполните сетку времени на Шаге 1!');
+                return;
+            }
 
             const startParts = startTime.split(':');
             const endParts = endTime.split(':');
@@ -710,31 +711,36 @@
             const endMin = parseInt(endParts[0])*60 + parseInt(endParts[1]);
 
             const slots = [];
-            LESSON_TIMES.forEach((times, i) => {
-                const ls = times[0].split(':'); const le = times[1].split(':');
+
+            // Проходим по всем урокам из профиля школы
+            lessonTimes.forEach((timeRange, i) => {
+                const parts = timeRange.split('-');
+                if (parts.length !== 2) return;
+
+                const ls = parts[0].split(':'); const le = parts[1].split(':');
                 const lStart = parseInt(ls[0])*60 + parseInt(ls[1]);
                 const lEnd = parseInt(le[0])*60 + parseInt(le[1]);
 
-                // ✅ МЯГКАЯ ЛОГИКА: Урок подходит, если он НАЧИНАЕТСЯ внутри диапазона
-                // ИЛИ если диапазон начинается внутри урока (пересечение)
-                if ((lStart >= startMin && lStart < endMin) || (lStart <= startMin && lEnd > startMin)) {
+                // ✅ ПРОСТАЯ ЛОГИКА: Урок входит, если он начинается ПОСЛЕ начала диапазона
+                // И заканчивается ДО конца диапазона
+                if (lStart >= startMin && lEnd <= endMin) {
                     slots.push(i+1);
                 }
             });
 
             if (slots.length === 0) {
-                alert('Выбранное время не попадает ни на один урок. Попробуйте расширить диапазон.');
+                alert(` В диапазоне ${startTime} - ${endTime} не найдено уроков.\nТекущая сетка: ${lessonTimes.join(', ')}\nПопробуйте расширить диапазон.`);
                 return;
             }
 
-            // ✅ ПРОВЕРКА КОНФЛИКТОВ: Если у учителя уже есть доступность, спрашиваем подтверждение
+            // ✅ ПРОВЕРКА КОНФЛИКТОВ
             if (schoolData.availability[name] && Object.keys(schoolData.availability[name]).length > 0) {
-                if (!confirm(`⚠️ У учителя "${name}" уже есть настройки доступности. \nНовые значения ЗАМЕНЯТ старые для выбранных дней: ${days.join(', ')}. \nПродолжить?`)) {
+                if (!confirm(`⚠️ У учителя "${name}" уже есть настройки доступности. \nНовые значения ЗАМЕНЯТ старые для дней: ${days.join(', ')}. \nПродолжить?`)) {
                     return;
                 }
             }
 
-            // Применяем доступность (перезаписываем для выбранных дней)
+            // Применяем доступность
             if (!schoolData.availability[name]) schoolData.availability[name] = {};
             days.forEach(day => { schoolData.availability[name][day] = [...slots]; });
 
@@ -1007,7 +1013,7 @@
 
             let html = `
                 <div class="master-table-container">
-                    <h3 style="margin-bottom: 15px;">📋 Общее расписание занятий</h3>
+                    <h3 style="margin-bottom: 15px;"> Общее расписание занятий</h3>
                     <table class="master-table">
                         <thead>
                             <tr>
@@ -1095,7 +1101,7 @@
                             <div class="saved-timetable-actions">
                                 <button class="small primary" onclick="window.loadSavedTimetable(${t.id})">️ Открыть</button>
                                 <button class="small outline" onclick="window.downloadSavedPDF(${t.id}, 'teachers')">📄 PDF (уч.)</button>
-                                <button class="small outline" onclick="window.downloadSavedPDF(${t.id}, 'classes')">📄 PDF (кл.)</button>
+                                <button class="small outline" onclick="window.downloadSavedPDF(${t.id}, 'classes')"> PDF (кл.)</button>
                                 <button class="small outline" onclick="window.downloadSavedExcel(${t.id}, 'teachers')">📊 Excel (уч.)</button>
                                 <button class="small outline" onclick="window.downloadSavedExcel(${t.id}, 'classes')">📊 Excel (кл.)</button>
                                 <button class="small danger" onclick="window.deleteSavedTimetable(${t.id})">️ Удалить</button>
@@ -1367,7 +1373,7 @@
         }
 
         function validateTimetable() { alert('✅ Конфликтов не найдено! Расписание корректно.'); }
-        function sendToTeachers() { alert('📱 Ссылки на расписание отправлены учителям в Telegram!'); }
+        function sendToTeachers() { alert(' Ссылки на расписание отправлены учителям в Telegram!'); }
         function sendToEmail() { alert(' Письма с расписанием отправлены на почту учителей!'); }
         function exportToJournal() { alert('🔗 Данные экспортированы в электронный журнал через API!'); }
         function publishTimetable() { if (confirm('Опубликовать расписание? После публикации изменения будут недоступны.')) { alert('✅ Расписание опубликовано! Все участники получили уведомления.'); } }
