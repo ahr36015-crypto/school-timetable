@@ -95,7 +95,7 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
 
 
 # ============================================================
-# УЛУЧШЕННЫЙ AI-ПАРСЕР С ПОДДЕРЖКОЙ ВРЕМЕНИ
+# УЛУЧШЕННЫЙ AI-ПАРСЕР С ПОДДЕРЖКОЙ ДИАПАЗОНОВ ВРЕМЕНИ
 # ============================================================
 @app.post("/api/ai-parse")
 def ai_parse_text(request: AIInputRequest, current_user: User = Depends(get_current_user)):
@@ -103,7 +103,8 @@ def ai_parse_text(request: AIInputRequest, current_user: User = Depends(get_curr
     result = {"teacher_name": "", "lessons": [], "availability": {}, "max_days": 5}
 
     # 1. Извлекаем имя
-    name_match = re.search(r'(?:учитель\s+)?([а-яё]+(?:\s+[а-яё\.]+){1,3})\s+(?:может|ведет|преподает|работает)', text)
+    name_match = re.search(
+        r'(?:учитель\s+)?([а-яё]+(?:\s+[а-яё\.]+){1,3})\s+(?:может|ведет|преподает|работает|проводит)', text)
     if name_match:
         raw_name = name_match.group(1).strip()
         result["teacher_name"] = raw_name.title()
@@ -118,54 +119,47 @@ def ai_parse_text(request: AIInputRequest, current_user: User = Depends(get_curr
         for match in matches:
             result["lessons"].append({"subject": match[0].strip().title(), "grade": match[1].strip(), "hours": 2})
 
-    # 3. Стандартная сетка времени (должна совпадать с Шагом 1 по умолчанию)
+    # 3. Сетка времени (стандартная)
     LESSON_TIMES = [
-        ("08:30", "09:15"),  # Урок 1
-        ("09:25", "10:10"),  # Урок 2
-        ("10:20", "11:05"),  # Урок 3
-        ("11:25", "12:10"),  # Урок 4
-        ("12:20", "13:05"),  # Урок 5
-        ("13:15", "14:00"),  # Урок 6
-        ("14:10", "14:55"),  # Урок 7
-        ("15:05", "15:50"),  # Урок 8
+        ("08:30", "09:15"), ("09:25", "10:10"), ("10:20", "11:05"),
+        ("11:25", "12:10"), ("12:20", "13:05"), ("13:15", "14:00"),
+        ("14:10", "14:55"), ("15:05", "15:50")
     ]
 
-    def time_to_slots_before(time_str):
-        """Возвращает уроки, которые ЗАКАНЧИВАЮТСЯ до указанного времени"""
-        clean_time = time_str.replace('.', ':').strip()
-        parts = clean_time.split(':')
-        if len(parts) != 2: return []
-        try:
-            h, m = int(parts[0]), int(parts[1])
-            target_min = h * 60 + m
-            available = []
-            for i, (start, end) in enumerate(LESSON_TIMES):
-                s_parts = start.split(':')
-                e_parts = end.split(':')
-                end_min = int(e_parts[0]) * 60 + int(e_parts[1])
-                if end_min <= target_min:
-                    available.append(i + 1)
-            return available
-        except:
-            return []
+    def get_slots_by_time(start_time_str=None, end_time_str=None):
+        """Возвращает номера уроков, попадающих в диапазон [start, end]"""
+        slots = []
+        start_min = 0
+        end_min = 24 * 60
 
-    def time_to_slots_after(time_str):
-        """Возвращает уроки, которые НАЧИНАЮТСЯ после указанного времени"""
-        clean_time = time_str.replace('.', ':').strip()
-        parts = clean_time.split(':')
-        if len(parts) != 2: return []
-        try:
-            h, m = int(parts[0]), int(parts[1])
-            target_min = h * 60 + m
-            available = []
-            for i, (start, end) in enumerate(LESSON_TIMES):
-                s_parts = start.split(':')
-                start_min = int(s_parts[0]) * 60 + int(s_parts[1])
-                if start_min >= target_min:
-                    available.append(i + 1)
-            return available
-        except:
-            return []
+        if start_time_str:
+            clean = start_time_str.replace('.', ':').strip()
+            parts = clean.split(':')
+            if len(parts) == 2:
+                try:
+                    start_min = int(parts[0]) * 60 + int(parts[1])
+                except:
+                    pass
+
+        if end_time_str:
+            clean = end_time_str.replace('.', ':').strip()
+            parts = clean.split(':')
+            if len(parts) == 2:
+                try:
+                    end_min = int(parts[0]) * 60 + int(parts[1])
+                except:
+                    pass
+
+        for i, (s, e) in enumerate(LESSON_TIMES):
+            s_parts = s.split(':');
+            e_parts = e.split(':')
+            lesson_start = int(s_parts[0]) * 60 + int(s_parts[1])
+            lesson_end = int(e_parts[0]) * 60 + int(e_parts[1])
+
+            # Урок подходит, если он начинается >= start и заканчивается <= end
+            if lesson_start >= start_min and lesson_end <= end_min:
+                slots.append(i + 1)
+        return slots
 
     days_map = {
         "понедельник": "Понедельник", "вторник": "Вторник", "среда": "Среда",
@@ -173,50 +167,53 @@ def ai_parse_text(request: AIInputRequest, current_user: User = Depends(get_curr
         "каждый день": "ALL"
     }
 
-    # Ищем фразы про дни и время
-    # Регулярка ищет: "во вторник и четверг после 12.00" или "каждый день до 14:00"
-    time_phrases = re.finditer(
-        r'(?:в\s+)?(понедельник|вторник|среда|четверг|пятница|суббота|каждый день)(?:\s+и\s+(понедельник|вторник|среда|четверг|пятница|суббота))?\s+(.+?)(?:\s*(?:\.|,|;|$))',
-        text)
-
-    for match in time_phrases:
-        day1 = match.group(1)
-        day2 = match.group(2)
-        time_desc = match.group(3).lower()
-
-        target_days = []
-        if day1 in days_map:
-            if day1 == "каждый день":
-                target_days = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"]
+    # Ищем дни недели в тексте
+    found_days = []
+    for day_ru, day_norm in days_map.items():
+        if day_ru in text:
+            if day_ru == "каждый день":
+                found_days.extend(["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"])
             else:
-                target_days.append(days_map[day1])
-        if day2 and day2 in days_map:
-            target_days.append(days_map[day2])
+                found_days.append(day_norm)
 
+    # Если дни найдены, ищем время относительно них
+    if found_days:
         slots = []
 
-        # Анализ описания времени
-        if "в любое время" in time_desc or "весь день" in time_desc:
-            slots = list(range(1, len(LESSON_TIMES) + 1))
-        elif "первая половина" in time_desc:
-            slots = [1, 2, 3, 4]
-        elif "после" in time_desc:
-            t_match = re.search(r'после\s+(\d{1,2}[.:]\d{2})', time_desc)
-            if t_match:
-                slots = time_to_slots_after(t_match.group(1))
-        elif "до" in time_desc:
-            t_match = re.search(r'до\s+(\d{1,2}[.:]\d{2})', time_desc)
-            if t_match:
-                slots = time_to_slots_before(t_match.group(1))
+        # 1. Диапазон "с X до Y"
+        range_match = re.search(r'с\s+(\d{1,2}[.:]\d{2})\s+до\s+(\d{1,2}[.:]\d{2}(?:\s*часов)?)', text)
+        if range_match:
+            slots = get_slots_by_time(range_match.group(1), range_match.group(2))
 
-        # Если нашли конкретные номера уроков (например "1, 2 урок")
-        lesson_nums = re.findall(r'(\d+)\s*(?:-й)?\s*урок', time_desc)
-        if lesson_nums:
-            slots = [int(x) for x in lesson_nums]
+        # 2. Только "до X"
+        elif not slots:
+            end_match = re.search(r'до\s+(\d{1,2}[.:]\d{2}(?:\s*часов)?)', text)
+            if end_match:
+                slots = get_slots_by_time(end_time_str=end_match.group(1))
 
-        # Записываем в результат
-        for d in target_days:
-            if slots:
+        # 3. Только "после X"
+        elif not slots:
+            start_match = re.search(r'после\s+(\d{1,2}[.:]\d{2}(?:\s*часов)?)', text)
+            if start_match:
+                slots = get_slots_by_time(start_time_str=start_match.group(1))
+
+        # Записываем найденные слоты для всех найденных дней
+        if slots:
+            for d in set(found_days):
+                result["availability"][d] = slots
+
+    # Fallback: если дней нет, но есть время - применяем ко всем будням
+    if not result["availability"] and ("до" in text or "после" in text or "с" in text):
+        slots = []
+        range_match = re.search(r'с\s+(\d{1,2}[.:]\d{2})\s+до\s+(\d{1,2}[.:]\d{2})', text)
+        if range_match:
+            slots = get_slots_by_time(range_match.group(1), range_match.group(2))
+        else:
+            end_match = re.search(r'до\s+(\d{1,2}[.:]\d{2})', text)
+            if end_match: slots = get_slots_by_time(end_time_str=end_match.group(1))
+
+        if slots:
+            for d in ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"]:
                 result["availability"][d] = slots
 
     return result
