@@ -95,19 +95,23 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
 
 
 # ============================================================
-# УЛУЧШЕННЫЙ AI-ПАРСЕР С ПОДДЕРЖКОЙ ДИАПАЗОНОВ ВРЕМЕНИ
+# УЛУЧШЕННЫЙ AI-ПАРСЕР С ИСПРАВЛЕНИЕМ ИМЕНИ И ВРЕМЕНИ
 # ============================================================
 @app.post("/api/ai-parse")
 def ai_parse_text(request: AIInputRequest, current_user: User = Depends(get_current_user)):
-    text = request.text.lower()
+    text = request.text.lower().strip()
     result = {"teacher_name": "", "lessons": [], "availability": {}, "max_days": 5}
 
-    # 1. Извлекаем имя
+    # 1. Извлекаем имя (строгая логика: берем слова ДО ключевых глаголов)
+    # Ищем паттерн: [Имя] [может/ведет/преподает/работает/проводит]
     name_match = re.search(
-        r'(?:учитель\s+)?([а-яё]+(?:\s+[а-яё\.]+){1,3})\s+(?:может|ведет|преподает|работает|проводит)', text)
+        r'^(?:учитель\s+)?([а-яё]+(?:\s+[а-яё\.]+)*?)\s+(?:может|ведет|преподает|работает|проводит|занятия)', text)
     if name_match:
         raw_name = name_match.group(1).strip()
-        result["teacher_name"] = raw_name.title()
+        # Убираем лишние служебные слова, если они попали
+        stop_words = ['может', 'вести', 'урок', 'уроки', 'занятие', 'занятия']
+        clean_name_parts = [w for w in raw_name.split() if w.lower() not in stop_words]
+        result["teacher_name"] = " ".join(clean_name_parts).title()
 
     # 2. Извлекаем предметы
     lesson_patterns = [
@@ -119,7 +123,7 @@ def ai_parse_text(request: AIInputRequest, current_user: User = Depends(get_curr
         for match in matches:
             result["lessons"].append({"subject": match[0].strip().title(), "grade": match[1].strip(), "hours": 2})
 
-    # 3. Сетка времени (стандартная)
+    # 3. Сетка времени
     LESSON_TIMES = [
         ("08:30", "09:15"), ("09:25", "10:10"), ("10:20", "11:05"),
         ("11:25", "12:10"), ("12:20", "13:05"), ("13:15", "14:00"),
@@ -127,7 +131,6 @@ def ai_parse_text(request: AIInputRequest, current_user: User = Depends(get_curr
     ]
 
     def get_slots_by_time(start_time_str=None, end_time_str=None):
-        """Возвращает номера уроков, попадающих в диапазон [start, end]"""
         slots = []
         start_min = 0
         end_min = 24 * 60
@@ -142,7 +145,10 @@ def ai_parse_text(request: AIInputRequest, current_user: User = Depends(get_curr
                     pass
 
         if end_time_str:
-            clean = end_time_str.replace('.', ':').strip()
+            # Обработка "16 часов" -> "16:00"
+            clean = end_time_str.replace('.', ':').replace('часов', '').replace('ч', '').strip()
+            if ':' not in clean: clean += ":00"
+
             parts = clean.split(':')
             if len(parts) == 2:
                 try:
@@ -156,7 +162,6 @@ def ai_parse_text(request: AIInputRequest, current_user: User = Depends(get_curr
             lesson_start = int(s_parts[0]) * 60 + int(s_parts[1])
             lesson_end = int(e_parts[0]) * 60 + int(e_parts[1])
 
-            # Урок подходит, если он начинается >= start и заканчивается <= end
             if lesson_start >= start_min and lesson_end <= end_min:
                 slots.append(i + 1)
         return slots
@@ -167,7 +172,7 @@ def ai_parse_text(request: AIInputRequest, current_user: User = Depends(get_curr
         "каждый день": "ALL"
     }
 
-    # Ищем дни недели в тексте
+    # Ищем дни недели
     found_days = []
     for day_ru, day_norm in days_map.items():
         if day_ru in text:
@@ -176,45 +181,37 @@ def ai_parse_text(request: AIInputRequest, current_user: User = Depends(get_curr
             else:
                 found_days.append(day_norm)
 
-    # Если дни найдены, ищем время относительно них
-    if found_days:
-        slots = []
+    # Логика поиска времени
+    slots = []
 
-        # 1. Диапазон "с X до Y"
-        range_match = re.search(r'с\s+(\d{1,2}[.:]\d{2})\s+до\s+(\d{1,2}[.:]\d{2}(?:\s*часов)?)', text)
-        if range_match:
-            slots = get_slots_by_time(range_match.group(1), range_match.group(2))
+    # Приоритет 1: Диапазон "с X до Y"
+    range_match = re.search(r'с\s+(\d{1,2}[.:]\d{0,2})\s+до\s+(\d{1,2}[.:]\d{0,2}(?:\s*часов?)?)', text)
+    if range_match:
+        slots = get_slots_by_time(range_match.group(1), range_match.group(2))
 
-        # 2. Только "до X"
-        elif not slots:
-            end_match = re.search(r'до\s+(\d{1,2}[.:]\d{2}(?:\s*часов)?)', text)
-            if end_match:
-                slots = get_slots_by_time(end_time_str=end_match.group(1))
+    # Приоритет 2: Только "до X"
+    elif not slots:
+        end_match = re.search(r'до\s+(\d{1,2}[.:]\d{0,2}(?:\s*часов?)?)', text)
+        if end_match:
+            slots = get_slots_by_time(end_time_str=end_match.group(1))
 
-        # 3. Только "после X"
-        elif not slots:
-            start_match = re.search(r'после\s+(\d{1,2}[.:]\d{2}(?:\s*часов)?)', text)
-            if start_match:
-                slots = get_slots_by_time(start_time_str=start_match.group(1))
+    # Приоритет 3: Только "после X"
+    elif not slots:
+        start_match = re.search(r'после\s+(\d{1,2}[.:]\d{0,2}(?:\s*часов?)?)', text)
+        if start_match:
+            slots = get_slots_by_time(start_time_str=start_match.group(1))
 
-        # Записываем найденные слоты для всех найденных дней
-        if slots:
-            for d in set(found_days):
-                result["availability"][d] = slots
+    # Применяем слоты к дням
+    target_days = set(found_days) if found_days else {"Понедельник", "Вторник", "Среда", "Четверг", "Пятница"}
 
-    # Fallback: если дней нет, но есть время - применяем ко всем будням
-    if not result["availability"] and ("до" in text or "после" in text or "с" in text):
-        slots = []
-        range_match = re.search(r'с\s+(\d{1,2}[.:]\d{2})\s+до\s+(\d{1,2}[.:]\d{2})', text)
-        if range_match:
-            slots = get_slots_by_time(range_match.group(1), range_match.group(2))
-        else:
-            end_match = re.search(r'до\s+(\d{1,2}[.:]\d{2})', text)
-            if end_match: slots = get_slots_by_time(end_time_str=end_match.group(1))
+    if slots:
+        for d in target_days:
+            result["availability"][d] = slots
 
-        if slots:
-            for d in ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"]:
-                result["availability"][d] = slots
+    # Если дней вообще не нашли в тексте, но время есть - применяем ко всем будням
+    if not found_days and slots:
+        for d in ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"]:
+            result["availability"][d] = slots
 
     return result
 
