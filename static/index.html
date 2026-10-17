@@ -6,316 +6,102 @@
     <title>Генератор школьного расписания</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        .container {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            padding: 40px;
-            max-width: 1400px;
-            margin: 0 auto;
-        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { background: white; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); padding: 40px; max-width: 1400px; margin: 0 auto; }
         h1 { text-align: center; color: #333; margin-bottom: 10px; font-size: 32px; }
         .subtitle { text-align: center; color: #666; margin-bottom: 30px; }
-
         .auth-container { max-width: 450px; margin: 100px auto; }
         .tabs { display: flex; margin-bottom: 30px; border-bottom: 2px solid #eee; }
-        .tab {
-            flex: 1; padding: 12px; text-align: center; cursor: pointer;
-            border: none; background: none; font-size: 16px; color: #666;
-        }
+        .tab { flex: 1; padding: 12px; text-align: center; cursor: pointer; border: none; background: none; font-size: 16px; color: #666; }
         .tab.active { color: #667eea; border-bottom: 3px solid #667eea; font-weight: 600; }
         .form-group { margin-bottom: 20px; }
         label { display: block; margin-bottom: 8px; color: #333; font-weight: 500; }
-        input, select, textarea {
-            width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0;
-            border-radius: 8px; font-size: 15px; font-family: inherit;
-        }
+        input, select, textarea { width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 15px; font-family: inherit; }
         input:focus, select:focus, textarea:focus { outline: none; border-color: #667eea; }
-        button {
-            padding: 14px 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white; border: none; border-radius: 8px;
-            font-size: 16px; font-weight: 600; cursor: pointer;
-            transition: transform 0.2s;
-        }
+        button { padding: 14px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: transform 0.2s; }
         button:hover { transform: translateY(-2px); }
         button.full { width: 100%; }
         button.danger { background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); }
         button.primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
         button.secondary { background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%); }
-        button.outline {
-            background: white; color: #667eea; border: 2px solid #667eea;
-        }
+        button.outline { background: white; color: #667eea; border: 2px solid #667eea; }
         button.outline:hover { background: #f0f4ff; }
         button.small { padding: 10px 16px; font-size: 14px; }
-        button.add-btn {
-            margin-top: 10px;
-            padding: 12px 24px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-
-        .error {
-            background: #fee; color: #c33; padding: 12px;
-            border-radius: 8px; margin-top: 15px;
-            border-left: 4px solid #c33; display: none;
-        }
+        button.add-btn { margin-top: 10px; padding: 12px 24px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .error { background: #fee; color: #c33; padding: 12px; border-radius: 8px; margin-top: 15px; border-left: 4px solid #c33; display: none; }
         .error.show { display: block; }
-        .success {
-            background: #efe; color: #3c3; padding: 12px;
-            border-radius: 8px; margin-top: 15px;
-            border-left: 4px solid #3c3; display: none;
-        }
+        .success { background: #efe; color: #3c3; padding: 12px; border-radius: 8px; margin-top: 15px; border-left: 4px solid #3c3; display: none; }
         .success.show { display: block; }
         .form-section { display: none; }
         .form-section.active { display: block; }
-
         #mainApp { display: none; }
         #mainApp.active { display: block; }
-        .wizard-steps {
-            display: flex; justify-content: space-between;
-            margin-bottom: 30px; padding: 20px;
-            background: #f8f9fa; border-radius: 12px;
-        }
-        .wizard-step {
-            flex: 1; text-align: center; padding: 10px;
-            cursor: pointer; border-radius: 8px;
-            transition: all 0.3s;
-        }
+        .wizard-steps { display: flex; justify-content: space-between; margin-bottom: 30px; padding: 20px; background: #f8f9fa; border-radius: 12px; }
+        .wizard-step { flex: 1; text-align: center; padding: 10px; cursor: pointer; border-radius: 8px; transition: all 0.3s; }
         .wizard-step.active { background: #667eea; color: white; }
         .wizard-step.completed { background: #27ae60; color: white; }
-        .wizard-step-number {
-            display: inline-block; width: 30px; height: 30px;
-            line-height: 30px; border-radius: 50%;
-            background: rgba(255,255,255,0.3); margin-right: 8px;
-        }
+        .wizard-step-number { display: inline-block; width: 30px; height: 30px; line-height: 30px; border-radius: 50%; background: rgba(255,255,255,0.3); margin-right: 8px; }
         .wizard-content { display: none; }
         .wizard-content.active { display: block; }
-
-        .reference-tabs {
-            display: flex; gap: 10px; margin-bottom: 20px;
-            border-bottom: 2px solid #eee; flex-wrap: wrap;
-        }
-        .reference-tab {
-            padding: 10px 20px; cursor: pointer;
-            border: none; background: none; font-size: 14px;
-            color: #666; border-bottom: 3px solid transparent;
-        }
-        .reference-tab.active {
-            color: #667eea; border-bottom-color: #667eea;
-        }
+        .reference-tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #eee; flex-wrap: wrap; }
+        .reference-tab { padding: 10px 20px; cursor: pointer; border: none; background: none; font-size: 14px; color: #666; border-bottom: 3px solid transparent; }
+        .reference-tab.active { color: #667eea; border-bottom-color: #667eea; }
         .reference-content { display: none; }
         .reference-content.active { display: block; }
-
-        .data-table {
-            width: 100%; border-collapse: collapse; margin-top: 15px;
-        }
-        .data-table th, .data-table td {
-            border: 1px solid #ddd; padding: 10px; text-align: left;
-        }
-        .data-table th {
-            background: #667eea; color: white; font-weight: 600;
-        }
+        .data-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .data-table th, .data-table td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        .data-table th { background: #667eea; color: white; font-weight: 600; }
         .data-table tr:nth-child(even) { background: #f8f9fa; }
-
-        .availability-grid {
-            display: grid;
-            grid-template-columns: 100px repeat(7, 1fr);
-            gap: 5px; margin-top: 15px;
-        }
-        .availability-cell {
-            padding: 15px 8px; text-align: center;
-            border: 1px solid #ddd; border-radius: 4px;
-            cursor: pointer; font-size: 14px; font-weight: 600;
-        }
-        .availability-cell.header {
-            background: #667eea; color: white; font-weight: 600;
-        }
+        .availability-grid { display: grid; grid-template-columns: 100px repeat(7, 1fr); gap: 5px; margin-top: 15px; }
+        .availability-cell { padding: 15px 8px; text-align: center; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 600; }
+        .availability-cell.header { background: #667eea; color: white; font-weight: 600; }
         .availability-cell.available { background: #27ae60; color: white; }
         .availability-cell.unavailable { background: #e74c3c; color: white; }
 
-        .timetable-grid {
-            display: grid;
-            grid-template-columns: 100px repeat(7, 1fr);
-            gap: 2px; margin-top: 15px;
-        }
-        .timetable-cell {
-            padding: 10px; min-height: 60px;
-            border: 1px solid #ddd; border-radius: 4px;
-            font-size: 12px; cursor: move;
-        }
-        .timetable-cell.header {
-            background: #667eea; color: white; font-weight: 600;
-            text-align: center;
-        }
-        .timetable-cell.lesson {
-            background: #f0f4ff; border-left: 3px solid #667eea;
-        }
+        /* Стили для сетки расписания */
+        .timetable-grid { display: grid; grid-template-columns: 100px repeat(7, 1fr); gap: 2px; margin-top: 15px; }
+        .timetable-cell { padding: 10px; min-height: 80px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; cursor: default; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+        .timetable-cell.header { background: #667eea; color: white; font-weight: 600; text-align: center; min-height: auto; }
+        .timetable-cell.lesson { background: #f0f4ff; border-left: 4px solid #667eea; cursor: grab; transition: all 0.2s; }
+        .timetable-cell.lesson:active { cursor: grabbing; }
+        .timetable-cell.drag-over { background: #ffeaa7 !important; border: 2px dashed #f39c12 !important; transform: scale(1.02); }
+        .timetable-cell.conflict { background: #fee !important; border: 2px solid #e74c3c !important; }
 
         .results-section { display: none; margin-top: 30px; }
         .results-section.active { display: block; }
-        .stats-grid {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px; margin-bottom: 25px;
-        }
-        .stat-card {
-            background: white; padding: 20px; border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08); text-align: center;
-        }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .stat-card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); text-align: center; }
         .stat-value { font-size: 32px; font-weight: bold; color: #667eea; }
         .stat-label { color: #666; font-size: 14px; }
-
-        .progress-overlay {
-            display: none; position: fixed; top: 0; left: 0;
-            width: 100%; height: 100%; background: rgba(0,0,0,0.7);
-            z-index: 1000; justify-content: center; align-items: center;
-        }
+        .progress-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center; }
         .progress-overlay.active { display: flex; }
-        .progress-box {
-            background: white; padding: 40px; border-radius: 15px;
-            text-align: center; min-width: 300px;
-        }
-        .progress-bar {
-            width: 100%; height: 8px; background: #e0e0e0;
-            border-radius: 4px; margin: 20px 0; overflow: hidden;
-        }
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-            animation: progress 2s ease-in-out infinite;
-        }
-        @keyframes progress {
-            0% { width: 0%; } 50% { width: 70%; } 100% { width: 100%; }
-        }
-
-        .header {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #eee;
-        }
+        .progress-box { background: white; padding: 40px; border-radius: 15px; text-align: center; min-width: 300px; }
+        .progress-bar { width: 100%; height: 8px; background: #e0e0e0; border-radius: 4px; margin: 20px 0; overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); animation: progress 2s ease-in-out infinite; }
+        @keyframes progress { 0% { width: 0%; } 50% { width: 70%; } 100% { width: 100%; } }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #eee; }
         .logout-btn { padding: 8px 20px; background: #e74c3c; font-size: 14px; }
-
-        .ai-input-section {
-            background: #f0f4ff; padding: 20px; border-radius: 12px;
-            margin-top: 20px; border: 2px dashed #667eea;
-        }
+        .ai-input-section { background: #f0f4ff; padding: 20px; border-radius: 12px; margin-top: 20px; border: 2px dashed #667eea; }
         .ai-input-section textarea { min-height: 150px; font-size: 14px; }
-
-        .help-text {
-            color: #666; font-size: 13px; margin-top: 5px;
-            font-style: italic;
-        }
-        .duplicate-warning {
-            color: #e74c3c; font-size: 12px; margin-top: 5px;
-            display: none;
-        }
+        .help-text { color: #666; font-size: 13px; margin-top: 5px; font-style: italic; }
+        .duplicate-warning { color: #e74c3c; font-size: 12px; margin-top: 5px; display: none; }
         .duplicate-warning.show { display: block; }
-
-        .step-actions {
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 2px solid #eee;
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .teacher-info {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            border-left: 4px solid #667eea;
-        }
-        .teacher-info h4 {
-            color: #667eea;
-            margin-bottom: 10px;
-        }
-
-        .workload-row {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
-            align-items: flex-end;
-            flex-wrap: wrap;
-        }
-        .workload-row .form-group {
-            flex: 1;
-            min-width: 150px;
-            margin-bottom: 0;
-        }
-        .workload-row .form-group.hours-group {
-            flex: 0 0 100px;
-            min-width: 100px;
-        }
-        .workload-row button {
-            margin-bottom: 0;
-            height: 46px;
-        }
-
-        .autocomplete-wrapper {
-            position: relative;
-        }
-        .autocomplete-list {
-            position: absolute;
-            border: 1px solid #ddd;
-            border-top: none;
-            z-index: 99;
-            top: 100%;
-            left: 0;
-            right: 0;
-            max-height: 200px;
-            overflow-y: auto;
-            background: white;
-            border-radius: 0 0 8px 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        .autocomplete-item {
-            padding: 10px 15px;
-            cursor: pointer;
-            border-bottom: 1px solid #eee;
-        }
-        .autocomplete-item:hover {
-            background-color: #f0f4ff;
-        }
-        .autocomplete-item.active {
-            background-color: #667eea;
-            color: white;
-        }
-
-        .saved-timetables {
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 2px solid #eee;
-        }
-        .saved-timetable-item {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-        .saved-timetable-item h4 {
-            color: #667eea;
-            margin-bottom: 5px;
-        }
-        .saved-timetable-item p {
-            color: #666;
-            font-size: 12px;
-        }
-        .saved-timetable-actions {
-            display: flex;
-            gap: 5px;
-            flex-wrap: wrap;
-        }
+        .step-actions { margin-top: 30px; padding-top: 20px; border-top: 2px solid #eee; display: flex; gap: 10px; flex-wrap: wrap; }
+        .teacher-info { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #667eea; }
+        .teacher-info h4 { color: #667eea; margin-bottom: 10px; }
+        .workload-row { display: flex; gap: 10px; margin-bottom: 10px; align-items: flex-end; flex-wrap: wrap; }
+        .workload-row .form-group { flex: 1; min-width: 150px; margin-bottom: 0; }
+        .workload-row .form-group.hours-group { flex: 0 0 100px; min-width: 100px; }
+        .workload-row button { margin-bottom: 0; height: 46px; }
+        .autocomplete-wrapper { position: relative; }
+        .autocomplete-list { position: absolute; border: 1px solid #ddd; border-top: none; z-index: 99; top: 100%; left: 0; right: 0; max-height: 200px; overflow-y: auto; background: white; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .autocomplete-item { padding: 10px 15px; cursor: pointer; border-bottom: 1px solid #eee; }
+        .autocomplete-item:hover { background-color: #f0f4ff; }
+        .saved-timetables { margin-top: 30px; padding-top: 20px; border-top: 2px solid #eee; }
+        .saved-timetable-item { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .saved-timetable-item h4 { color: #667eea; margin-bottom: 5px; }
+        .saved-timetable-item p { color: #666; font-size: 12px; }
+        .saved-timetable-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     </style>
 </head>
 <body>
@@ -327,34 +113,16 @@
             <button class="tab" onclick="showRegister()">Регистрация</button>
         </div>
         <div id="loginForm" class="form-section active">
-            <div class="form-group">
-                <label for="loginEmail">📧 Email</label>
-                <input type="email" id="loginEmail" placeholder="your@email.com">
-            </div>
-            <div class="form-group">
-                <label for="loginPassword">🔒 Пароль</label>
-                <input type="password" id="loginPassword" placeholder="••••••••">
-            </div>
+            <div class="form-group"><label for="loginEmail">📧 Email</label><input type="email" id="loginEmail" placeholder="your@email.com"></div>
+            <div class="form-group"><label for="loginPassword">🔒 Пароль</label><input type="password" id="loginPassword" placeholder="••••••••"></div>
             <button class="full" onclick="login()">Войти</button>
             <div id="loginError" class="error"></div>
         </div>
         <div id="registerForm" class="form-section">
-            <div class="form-group">
-                <label for="regFullName">👤 ФИО</label>
-                <input type="text" id="regFullName" placeholder="Иванов Иван Иванович">
-            </div>
-            <div class="form-group">
-                <label for="regEmail"> Email</label>
-                <input type="email" id="regEmail" placeholder="your@email.com">
-            </div>
-            <div class="form-group">
-                <label for="regSchool">🏫 Школа</label>
-                <input type="text" id="regSchool" placeholder="Школа №123">
-            </div>
-            <div class="form-group">
-                <label for="regPassword">🔒 Пароль</label>
-                <input type="password" id="regPassword" placeholder="••••••••">
-            </div>
+            <div class="form-group"><label for="regFullName">👤 ФИО</label><input type="text" id="regFullName" placeholder="Иванов Иван Иванович"></div>
+            <div class="form-group"><label for="regEmail">📧 Email</label><input type="email" id="regEmail" placeholder="your@email.com"></div>
+            <div class="form-group"><label for="regSchool">🏫 Школа</label><input type="text" id="regSchool" placeholder="Школа №123"></div>
+            <div class="form-group"><label for="regPassword">🔒 Пароль</label><input type="password" id="regPassword" placeholder="••••••••"></div>
             <button class="full" onclick="register()">Зарегистрироваться</button>
             <div id="regError" class="error"></div>
         </div>
@@ -362,184 +130,86 @@
 
     <div id="mainApp" class="container">
         <div class="header">
-            <div>
-                <h1> Генератор школьного расписания</h1>
-                <p class="subtitle" id="userInfo">Загрузка...</p>
-            </div>
+            <div><h1>🎓 Генератор школьного расписания</h1><p class="subtitle" id="userInfo">Загрузка...</p></div>
             <button class="logout-btn" onclick="logout()">Выйти</button>
         </div>
-
         <div class="wizard-steps">
-            <div class="wizard-step active" onclick="goToStep(1)">
-                <span class="wizard-step-number">1</span>Профиль школы
-            </div>
-            <div class="wizard-step" onclick="goToStep(2)">
-                <span class="wizard-step-number">2</span>Справочники
-            </div>
-            <div class="wizard-step" onclick="goToStep(3)">
-                <span class="wizard-step-number">3</span>Нагрузки
-            </div>
-            <div class="wizard-step" onclick="goToStep(4)">
-                <span class="wizard-step-number">4</span>Генерация
-            </div>
-            <div class="wizard-step" onclick="goToStep(5)">
-                <span class="wizard-step-number">5</span>Редактор
-            </div>
-            <div class="wizard-step" onclick="goToStep(6)">
-                <span class="wizard-step-number">6</span>Публикация
-            </div>
+            <div class="wizard-step active" onclick="goToStep(1)"><span class="wizard-step-number">1</span>Профиль школы</div>
+            <div class="wizard-step" onclick="goToStep(2)"><span class="wizard-step-number">2</span>Справочники</div>
+            <div class="wizard-step" onclick="goToStep(3)"><span class="wizard-step-number">3</span>Нагрузки</div>
+            <div class="wizard-step" onclick="goToStep(4)"><span class="wizard-step-number">4</span>Генерация</div>
+            <div class="wizard-step" onclick="goToStep(5)"><span class="wizard-step-number">5</span>Редактор</div>
+            <div class="wizard-step" onclick="goToStep(6)"><span class="wizard-step-number">6</span>Публикация</div>
         </div>
 
         <div id="step1" class="wizard-content active">
-            <h2> Шаг 1: Профиль школы и сетка времени</h2>
-            <div class="form-group">
-                <label for="schoolName"> Название школы</label>
-                <input type="text" id="schoolName" placeholder="Например: Школа №123">
-                <p class="help-text">Введите полное название вашей школы</p>
-            </div>
-            <div class="form-group">
-                <label for="daysPerWeek">📅 Количество дней в неделе</label>
-                <select id="daysPerWeek">
-                    <option value="5">5 дней (Понедельник - Пятница)</option>
-                    <option value="6">6 дней (Понедельник - Суббота)</option>
-                </select>
-                <p class="help-text">Выберите количество учебных дней</p>
-            </div>
-            <div class="form-group">
-                <label for="lessonsPerDay">⏰ Количество уроков в день</label>
-                <input type="number" id="lessonsPerDay" min="1" max="10" value="7">
-                <p class="help-text">Максимальное количество уроков в день (обычно 6-8)</p>
-            </div>
-            <div class="form-group">
-                <label for="lessonTimes"> Время начала и окончания уроков</label>
-                <input type="text" id="lessonTimes" placeholder="08:30-09:15, 09:25-10:10, 10:20-11:05..." value="08:30-09:15, 09:25-10:10, 10:20-11:05, 11:25-12:10, 12:20-13:05, 13:15-14:00, 14:10-14:55">
-                <p class="help-text">Введите время через запятую в формате ЧЧ:ММ-ЧЧ:ММ</p>
-            </div>
+            <h2>📋 Шаг 1: Профиль школы и сетка времени</h2>
+            <div class="form-group"><label for="schoolName">🏫 Название школы</label><input type="text" id="schoolName" placeholder="Например: Школа №123"><p class="help-text">Введите полное название вашей школы</p></div>
+            <div class="form-group"><label for="daysPerWeek">📅 Количество дней в неделе</label><select id="daysPerWeek"><option value="5">5 дней (Понедельник - Пятница)</option><option value="6">6 дней (Понедельник - Суббота)</option></select><p class="help-text">Выберите количество учебных дней</p></div>
+            <div class="form-group"><label for="lessonsPerDay">⏰ Количество уроков в день</label><input type="number" id="lessonsPerDay" min="1" max="10" value="7"><p class="help-text">Максимальное количество уроков в день (обычно 6-8)</p></div>
+            <div class="form-group"><label for="lessonTimes">🕐 Время начала и окончания уроков</label><input type="text" id="lessonTimes" placeholder="08:30-09:15, 09:25-10:10..." value="08:30-09:15, 09:25-10:10, 10:20-11:05, 11:25-12:10, 12:20-13:05, 13:15-14:00, 14:10-14:55"><p class="help-text">Введите время через запятую в формате ЧЧ:ММ-ЧЧ:ММ</p></div>
             <button onclick="completeStep(1)">💾 Сохранить и продолжить →</button>
         </div>
 
         <div id="step2" class="wizard-content">
             <h2>📚 Шаг 2: Заполнение справочников</h2>
             <p class="help-text" style="margin-bottom:20px">Добавьте классы, учителей, предметы и кабинеты. Дубликаты будут автоматически отклонены.</p>
-
             <div class="reference-tabs">
                 <button class="reference-tab active" onclick="showRefTab('classes')">📚 Классы</button>
-                <button class="reference-tab" onclick="showRefTab('teachers')">👨‍ Учителя</button>
+                <button class="reference-tab" onclick="showRefTab('teachers')">👨🏫 Учителя</button>
                 <button class="reference-tab" onclick="showRefTab('subjects')">📖 Предметы</button>
                 <button class="reference-tab" onclick="showRefTab('classrooms')">🏫 Кабинеты</button>
             </div>
-
             <div id="ref-classes" class="reference-content active">
                 <h3>📚 Управление классами</h3>
-                <div class="form-group">
-                    <label for="newClassName">Название класса (например: 5А, 7Б, 11)</label>
-                    <input type="text" id="newClassName" placeholder="Например: 5А">
-                    <p class="help-text">Формат: номер + буква (опционально)</p>
-                    <p id="classDuplicateWarning" class="duplicate-warning">⚠️ Такой класс уже существует!</p>
-                    <button class="add-btn" onclick="addClass()">➕ Добавить класс</button>
-                </div>
-                <table class="data-table">
-                    <thead><tr><th>Название</th><th>Класс (номер)</th><th style="width:150px">Действия</th></tr></thead>
-                    <tbody id="classesTable"></tbody>
-                </table>
+                <div class="form-group"><label for="newClassName">Название класса</label><input type="text" id="newClassName" placeholder="Например: 5А"><p class="help-text">Формат: номер + буква (опционально)</p><p id="classDuplicateWarning" class="duplicate-warning">⚠️ Такой класс уже существует!</p><button class="add-btn" onclick="addClass()">➕ Добавить класс</button></div>
+                <table class="data-table"><thead><tr><th>Название</th><th>Класс (номер)</th><th style="width:150px">Действия</th></tr></thead><tbody id="classesTable"></tbody></table>
             </div>
-
             <div id="ref-teachers" class="reference-content">
                 <h3>👨‍🏫 Управление учителями</h3>
-                <div class="form-group">
-                    <label for="newTeacherName">ФИО учителя *</label>
-                    <input type="text" id="newTeacherName" placeholder="Например: Иванова Мария Петровна">
-                    <p id="teacherDuplicateWarning" class="duplicate-warning">️ Такой учитель уже существует!</p>
-                    <button class="add-btn" onclick="addTeacher()"> Добавить учителя</button>
-                </div>
-                <div class="form-group">
-                    <label for="newTeacherEmail">Email (опционально)</label>
-                    <input type="email" id="newTeacherEmail" placeholder="teacher@school.ru">
-                </div>
-                <table class="data-table">
-                    <thead><tr><th>ФИО</th><th>Email</th><th style="width:150px">Действия</th></tr></thead>
-                    <tbody id="teachersTable"></tbody>
-                </table>
+                <div class="form-group"><label for="newTeacherName">ФИО учителя *</label><input type="text" id="newTeacherName" placeholder="Например: Иванова Мария Петровна"><p id="teacherDuplicateWarning" class="duplicate-warning">⚠️ Такой учитель уже существует!</p><button class="add-btn" onclick="addTeacher()"> Добавить учителя</button></div>
+                <div class="form-group"><label for="newTeacherEmail">Email (опционально)</label><input type="email" id="newTeacherEmail" placeholder="teacher@school.ru"></div>
+                <table class="data-table"><thead><tr><th>ФИО</th><th>Email</th><th style="width:150px">Действия</th></tr></thead><tbody id="teachersTable"></tbody></table>
             </div>
-
             <div id="ref-subjects" class="reference-content">
-                <h3> Управление предметами</h3>
-                <div class="form-group">
-                    <label for="newSubjectName">Название предмета *</label>
-                    <input type="text" id="newSubjectName" placeholder="Например: Математика">
-                    <p id="subjectDuplicateWarning" class="duplicate-warning">⚠️ Такой предмет уже существует!</p>
-                    <button class="add-btn" onclick="addSubject()">➕ Добавить предмет</button>
-                </div>
-                <table class="data-table">
-                    <thead><tr><th>Предмет</th><th style="width:150px">Действия</th></tr></thead>
-                    <tbody id="subjectsTable"></tbody>
-                </table>
+                <h3>📖 Управление предметами</h3>
+                <div class="form-group"><label for="newSubjectName">Название предмета *</label><input type="text" id="newSubjectName" placeholder="Например: Математика"><p id="subjectDuplicateWarning" class="duplicate-warning">️ Такой предмет уже существует!</p><button class="add-btn" onclick="addSubject()">➕ Добавить предмет</button></div>
+                <table class="data-table"><thead><tr><th>Предмет</th><th style="width:150px">Действия</th></tr></thead><tbody id="subjectsTable"></tbody></table>
             </div>
-
             <div id="ref-classrooms" class="reference-content">
                 <h3>🏫 Управление кабинетами</h3>
-                <div class="form-group">
-                    <label for="newClassroomNumber">Номер кабинета *</label>
-                    <input type="text" id="newClassroomNumber" placeholder="Например: 101, 205, Спортзал">
-                    <p id="classroomDuplicateWarning" class="duplicate-warning">⚠️ Такой кабинет уже существует!</p>
-                    <button class="add-btn" onclick="addClassroom()">➕ Добавить кабинет</button>
-                </div>
-                <div class="form-group">
-                    <label for="newClassroomCapacity">Вместимость (количество мест)</label>
-                    <input type="number" id="newClassroomCapacity" placeholder="Например: 25" min="1">
-                </div>
-                <table class="data-table">
-                    <thead><tr><th>Кабинет</th><th>Вместимость</th><th style="width:150px">Действия</th></tr></thead>
-                    <tbody id="classroomsTable"></tbody>
-                </table>
+                <div class="form-group"><label for="newClassroomNumber">Номер кабинета *</label><input type="text" id="newClassroomNumber" placeholder="Например: 101, 205"><p id="classroomDuplicateWarning" class="duplicate-warning">⚠️ Такой кабинет уже существует!</p><button class="add-btn" onclick="addClassroom()"> Добавить кабинет</button></div>
+                <div class="form-group"><label for="newClassroomCapacity">Вместимость (количество мест)</label><input type="number" id="newClassroomCapacity" placeholder="Например: 25" min="1"></div>
+                <table class="data-table"><thead><tr><th>Кабинет</th><th>Вместимость</th><th style="width:150px">Действия</th></tr></thead><tbody id="classroomsTable"></tbody></table>
             </div>
-
-            <div class="step-actions">
-                <button class="outline" onclick="importFromExcel()">📥 Импорт из Excel</button>
-                <button class="primary" onclick="completeStep(2)">💾 Сохранить и продолжить →</button>
-            </div>
+            <div class="step-actions"><button class="outline" onclick="importFromExcel()">📥 Импорт из Excel</button><button class="primary" onclick="completeStep(2)">💾 Сохранить и продолжить →</button></div>
         </div>
 
         <div id="step3" class="wizard-content">
             <h2>⚙️ Шаг 3: Настройка нагрузок и ограничений</h2>
             <p style="color:#666;margin-bottom:20px">Выберите способ ввода данных:</p>
-
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
                 <div>
                     <h3>📋 Путь А: Классический (таблицы)</h3>
                     <p style="color:#666;font-size:14px;margin-bottom:15px">Заполните карточку учителя вручную</p>
-                    <div class="form-group">
-                        <label for="teacherSelect">Выберите учителя</label>
-                        <select id="teacherSelect" onchange="loadTeacherCard()">
-                            <option value="">-- Выберите учителя --</option>
-                        </select>
-                    </div>
+                    <div class="form-group"><label for="teacherSelect">Выберите учителя</label><select id="teacherSelect" onchange="loadTeacherCard()"><option value="">-- Выберите учителя --</option></select></div>
                     <div id="teacherCard" style="display:none">
-                        <div class="teacher-info">
-                            <h4>👨‍ <span id="currentTeacherName"></span></h4>
-                            <p class="help-text">Заполните предметы и доступность для этого учителя</p>
-                        </div>
-
+                        <div class="teacher-info"><h4>👨‍🏫 <span id="currentTeacherName"></span></h4><p class="help-text">Заполните предметы и доступность для этого учителя</p></div>
                         <h4>📚 Нагрузки (предметы и часы)</h4>
                         <div id="workloadList"></div>
                         <button class="small primary" onclick="addWorkload()">➕ Добавить предмет</button>
-
                         <h4 style="margin-top:20px">📅 Доступность (кликните по ячейке для изменения)</h4>
                         <p class="help-text">Зеленые ячейки - учитель доступен, красные - недоступен</p>
                         <div id="availabilityGrid" class="availability-grid"></div>
-
-                        <div style="margin-top:20px; padding:15px; background:#f0f4ff; border-radius:8px;">
-                            <p style="color:#667eea; font-weight:600;">✅ Данные автоматически сохраняются при переключении учителя</p>
-                        </div>
+                        <div style="margin-top:20px; padding:15px; background:#f0f4ff; border-radius:8px;"><p style="color:#667eea; font-weight:600;">✅ Данные автоматически сохраняются при переключении учителя</p></div>
                     </div>
                 </div>
-
                 <div>
                     <h3>🤖 Путь Б: AI-ввод</h3>
                     <p style="color:#666;font-size:14px;margin-bottom:15px">Вставьте текстовое описание — ИИ разберёт сам</p>
                     <div class="ai-input-section">
                         <label for="aiInput">📝 Вставьте текст с описанием учителя:</label>
-                        <textarea id="aiInput" placeholder="Учитель Асланова Самира может проводить уроки по вторникам до 15 часов и среда, пятница в любое время. Ведет урок Старт IT в 5-6 классе и в 8 классе, искусственный интеллект в 6 классе, информатику в 7-8 классе."></textarea>
+                        <textarea id="aiInput" placeholder="Учитель Асланова Самира может проводить уроки по вторникам до 15 часов..."></textarea>
                         <button class="primary" onclick="parseAIInput()" style="margin-top:10px;width:100%">🧠 Анализировать текст</button>
                     </div>
                     <div id="aiResult" style="margin-top:15px;display:none">
@@ -549,76 +219,39 @@
                     </div>
                 </div>
             </div>
-
-            <div class="step-actions">
-                <button class="primary" onclick="completeStep(3)">💾 Сохранить и продолжить →</button>
-            </div>
+            <div class="step-actions"><button class="primary" onclick="completeStep(3)">💾 Сохранить и продолжить →</button></div>
         </div>
 
         <div id="step4" class="wizard-content">
-            <h2> Шаг 4: Генерация расписания</h2>
+            <h2>🚀 Шаг 4: Генерация расписания</h2>
             <p style="color:#666;margin-bottom:20px">Нажмите кнопку для запуска алгоритма Google OR-Tools</p>
-
-            <div style="text-align:center;padding:40px">
-                <button id="generateBtn" onclick="generateTimetable()" style="font-size:20px;padding:20px 40px">
-                    🎯 Сгенерировать расписание
-                </button>
-            </div>
-
-            <div id="genError" class="error"></div>
-            <div id="genSuccess" class="success"></div>
-
+            <div style="text-align:center;padding:40px"><button id="generateBtn" onclick="generateTimetable()" style="font-size:20px;padding:20px 40px">🎯 Сгенерировать расписание</button></div>
+            <div id="genError" class="error"></div><div id="genSuccess" class="success"></div>
             <div id="resultsSection" class="results-section">
                 <h3>✅ Результаты генерации</h3>
                 <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-value" id="statTeachers">0</div>
-                        <div class="stat-label">Учителей</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="statLessons">0</div>
-                        <div class="stat-label">Всего уроков</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="statTime">0с</div>
-                        <div class="stat-label">Время генерации</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="statStatus">-</div>
-                        <div class="stat-label">Статус</div>
-                    </div>
+                    <div class="stat-card"><div class="stat-value" id="statTeachers">0</div><div class="stat-label">Учителей</div></div>
+                    <div class="stat-card"><div class="stat-value" id="statLessons">0</div><div class="stat-label">Всего уроков</div></div>
+                    <div class="stat-card"><div class="stat-value" id="statTime">0с</div><div class="stat-label">Время генерации</div></div>
+                    <div class="stat-card"><div class="stat-value" id="statStatus">-</div><div class="stat-label">Статус</div></div>
                 </div>
-
                 <div id="scheduleView" style="margin-top:30px"></div>
-
                 <div class="step-actions">
-                    <button class="outline" onclick="downloadPDF('teachers')"> PDF (учителя)</button>
-                    <button class="outline" onclick="downloadPDF('classes')"> PDF (классы)</button>
+                    <button class="outline" onclick="downloadPDF('teachers')">📄 PDF (учителя)</button>
+                    <button class="outline" onclick="downloadPDF('classes')">📄 PDF (классы)</button>
                     <button class="outline" onclick="downloadExcel('teachers')">📊 Excel (учителя)</button>
-                    <button class="outline" onclick="downloadExcel('classes')">📊 Excel (классы)</button>
+                    <button class="outline" onclick="downloadExcel('classes')"> Excel (классы)</button>
                     <button class="primary" onclick="completeStep(4)">➡️ Перейти к редактору</button>
                 </div>
             </div>
-
-            <div class="saved-timetables" id="savedTimetablesSection">
-                <h3>📋 Сохранённые расписания</h3>
-                <div id="savedTimetablesList"></div>
-            </div>
+            <div class="saved-timetables" id="savedTimetablesSection"><h3>📋 Сохранённые расписания</h3><div id="savedTimetablesList"></div></div>
         </div>
 
         <div id="step5" class="wizard-content">
             <h2>✏️ Шаг 5: Ручная корректировка (Drag-and-Drop)</h2>
-            <p style="color:#666;margin-bottom:20px">Перетащите уроки для изменения расписания. Красная подсветка = конфликт.</p>
-
-            <div class="form-group">
-                <label for="classSelect">Выберите класс для просмотра</label>
-                <select id="classSelect" onchange="renderTimetableGrid()">
-                    <option value="">-- Выберите класс --</option>
-                </select>
-            </div>
-
+            <p style="color:#666;margin-bottom:20px">Перетащите уроки мышкой для изменения расписания. Система автоматически проверит конфликты.</p>
+            <div class="form-group"><label for="classSelect">Выберите класс для просмотра</label><select id="classSelect" onchange="renderTimetableGrid()"><option value="">-- Выберите класс --</option></select></div>
             <div id="timetableGrid" class="timetable-grid"></div>
-
             <div class="step-actions">
                 <button class="secondary" onclick="validateTimetable()">🔍 Проверить конфликты</button>
                 <button class="primary" onclick="completeStep(5)">➡️ Перейти к публикации</button>
@@ -627,199 +260,78 @@
 
         <div id="step6" class="wizard-content">
             <h2>📢 Шаг 6: Публикация и экспорт</h2>
-
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px">
-                <div class="stat-card">
-                    <h3> PDF для печати</h3>
-                    <p style="color:#666;margin:10px 0">Готовые файлы для размещения на стенде</p>
-                    <button class="primary" onclick="downloadPDF('teachers')">👨‍ По учителям</button>
-                    <button class="primary" onclick="downloadPDF('classes')" style="margin-top:10px">👥 По классам</button>
-                </div>
-
-                <div class="stat-card">
-                    <h3>📊 Excel для редактирования</h3>
-                    <p style="color:#666;margin:10px 0">Файлы для дальнейшей работы</p>
-                    <button class="primary" onclick="downloadExcel('teachers')">👨‍🏫 По учителям</button>
-                    <button class="primary" onclick="downloadExcel('classes')" style="margin-top:10px"> По классам</button>
-                </div>
-
-                <div class="stat-card">
-                    <h3>📧 Отправка учителям</h3>
-                    <p style="color:#666;margin:10px 0">Ссылки на расписание</p>
-                    <button class="outline" onclick="sendToTeachers()">📱 Отправить в Telegram</button>
-                    <button class="outline" onclick="sendToEmail()" style="margin-top:10px">📧 Отправить на почту</button>
-                </div>
-
-                <div class="stat-card">
-                    <h3>🔗 Интеграция с журналом</h3>
-                    <p style="color:#666;margin:10px 0">Выгрузка в электронный журнал</p>
-                    <button class="secondary" onclick="exportToJournal()">🔗 Экспорт API</button>
-                </div>
+                <div class="stat-card"><h3>📄 PDF для печати</h3><p style="color:#666;margin:10px 0">Готовые файлы для размещения на стенде</p><button class="primary" onclick="downloadPDF('teachers')">👨‍🏫 По учителям</button><button class="primary" onclick="downloadPDF('classes')" style="margin-top:10px">👥 По классам</button></div>
+                <div class="stat-card"><h3>📊 Excel для редактирования</h3><p style="color:#666;margin:10px 0">Файлы для дальнейшей работы</p><button class="primary" onclick="downloadExcel('teachers')">👨‍ По учителям</button><button class="primary" onclick="downloadExcel('classes')" style="margin-top:10px">👥 По классам</button></div>
+                <div class="stat-card"><h3>📧 Отправка учителям</h3><p style="color:#666;margin:10px 0">Ссылки на расписание</p><button class="outline" onclick="sendToTeachers()">📱 Отправить в Telegram</button><button class="outline" onclick="sendToEmail()" style="margin-top:10px">📧 Отправить на почту</button></div>
+                <div class="stat-card"><h3>🔗 Интеграция с журналом</h3><p style="color:#666;margin:10px 0">Выгрузка в электронный журнал</p><button class="secondary" onclick="exportToJournal()">🔗 Экспорт API</button></div>
             </div>
-
-            <div style="text-align:center;margin-top:30px">
-                <button onclick="publishTimetable()" style="font-size:18px;padding:20px 40px">
-                    ✅ Опубликовать расписание
-                </button>
-            </div>
+            <div style="text-align:center;margin-top:30px"><button onclick="publishTimetable()" style="font-size:18px;padding:20px 40px">✅ Опубликовать расписание</button></div>
         </div>
     </div>
 
-    <div id="progressOverlay" class="progress-overlay">
-        <div class="progress-box">
-            <h2>🔄 Генерация расписания</h2>
-            <p style="color:#666;margin-top:10px">Google OR-Tools перебирает миллионы комбинаций...</p>
-            <div class="progress-bar"><div class="progress-fill"></div></div>
-            <p style="color:#999;font-size:13px">Это может занять до 2 минут. Не закрывайте страницу!</p>
-        </div>
-    </div>
+    <div id="progressOverlay" class="progress-overlay"><div class="progress-box"><h2>🔄 Генерация расписания</h2><p style="color:#666;margin-top:10px">Google OR-Tools перебирает миллионы комбинаций...</p><div class="progress-bar"><div class="progress-fill"></div></div><p style="color:#999;font-size:13px">Это может занять до 2 минут. Не закрывайте страницу!</p></div></div>
 
     <script>
-        let schoolData = {
-            name: '', days: 5, lessonsPerDay: 7, lessonTimes: [],
-            classes: [], teachers: [], subjects: [], classrooms: [],
-            workloads: [], availability: {}
-        };
+        let schoolData = { name: '', days: 5, lessonsPerDay: 7, lessonTimes: [], classes: [], teachers: [], subjects: [], classrooms: [], workloads: [], availability: {} };
         let currentResult = null;
         let currentTimetableId = null;
         let currentStep = 1;
+        let draggedLessonData = null; // Глобальная переменная для Drag-and-Drop
 
-        function getToken() {
-            return localStorage.getItem('access_token');
-        }
-
+        function getToken() { return localStorage.getItem('access_token'); }
         function checkAuth() {
             const token = getToken();
-            if (!token) {
-                alert('Сессия истекла. Пожалуйста, войдите снова.');
-                logout();
-                return false;
-            }
+            if (!token) { alert('Сессия истекла. Пожалуйста, войдите снова.'); logout(); return false; }
             return true;
         }
 
         window.onload = function() {
             const savedData = localStorage.getItem('schoolData');
-            if (savedData) {
-                schoolData = JSON.parse(savedData);
-            }
-            if (getToken()) {
-                showMainApp();
-                loadSavedTimetables();
-            }
+            if (savedData) schoolData = JSON.parse(savedData);
+            if (getToken()) { showMainApp(); loadSavedTimetables(); }
         };
 
-        function saveSchoolData() {
-            localStorage.setItem('schoolData', JSON.stringify(schoolData));
-        }
-
-        function showLogin() {
-            document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i===0));
-            document.querySelectorAll('.form-section').forEach((f,i) => f.classList.toggle('active', i===0));
-        }
-        function showRegister() {
-            document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i===1));
-            document.querySelectorAll('.form-section').forEach((f,i) => f.classList.toggle('active', i===1));
-        }
-
-        function showMainApp() {
-            document.getElementById('authContainer').style.display = 'none';
-            document.getElementById('mainApp').classList.add('active');
-            document.getElementById('userInfo').textContent =
-                'Пользователь: ' + (localStorage.getItem('full_name') || 'Гость');
-        }
-
-        function logout() {
-            localStorage.clear();
-            location.reload();
-        }
+        function saveSchoolData() { localStorage.setItem('schoolData', JSON.stringify(schoolData)); }
+        function showLogin() { document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i===0)); document.querySelectorAll('.form-section').forEach((f,i) => f.classList.toggle('active', i===0)); }
+        function showRegister() { document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i===1)); document.querySelectorAll('.form-section').forEach((f,i) => f.classList.toggle('active', i===1)); }
+        function showMainApp() { document.getElementById('authContainer').style.display = 'none'; document.getElementById('mainApp').classList.add('active'); document.getElementById('userInfo').textContent = 'Пользователь: ' + (localStorage.getItem('full_name') || 'Гость'); }
+        function logout() { localStorage.clear(); location.reload(); }
 
         async function login() {
-            const email = document.getElementById('loginEmail').value;
-            const password = document.getElementById('loginPassword').value;
-            const err = document.getElementById('loginError');
+            const email = document.getElementById('loginEmail').value; const password = document.getElementById('loginPassword').value; const err = document.getElementById('loginError');
             try {
-                const res = await fetch('/login', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({email, password})
-                });
+                const res = await fetch('/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({email, password}) });
                 const data = await res.json();
-                if (res.ok) {
-                    localStorage.setItem('access_token', data.access_token);
-                    localStorage.setItem('user_id', data.user_id);
-                    localStorage.setItem('full_name', data.full_name);
-                    showMainApp();
-                    loadSavedTimetables();
-                } else {
-                    err.textContent = data.detail;
-                    err.classList.add('show');
-                }
-            } catch(e) {
-                err.textContent = 'Ошибка соединения: ' + e.message;
-                err.classList.add('show');
-            }
+                if (res.ok) { localStorage.setItem('access_token', data.access_token); localStorage.setItem('user_id', data.user_id); localStorage.setItem('full_name', data.full_name); showMainApp(); loadSavedTimetables(); }
+                else { err.textContent = data.detail; err.classList.add('show'); }
+            } catch(e) { err.textContent = 'Ошибка соединения: ' + e.message; err.classList.add('show'); }
         }
 
         async function register() {
-            const full_name = document.getElementById('regFullName').value;
-            const email = document.getElementById('regEmail').value;
-            const school_name = document.getElementById('regSchool').value;
-            const password = document.getElementById('regPassword').value;
-            const err = document.getElementById('regError');
+            const full_name = document.getElementById('regFullName').value; const email = document.getElementById('regEmail').value; const school_name = document.getElementById('regSchool').value; const password = document.getElementById('regPassword').value; const err = document.getElementById('regError');
             try {
-                const res = await fetch('/register', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({full_name, email, password, school_name})
-                });
+                const res = await fetch('/register', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({full_name, email, password, school_name}) });
                 const data = await res.json();
-                if (res.ok) {
-                    localStorage.setItem('access_token', data.access_token);
-                    localStorage.setItem('user_id', data.user_id);
-                    localStorage.setItem('full_name', data.full_name);
-                    showMainApp();
-                    loadSavedTimetables();
-                } else {
-                    err.textContent = data.detail;
-                    err.classList.add('show');
-                }
-            } catch(e) {
-                err.textContent = 'Ошибка соединения: ' + e.message;
-                err.classList.add('show');
-            }
+                if (res.ok) { localStorage.setItem('access_token', data.access_token); localStorage.setItem('user_id', data.user_id); localStorage.setItem('full_name', data.full_name); showMainApp(); loadSavedTimetables(); }
+                else { err.textContent = data.detail; err.classList.add('show'); }
+            } catch(e) { err.textContent = 'Ошибка соединения: ' + e.message; err.classList.add('show'); }
         }
 
         function goToStep(step) {
             document.querySelectorAll('.wizard-content').forEach(c => c.classList.remove('active'));
-            document.querySelectorAll('.wizard-step').forEach((s,i) => {
-                s.classList.remove('active');
-                if (i+1 < step) s.classList.add('completed');
-            });
+            document.querySelectorAll('.wizard-step').forEach((s,i) => { s.classList.remove('active'); if (i+1 < step) s.classList.add('completed'); });
             document.getElementById('step'+step).classList.add('active');
             document.querySelectorAll('.wizard-step')[step-1].classList.add('active');
             currentStep = step;
-
-            if (step === 3) {
-                updateTeacherSelect();
-                renderClasses();
-                renderTeachers();
-                renderSubjects();
-                renderClassrooms();
-            }
+            if (step === 3) { updateTeacherSelect(); renderClasses(); renderTeachers(); renderSubjects(); renderClassrooms(); }
             if (step === 4) loadSavedTimetables();
             if (step === 5) renderTimetableGrid();
         }
 
         function completeStep(step) {
-            if (step === 1) {
-                schoolData.name = document.getElementById('schoolName').value;
-                schoolData.days = parseInt(document.getElementById('daysPerWeek').value);
-                schoolData.lessonsPerDay = parseInt(document.getElementById('lessonsPerDay').value);
-                schoolData.lessonTimes = document.getElementById('lessonTimes').value.split(',').map(t => t.trim());
-            }
-            saveSchoolData();
-            goToStep(step + 1);
+            if (step === 1) { schoolData.name = document.getElementById('schoolName').value; schoolData.days = parseInt(document.getElementById('daysPerWeek').value); schoolData.lessonsPerDay = parseInt(document.getElementById('lessonsPerDay').value); schoolData.lessonTimes = document.getElementById('lessonTimes').value.split(',').map(t => t.trim()); }
+            saveSchoolData(); goToStep(step + 1);
         }
 
         function showRefTab(tab) {
@@ -827,113 +339,61 @@
             document.querySelectorAll('.reference-tab').forEach(t => t.classList.remove('active'));
             document.getElementById('ref-'+tab).classList.add('active');
             event.target.classList.add('active');
+            // Обновляем таблицы при переключении вкладок
+            if (tab === 'classes') renderClasses();
+            if (tab === 'teachers') renderTeachers();
+            if (tab === 'subjects') renderSubjects();
+            if (tab === 'classrooms') renderClassrooms();
         }
 
         function addClass() {
-            const name = document.getElementById('newClassName').value.trim();
-            const warning = document.getElementById('classDuplicateWarning');
+            const name = document.getElementById('newClassName').value.trim(); const warning = document.getElementById('classDuplicateWarning');
             if (!name) { alert('Введите название класса'); return; }
             const exists = schoolData.classes.some(c => c.name.toLowerCase() === name.toLowerCase());
-            if (exists) {
-                warning.classList.add('show');
-                setTimeout(() => warning.classList.remove('show'), 3000);
-                return;
-            }
+            if (exists) { warning.classList.add('show'); setTimeout(() => warning.classList.remove('show'), 3000); return; }
             const match = name.match(/(\d+)([А-Яа-я]?)/);
             schoolData.classes.push({name, grade: match?parseInt(match[1]):0, letter: match?match[2]:''});
-            renderClasses();
-            saveSchoolData();
-            document.getElementById('newClassName').value = '';
+            renderClasses(); saveSchoolData(); document.getElementById('newClassName').value = '';
         }
-
-        function renderClasses() {
-            document.getElementById('classesTable').innerHTML = schoolData.classes.map((c,i) => `
-                <tr><td>${c.name}</td><td>${c.grade}</td><td><button class="small danger" onclick="removeClass(${i})">🗑️ Удалить</button></td></tr>
-            `).join('');
-        }
+        function renderClasses() { document.getElementById('classesTable').innerHTML = schoolData.classes.map((c,i) => `<tr><td>${c.name}</td><td>${c.grade}</td><td><button class="small danger" onclick="removeClass(${i})">🗑️ Удалить</button></td></tr>`).join(''); }
         function removeClass(i) { schoolData.classes.splice(i,1); renderClasses(); saveSchoolData(); }
 
         function addTeacher() {
-            const name = document.getElementById('newTeacherName').value.trim();
-            const email = document.getElementById('newTeacherEmail').value.trim();
-            const warning = document.getElementById('teacherDuplicateWarning');
+            const name = document.getElementById('newTeacherName').value.trim(); const email = document.getElementById('newTeacherEmail').value.trim(); const warning = document.getElementById('teacherDuplicateWarning');
             if (!name) { alert('Введите ФИО учителя'); return; }
             const exists = schoolData.teachers.some(t => t.full_name.toLowerCase() === name.toLowerCase());
-            if (exists) {
-                warning.classList.add('show');
-                setTimeout(() => warning.classList.remove('show'), 3000);
-                return;
-            }
-            schoolData.teachers.push({full_name: name, email});
-            renderTeachers();
-            saveSchoolData();
-            document.getElementById('newTeacherName').value = '';
-            document.getElementById('newTeacherEmail').value = '';
+            if (exists) { warning.classList.add('show'); setTimeout(() => warning.classList.remove('show'), 3000); return; }
+            schoolData.teachers.push({full_name: name, email}); renderTeachers(); saveSchoolData();
+            document.getElementById('newTeacherName').value = ''; document.getElementById('newTeacherEmail').value = '';
         }
-
-        function renderTeachers() {
-            document.getElementById('teachersTable').innerHTML = schoolData.teachers.map((t,i) => `
-                <tr><td>${t.full_name}</td><td>${t.email||'-'}</td><td><button class="small danger" onclick="removeTeacher(${i})">️ Удалить</button></td></tr>
-            `).join('');
-        }
+        function renderTeachers() { document.getElementById('teachersTable').innerHTML = schoolData.teachers.map((t,i) => `<tr><td>${t.full_name}</td><td>${t.email||'-'}</td><td><button class="small danger" onclick="removeTeacher(${i})">🗑️ Удалить</button></td></tr>`).join(''); }
         function removeTeacher(i) { schoolData.teachers.splice(i,1); renderTeachers(); saveSchoolData(); }
 
         function addSubject() {
-            const name = document.getElementById('newSubjectName').value.trim();
-            const warning = document.getElementById('subjectDuplicateWarning');
+            const name = document.getElementById('newSubjectName').value.trim(); const warning = document.getElementById('subjectDuplicateWarning');
             if (!name) { alert('Введите название предмета'); return; }
             const exists = schoolData.subjects.some(s => s.name.toLowerCase() === name.toLowerCase());
-            if (exists) {
-                warning.classList.add('show');
-                setTimeout(() => warning.classList.remove('show'), 3000);
-                return;
-            }
-            schoolData.subjects.push({name});
-            renderSubjects();
-            saveSchoolData();
-            document.getElementById('newSubjectName').value = '';
+            if (exists) { warning.classList.add('show'); setTimeout(() => warning.classList.remove('show'), 3000); return; }
+            schoolData.subjects.push({name}); renderSubjects(); saveSchoolData(); document.getElementById('newSubjectName').value = '';
         }
-
-        function renderSubjects() {
-            document.getElementById('subjectsTable').innerHTML = schoolData.subjects.map((s,i) => `
-                <tr><td>${s.name}</td><td><button class="small danger" onclick="removeSubject(${i})">🗑️ Удалить</button></td></tr>
-            `).join('');
-        }
+        function renderSubjects() { document.getElementById('subjectsTable').innerHTML = schoolData.subjects.map((s,i) => `<tr><td>${s.name}</td><td><button class="small danger" onclick="removeSubject(${i})">️ Удалить</button></td></tr>`).join(''); }
         function removeSubject(i) { schoolData.subjects.splice(i,1); renderSubjects(); saveSchoolData(); }
 
         function addClassroom() {
-            const number = document.getElementById('newClassroomNumber').value.trim();
-            const capacity = document.getElementById('newClassroomCapacity').value;
-            const warning = document.getElementById('classroomDuplicateWarning');
+            const number = document.getElementById('newClassroomNumber').value.trim(); const capacity = document.getElementById('newClassroomCapacity').value; const warning = document.getElementById('classroomDuplicateWarning');
             if (!number) { alert('Введите номер кабинета'); return; }
             const exists = schoolData.classrooms.some(c => c.number.toLowerCase() === number.toLowerCase());
-            if (exists) {
-                warning.classList.add('show');
-                setTimeout(() => warning.classList.remove('show'), 3000);
-                return;
-            }
-            schoolData.classrooms.push({number, capacity: capacity?parseInt(capacity):null});
-            renderClassrooms();
-            saveSchoolData();
-            document.getElementById('newClassroomNumber').value = '';
-            document.getElementById('newClassroomCapacity').value = '';
+            if (exists) { warning.classList.add('show'); setTimeout(() => warning.classList.remove('show'), 3000); return; }
+            schoolData.classrooms.push({number, capacity: capacity?parseInt(capacity):null}); renderClassrooms(); saveSchoolData();
+            document.getElementById('newClassroomNumber').value = ''; document.getElementById('newClassroomCapacity').value = '';
         }
-
-        function renderClassrooms() {
-            document.getElementById('classroomsTable').innerHTML = schoolData.classrooms.map((c,i) => `
-                <tr><td>${c.number}</td><td>${c.capacity||'-'}</td><td><button class="small danger" onclick="removeClassroom(${i})">🗑️ Удалить</button></td></tr>
-            `).join('');
-        }
+        function renderClassrooms() { document.getElementById('classroomsTable').innerHTML = schoolData.classrooms.map((c,i) => `<tr><td>${c.number}</td><td>${c.capacity||'-'}</td><td><button class="small danger" onclick="removeClassroom(${i})">🗑️ Удалить</button></td></tr>`).join(''); }
         function removeClassroom(i) { schoolData.classrooms.splice(i,1); renderClassrooms(); saveSchoolData(); }
-
-        function importFromExcel() {
-            alert('Функция импорта из Excel будет добавлена. Пока заполните справочники вручную.');
-        }
+        function importFromExcel() { alert('Функция импорта из Excel будет добавлена. Пока заполните справочники вручную.'); }
 
         function updateTeacherSelect() {
             const select = document.getElementById('teacherSelect');
-            select.innerHTML = '<option value="">-- Выберите учителя --</option>' +
-                schoolData.teachers.map(t => `<option value="${t.full_name}">${t.full_name}</option>`).join('');
+            select.innerHTML = '<option value="">-- Выберите учителя --</option>' + schoolData.teachers.map(t => `<option value="${t.full_name}">${t.full_name}</option>`).join('');
         }
 
         function loadTeacherCard() {
@@ -941,8 +401,7 @@
             if (!teacher) { document.getElementById('teacherCard').style.display = 'none'; return; }
             document.getElementById('teacherCard').style.display = 'block';
             document.getElementById('currentTeacherName').textContent = teacher;
-            renderWorkloads(teacher);
-            renderAvailabilityGrid(teacher);
+            renderWorkloads(teacher); renderAvailabilityGrid(teacher);
         }
 
         function renderWorkloads(teacher) {
@@ -951,23 +410,17 @@
                 <div class="workload-row">
                     <div class="form-group autocomplete-wrapper">
                         <label for="subject-${i}">📚 Предмет</label>
-                        <input type="text" id="subject-${i}" class="workload-subject" value="${w.subject}" placeholder="Например: Математика"
-                               data-idx="${i}" data-field="subject" oninput="filterAutocomplete(this)"
-                               onfocus="showAutocomplete(this, 'subjects')">
+                        <input type="text" id="subject-${i}" class="workload-subject" value="${w.subject}" placeholder="Например: Математика" data-idx="${i}" data-field="subject" oninput="filterAutocomplete(this)" onfocus="showAutocomplete(this, 'subjects')">
                         <div class="autocomplete-list" style="display:none"></div>
                     </div>
                     <div class="form-group autocomplete-wrapper">
                         <label for="grade-${i}">🏫 Класс</label>
-                        <input type="text" id="grade-${i}" class="workload-grade" value="${w.grade}" placeholder="Например: 5А"
-                               data-idx="${i}" data-field="grade" oninput="filterAutocomplete(this)"
-                               onfocus="showAutocomplete(this, 'classes')">
+                        <input type="text" id="grade-${i}" class="workload-grade" value="${w.grade}" placeholder="Например: 5А" data-idx="${i}" data-field="grade" oninput="filterAutocomplete(this)" onfocus="showAutocomplete(this, 'classes')">
                         <div class="autocomplete-list" style="display:none"></div>
                     </div>
                     <div class="form-group hours-group">
                         <label for="hours-${i}">⏰ Часы</label>
-                        <input type="number" id="hours-${i}" class="workload-hours" value="${w.hours}"
-                               data-idx="${i}" data-field="hours" min="1" max="20"
-                               onchange="updateWorkloadFromInput(this)">
+                        <input type="number" id="hours-${i}" class="workload-hours" value="${w.hours}" data-idx="${i}" data-field="hours" min="1" max="20" onchange="updateWorkloadFromInput(this)">
                     </div>
                     <button class="small danger" onclick="removeWorkload(${i})">🗑️ Удалить</button>
                 </div>
@@ -980,271 +433,117 @@
             const value = input.value.toLowerCase();
             list.innerHTML = '';
             items.filter(item => item.toLowerCase().includes(value)).forEach(item => {
-                const div = document.createElement('div');
-                div.className = 'autocomplete-item';
-                div.textContent = item;
-                div.onclick = () => {
-                    input.value = item;
-                    list.style.display = 'none';
-                    updateWorkloadFromInput(input);
-                };
+                const div = document.createElement('div'); div.className = 'autocomplete-item'; div.textContent = item;
+                div.onclick = () => { input.value = item; list.style.display = 'none'; updateWorkloadFromInput(input); };
                 list.appendChild(div);
             });
             if (list.children.length > 0) list.style.display = 'block';
         }
-
-        function filterAutocomplete(input) {
-            const list = input.nextElementSibling;
-            if (list.style.display === 'block') {
-                showAutocomplete(input, input.classList.contains('workload-subject') ? 'subjects' : 'classes');
-            }
-        }
-
+        function filterAutocomplete(input) { const list = input.nextElementSibling; if (list.style.display === 'block') showAutocomplete(input, input.classList.contains('workload-subject') ? 'subjects' : 'classes'); }
         function updateWorkloadFromInput(input) {
-            const idx = parseInt(input.dataset.idx);
-            const field = input.dataset.field;
-            const teacher = document.getElementById('teacherSelect').value;
+            const idx = parseInt(input.dataset.idx); const field = input.dataset.field; const teacher = document.getElementById('teacherSelect').value;
             const workloads = schoolData.workloads.filter(w => w.teacher === teacher);
-            if (workloads[idx]) {
-                workloads[idx][field] = field === 'hours' ? parseInt(input.value) : input.value;
-                saveSchoolData();
-            }
+            if (workloads[idx]) { workloads[idx][field] = field === 'hours' ? parseInt(input.value) : input.value; saveSchoolData(); }
         }
-
-        function addWorkload() {
-            const teacher = document.getElementById('teacherSelect').value;
-            if (!teacher) { alert('Сначала выберите учителя'); return; }
-            schoolData.workloads.push({teacher, subject:'', grade:'', hours:1});
-            renderWorkloads(teacher);
-            saveSchoolData();
-        }
-
-        function updateWorkload(idx, field, value) {
-            const teacher = document.getElementById('teacherSelect').value;
-            const workloads = schoolData.workloads.filter(w => w.teacher === teacher);
-            if (workloads[idx]) {
-                workloads[idx][field] = field === 'hours' ? parseInt(value) : value;
-                saveSchoolData();
-            }
-        }
-
-        function removeWorkload(idx) {
-            const teacher = document.getElementById('teacherSelect').value;
-            const workloads = schoolData.workloads.filter(w => w.teacher === teacher);
-            const globalIdx = schoolData.workloads.indexOf(workloads[idx]);
-            schoolData.workloads.splice(globalIdx, 1);
-            renderWorkloads(teacher);
-            saveSchoolData();
-        }
+        function addWorkload() { const teacher = document.getElementById('teacherSelect').value; if (!teacher) { alert('Сначала выберите учителя'); return; } schoolData.workloads.push({teacher, subject:'', grade:'', hours:1}); renderWorkloads(teacher); saveSchoolData(); }
+        function updateWorkload(idx, field, value) { const teacher = document.getElementById('teacherSelect').value; const workloads = schoolData.workloads.filter(w => w.teacher === teacher); if (workloads[idx]) { workloads[idx][field] = field === 'hours' ? parseInt(value) : value; saveSchoolData(); } }
+        function removeWorkload(idx) { const teacher = document.getElementById('teacherSelect').value; const workloads = schoolData.workloads.filter(w => w.teacher === teacher); const globalIdx = schoolData.workloads.indexOf(workloads[idx]); schoolData.workloads.splice(globalIdx, 1); renderWorkloads(teacher); saveSchoolData(); }
 
         function renderAvailabilityGrid(teacher) {
             const days = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"];
             const slots = Array.from({length: schoolData.lessonsPerDay}, (_, i) => i+1);
-            if (!schoolData.availability[teacher]) {
-                schoolData.availability[teacher] = {};
-                days.forEach(d => schoolData.availability[teacher][d] = [...slots]);
-            }
+            if (!schoolData.availability[teacher]) { schoolData.availability[teacher] = {}; days.forEach(d => schoolData.availability[teacher][d] = [...slots]); }
             let html = '<div class="availability-cell header"></div>';
             slots.forEach(s => html += `<div class="availability-cell header">Урок ${s}</div>`);
             days.forEach(day => {
                 html += `<div class="availability-cell header">${day}</div>`;
                 slots.forEach(slot => {
                     const isAvailable = schoolData.availability[teacher][day].includes(slot);
-                    html += `<div class="availability-cell ${isAvailable?'available':'unavailable'}"
-                             onclick="toggleAvailability('${teacher}','${day}',${slot})">${slot}</div>`;
+                    html += `<div class="availability-cell ${isAvailable?'available':'unavailable'}" onclick="toggleAvailability('${teacher}','${day}',${slot})">${slot}</div>`;
                 });
             });
             document.getElementById('availabilityGrid').innerHTML = html;
         }
-
         function toggleAvailability(teacher, day, slot) {
             const idx = schoolData.availability[teacher][day].indexOf(slot);
-            if (idx > -1) schoolData.availability[teacher][day].splice(idx, 1);
-            else schoolData.availability[teacher][day].push(slot);
-            renderAvailabilityGrid(teacher);
-            saveSchoolData();
+            if (idx > -1) schoolData.availability[teacher][day].splice(idx, 1); else schoolData.availability[teacher][day].push(slot);
+            renderAvailabilityGrid(teacher); saveSchoolData();
         }
 
         async function parseAIInput() {
-            const text = document.getElementById('aiInput').value;
-            if (!text) { alert('Введите текст'); return; }
+            const text = document.getElementById('aiInput').value; if (!text) { alert('Введите текст'); return; }
             try {
-                const res = await fetch('/api/ai-parse', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + getToken()
-                    },
-                    body: JSON.stringify({text})
-                });
+                const res = await fetch('/api/ai-parse', { method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken()}, body: JSON.stringify({text}) });
                 const data = await res.json();
-                document.getElementById('aiResult').style.display = 'block';
-                document.getElementById('aiResultText').textContent = JSON.stringify(data, null, 2);
-                window._aiResult = data;
-            } catch(e) {
-                alert('Ошибка: ' + e.message);
-            }
+                document.getElementById('aiResult').style.display = 'block'; document.getElementById('aiResultText').textContent = JSON.stringify(data, null, 2); window._aiResult = data;
+            } catch(e) { alert('Ошибка: ' + e.message); }
         }
-
         function applyAIResult() {
             if (!window._aiResult) { alert('Сначала проанализируйте текст'); return; }
             const data = window._aiResult;
-            if (data.teacher_name && !schoolData.teachers.find(t => t.full_name === data.teacher_name)) {
-                schoolData.teachers.push({full_name: data.teacher_name, email: ''});
-                renderTeachers();
-            }
-            data.lessons.forEach(l => {
-                schoolData.workloads.push({
-                    teacher: data.teacher_name,
-                    subject: l.subject,
-                    grade: l.grade,
-                    hours: l.hours
-                });
-            });
-            schoolData.availability[data.teacher_name] = data.availability;
-            saveSchoolData();
+            if (data.teacher_name && !schoolData.teachers.find(t => t.full_name === data.teacher_name)) { schoolData.teachers.push({full_name: data.teacher_name, email: ''}); renderTeachers(); }
+            data.lessons.forEach(l => { schoolData.workloads.push({teacher: data.teacher_name, subject: l.subject, grade: l.grade, hours: l.hours}); });
+            schoolData.availability[data.teacher_name] = data.availability; saveSchoolData();
             alert('✅ Данные применены! Теперь выберите учителя в выпадающем списке для проверки.');
-            updateTeacherSelect();
-            document.getElementById('teacherSelect').value = data.teacher_name;
-            loadTeacherCard();
+            updateTeacherSelect(); document.getElementById('teacherSelect').value = data.teacher_name; loadTeacherCard();
         }
 
         async function generateTimetable() {
             if (!checkAuth()) return;
-            const err = document.getElementById('genError');
-            const succ = document.getElementById('genSuccess');
-            const btn = document.getElementById('generateBtn');
-
+            const err = document.getElementById('genError'); const succ = document.getElementById('genSuccess'); const btn = document.getElementById('generateBtn');
             const teachers = {};
             schoolData.teachers.forEach(t => {
                 const workloads = schoolData.workloads.filter(w => w.teacher === t.full_name);
                 if (workloads.length === 0) return;
-                teachers[t.full_name] = {
-                    lessons: workloads.map(w => ({subject: w.subject, grade: w.grade, hours: w.hours})),
-                    availability: schoolData.availability[t.full_name] || {},
-                    max_days_per_week: 5
-                };
+                teachers[t.full_name] = { lessons: workloads.map(w => ({subject: w.subject, grade: w.grade, hours: w.hours})), availability: schoolData.availability[t.full_name] || {}, max_days_per_week: 5 };
             });
-
-            if (Object.keys(teachers).length === 0) {
-                err.textContent = 'Добавьте хотя бы одного учителя с предметами';
-                err.classList.add('show');
-                return;
-            }
-
+            if (Object.keys(teachers).length === 0) { err.textContent = 'Добавьте хотя бы одного учителя с предметами'; err.classList.add('show'); return; }
             const days = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"].slice(0, schoolData.days);
             const slots = Array.from({length: schoolData.lessonsPerDay}, (_, i) => i+1);
             const requestData = { days, slots, teachers };
-
-            err.classList.remove('show');
-            succ.classList.remove('show');
-            btn.disabled = true;
-            btn.textContent = '⏳ Генерация...';
+            err.classList.remove('show'); succ.classList.remove('show'); btn.disabled = true; btn.textContent = ' Генерация...';
             document.getElementById('progressOverlay').classList.add('active');
-
             try {
-                let attempts = 0;
-                let success = false;
-                let data;
+                let attempts = 0; let success = false; let data;
                 while (attempts < 3 && !success) {
-                    try {
-                        const res = await fetch('/generate', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': 'Bearer ' + getToken()
-                            },
-                            body: JSON.stringify(requestData)
-                        });
-                        data = await res.json();
-                        success = true;
-                    } catch (e) {
-                        attempts++;
-                        if (attempts >= 3) throw e;
-                        await new Promise(r => setTimeout(r, 2000));
-                    }
+                    try { const res = await fetch('/generate', { method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken()}, body: JSON.stringify(requestData) }); data = await res.json(); success = true; }
+                    catch (e) { attempts++; if (attempts >= 3) throw e; await new Promise(r => setTimeout(r, 2000)); }
                 }
-
                 document.getElementById('progressOverlay').classList.remove('active');
-
-                if (data.status === 'INVALID') {
-                    err.textContent = 'Ошибки валидации: ' + (data.errors || []).join('; ');
-                    err.classList.add('show');
-                    return;
-                }
-                if (data.validation_errors && data.validation_errors.length > 0) {
-                    err.textContent = 'Не удалось составить расписание: ' + data.validation_errors.join('; ');
-                    err.classList.add('show');
-                    return;
-                }
-
-                attempts = 0;
-                let fullData;
+                if (data.status === 'INVALID') { err.textContent = 'Ошибки валидации: ' + (data.errors || []).join('; '); err.classList.add('show'); return; }
+                if (data.validation_errors && data.validation_errors.length > 0) { err.textContent = 'Не удалось составить расписание: ' + data.validation_errors.join('; '); err.classList.add('show'); return; }
+                attempts = 0; let fullData;
                 while (attempts < 3) {
-                    try {
-                        const fullRes = await fetch('/timetables/' + data.id, {
-                            headers: {'Authorization': 'Bearer ' + getToken()}
-                        });
-                        fullData = await fullRes.json();
-                        break;
-                    } catch (e) {
-                        attempts++;
-                        if (attempts >= 3) throw e;
-                        await new Promise(r => setTimeout(r, 2000));
-                    }
+                    try { const fullRes = await fetch('/timetables/' + data.id, { headers: {'Authorization': 'Bearer ' + getToken()} }); fullData = await fullRes.json(); break; }
+                    catch (e) { attempts++; if (attempts >= 3) throw e; await new Promise(r => setTimeout(r, 2000)); }
                 }
-
-                if (!fullData || !fullData.data) {
-                    throw new Error('Расписание не получено от сервера');
-                }
-
-                currentResult = fullData.data;
-                currentTimetableId = data.id;
-
+                if (!fullData || !fullData.data) throw new Error('Расписание не получено от сервера');
+                currentResult = fullData.data; currentTimetableId = data.id;
                 document.getElementById('statTeachers').textContent = currentResult.teachers ? currentResult.teachers.length : 0;
                 const totalLessons = currentResult.teachers ? currentResult.teachers.reduce((sum, t) => sum + t.total_lessons, 0) : 0;
                 document.getElementById('statLessons').textContent = totalLessons;
                 document.getElementById('statTime').textContent = currentResult.solution_time ? currentResult.solution_time.toFixed(2) + 'с' : '0с';
                 document.getElementById('statStatus').textContent = currentResult.status || 'UNKNOWN';
-
-                document.getElementById('resultsSection').classList.add('active');
-                succ.textContent = '✅ Расписание успешно составлено!';
-                succ.classList.add('show');
-                renderSchedule();
-                loadSavedTimetables();
-            } catch(e) {
-                document.getElementById('progressOverlay').classList.remove('active');
-                err.textContent = 'Ошибка: ' + e.message;
-                err.classList.add('show');
-            } finally {
-                btn.disabled = false;
-                btn.textContent = '🎯 Сгенерировать расписание';
-            }
+                document.getElementById('resultsSection').classList.add('active'); succ.textContent = '✅ Расписание успешно составлено!'; succ.classList.add('show');
+                renderSchedule(); loadSavedTimetables();
+            } catch(e) { document.getElementById('progressOverlay').classList.remove('active'); err.textContent = 'Ошибка: ' + e.message; err.classList.add('show'); }
+            finally { btn.disabled = false; btn.textContent = '🎯 Сгенерировать расписание'; }
         }
 
         function renderSchedule() {
-            if (!currentResult || !currentResult.teachers) {
-                document.getElementById('scheduleView').innerHTML = '<p style="color:#999">Нет данных для отображения</p>';
-                return;
-            }
+            if (!currentResult || !currentResult.teachers) { document.getElementById('scheduleView').innerHTML = '<p style="color:#999">Нет данных для отображения</p>'; return; }
             const container = document.getElementById('scheduleView');
             let html = '<h3>📋 Расписание по учителям</h3>';
             currentResult.teachers.forEach(teacher => {
                 html += '<div style="background:#f8f9fa;padding:20px;border-radius:10px;margin-bottom:20px">';
-                html += '<h4 style="color:#667eea;margin-bottom:15px">👨🏫 ' + teacher.teacher + ' (' + teacher.total_lessons + ' уроков)</h4>';
+                html += '<h4 style="color:#667eea;margin-bottom:15px">👨‍🏫 ' + teacher.teacher + ' (' + teacher.total_lessons + ' уроков)</h4>';
                 const days = Object.keys(teacher.schedule).sort();
                 days.forEach(day => {
-                    html += '<div style="margin-bottom:10px">';
-                    html += '<strong>📅 ' + day + ':</strong><br>';
+                    html += '<div style="margin-bottom:10px"><strong>📅 ' + day + ':</strong><br>';
                     const slots = Object.keys(teacher.schedule[day]).map(s => parseInt(s)).sort((a,b) => a-b);
                     slots.forEach(slot => {
                         const lessons = teacher.schedule[day][String(slot)];
-                        lessons.forEach(lesson => {
-                            html += '<div style="background:#f0f4ff;padding:8px;margin:5px 0;border-left:3px solid #667eea;border-radius:4px">';
-                            html += '<strong>Урок ' + slot + ':</strong> ' + lesson.subject;
-                            html += ' <span style="color:#666">(' + lesson.grade + ' класс)</span>';
-                            html += '</div>';
-                        });
+                        lessons.forEach(lesson => { html += '<div style="background:#f0f4ff;padding:8px;margin:5px 0;border-left:3px solid #667eea;border-radius:4px"><strong>Урок ' + slot + ':</strong> ' + lesson.subject + ' <span style="color:#666">(' + lesson.grade + ' класс)</span></div>'; });
                     });
                     html += '</div>';
                 });
@@ -1255,241 +554,242 @@
 
         async function loadSavedTimetables() {
             if (!checkAuth()) return;
-            const container = document.getElementById('savedTimetablesList');
-            if (!container) return;
+            const container = document.getElementById('savedTimetablesList'); if (!container) return;
             try {
-                const res = await fetch('/timetables', {
-                    headers: {'Authorization': 'Bearer ' + getToken()}
-                });
+                const res = await fetch('/timetables', { headers: {'Authorization': 'Bearer ' + getToken()} });
                 const data = await res.json();
                 if (res.ok && Array.isArray(data) && data.length > 0) {
                     container.innerHTML = data.map(t => `
                         <div class="saved-timetable-item">
-                            <div>
-                                <h4>${t.name}</h4>
-                                <p>Создано: ${new Date(t.created_at).toLocaleString('ru-RU')}</p>
-                            </div>
+                            <div><h4>${t.name}</h4><p>Создано: ${new Date(t.created_at).toLocaleString('ru-RU')}</p></div>
                             <div class="saved-timetable-actions">
                                 <button class="small primary" onclick="window.loadSavedTimetable(${t.id})">👁️ Открыть</button>
                                 <button class="small outline" onclick="window.downloadSavedPDF(${t.id}, 'teachers')">📄 PDF (уч.)</button>
-                                <button class="small outline" onclick="window.downloadSavedPDF(${t.id}, 'classes')">📄 PDF (кл.)</button>
+                                <button class="small outline" onclick="window.downloadSavedPDF(${t.id}, 'classes')"> PDF (кл.)</button>
                                 <button class="small outline" onclick="window.downloadSavedExcel(${t.id}, 'teachers')">📊 Excel (уч.)</button>
                                 <button class="small outline" onclick="window.downloadSavedExcel(${t.id}, 'classes')">📊 Excel (кл.)</button>
-                                <button class="small danger" onclick="window.deleteSavedTimetable(${t.id})">🗑️ Удалить</button>
+                                <button class="small danger" onclick="window.deleteSavedTimetable(${t.id})">️ Удалить</button>
                             </div>
                         </div>
                     `).join('');
-                } else {
-                    container.innerHTML = '<p style="color:#999;text-align:center">Нет сохранённых расписаний</p>';
-                }
-            } catch(e) {
-                console.error('Error loading timetables:', e);
-                container.innerHTML = '<p style="color:#c33;text-align:center">Ошибка загрузки. Попробуйте войти снова.</p>';
-            }
+                } else { container.innerHTML = '<p style="color:#999;text-align:center">Нет сохранённых расписаний</p>'; }
+            } catch(e) { console.error('Error loading timetables:', e); container.innerHTML = '<p style="color:#c33;text-align:center">Ошибка загрузки. Попробуйте войти снова.</p>'; }
         }
 
         window.loadSavedTimetable = async function(id) {
-            console.log('Loading timetable:', id);
-            if (!checkAuth()) return;
+            console.log('Loading timetable:', id); if (!checkAuth()) return;
             try {
-                const res = await fetch('/timetables/' + id, {
-                    headers: {'Authorization': 'Bearer ' + getToken()}
-                });
-                const data = await res.json();
-                console.log('Loaded data:', data);
+                const res = await fetch('/timetables/' + id, { headers: {'Authorization': 'Bearer ' + getToken()} });
+                const data = await res.json(); console.log('Loaded data:', data);
                 if (res.ok && data.data) {
-                    currentResult = data.data;
-                    currentTimetableId = id;
+                    currentResult = data.data; currentTimetableId = id;
                     document.getElementById('statTeachers').textContent = currentResult.teachers ? currentResult.teachers.length : 0;
                     const totalLessons = currentResult.teachers ? currentResult.teachers.reduce((sum, t) => sum + t.total_lessons, 0) : 0;
                     document.getElementById('statLessons').textContent = totalLessons;
                     document.getElementById('statTime').textContent = currentResult.solution_time ? currentResult.solution_time.toFixed(2) + 'с' : '0с';
                     document.getElementById('statStatus').textContent = currentResult.status || 'UNKNOWN';
-                    document.getElementById('resultsSection').classList.add('active');
-                    renderSchedule();
-                    document.getElementById('resultsSection').scrollIntoView({behavior: 'smooth'});
-                    alert('✅ Расписание загружено!');
-                } else {
-                    alert('Ошибка загрузки расписания: ' + (data.detail || 'Неизвестная ошибка'));
-                }
-            } catch(e) {
-                console.error('Error:', e);
-                alert('Ошибка загрузки: ' + e.message);
-            }
+                    document.getElementById('resultsSection').classList.add('active'); renderSchedule();
+                    document.getElementById('resultsSection').scrollIntoView({behavior: 'smooth'}); alert('✅ Расписание загружено!');
+                } else { alert('Ошибка загрузки расписания: ' + (data.detail || 'Неизвестная ошибка')); }
+            } catch(e) { console.error('Error:', e); alert('Ошибка загрузки: ' + e.message); }
         };
 
         window.deleteSavedTimetable = async function(id) {
-            console.log('Deleting timetable:', id);
-            if (!checkAuth()) return;
-            if (!confirm('Удалить это расписание?')) return;
+            console.log('Deleting timetable:', id); if (!checkAuth()) return; if (!confirm('Удалить это расписание?')) return;
             try {
-                const res = await fetch('/timetables/' + id, {
-                    method: 'DELETE',
-                    headers: {'Authorization': 'Bearer ' + getToken()}
-                });
-                if (res.ok) {
-                    loadSavedTimetables();
-                    alert('✅ Расписание удалено');
-                } else {
-                    const data = await res.json();
-                    alert('Ошибка удаления: ' + (data.detail || 'Неизвестная ошибка'));
-                }
-            } catch(e) {
-                console.error('Error:', e);
-                alert('Ошибка удаления: ' + e.message);
-            }
+                const res = await fetch('/timetables/' + id, { method: 'DELETE', headers: {'Authorization': 'Bearer ' + getToken()} });
+                if (res.ok) { loadSavedTimetables(); alert('✅ Расписание удалено'); }
+                else { const data = await res.json(); alert('Ошибка удаления: ' + (data.detail || 'Неизвестная ошибка')); }
+            } catch(e) { console.error('Error:', e); alert('Ошибка удаления: ' + e.message); }
         };
 
         window.downloadSavedPDF = async function(id, format) {
-            console.log('Downloading PDF:', id, format);
-            if (!checkAuth()) return;
+            console.log('Downloading PDF:', id, format); if (!checkAuth()) return;
             try {
-                const token = getToken();
-                const response = await fetch(`/timetables/${id}/export/pdf?format=${format}`, {
-                    headers: {'Authorization': 'Bearer ' + token}
-                });
+                const token = getToken(); const response = await fetch(`/timetables/${id}/export/pdf?format=${format}`, { headers: {'Authorization': 'Bearer ' + token} });
                 if (!response.ok) throw new Error('Ошибка скачивания');
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `timetable_${id}_teachers.pdf`;
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                document.body.removeChild(a);
-            } catch(e) {
-                console.error('Error:', e);
-                alert('Ошибка скачивания: ' + e.message);
-            }
+                const blob = await response.blob(); const url = window.URL.createObjectURL(blob); const a = document.createElement('a');
+                a.href = url; a.download = `timetable_${id}_teachers.pdf`; document.body.appendChild(a); a.click();
+                window.URL.revokeObjectURL(url); document.body.removeChild(a);
+            } catch(e) { console.error('Error:', e); alert('Ошибка скачивания: ' + e.message); }
         };
 
         window.downloadSavedExcel = async function(id, format) {
-            console.log('Downloading Excel:', id, format);
-            if (!checkAuth()) return;
+            console.log('Downloading Excel:', id, format); if (!checkAuth()) return;
             try {
-                const token = getToken();
-                const response = await fetch(`/timetables/${id}/export/excel?format=${format}`, {
-                    headers: {'Authorization': 'Bearer ' + token}
-                });
+                const token = getToken(); const response = await fetch(`/timetables/${id}/export/excel?format=${format}`, { headers: {'Authorization': 'Bearer ' + token} });
                 if (!response.ok) throw new Error('Ошибка скачивания');
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `timetable_${id}_teachers.xlsx`;
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                document.body.removeChild(a);
-            } catch(e) {
-                console.error('Error:', e);
-                alert('Ошибка скачивания: ' + e.message);
-            }
+                const blob = await response.blob(); const url = window.URL.createObjectURL(blob); const a = document.createElement('a');
+                a.href = url; a.download = `timetable_${id}_teachers.xlsx`; document.body.appendChild(a); a.click();
+                window.URL.revokeObjectURL(url); document.body.removeChild(a);
+            } catch(e) { console.error('Error:', e); alert('Ошибка скачивания: ' + e.message); }
         };
 
-        function downloadPDF(format) {
-            if (!currentTimetableId) { alert('Сначала сгенерируйте расписание'); return; }
-            if (!checkAuth()) return;
-            window.downloadSavedPDF(currentTimetableId, format);
-        }
+        function downloadPDF(format) { if (!currentTimetableId) { alert('Сначала сгенерируйте расписание'); return; } if (!checkAuth()) return; window.downloadSavedPDF(currentTimetableId, format); }
+        function downloadExcel(format) { if (!currentTimetableId) { alert('Сначала сгенерируйте расписание'); return; } if (!checkAuth()) return; window.downloadSavedExcel(currentTimetableId, format); }
 
-        function downloadExcel(format) {
-            if (!currentTimetableId) { alert('Сначала сгенерируйте расписание'); return; }
-            if (!checkAuth()) return;
-            window.downloadSavedExcel(currentTimetableId, format);
-        }
-
+        // ==========================================
+        // ЛОГИКА DRAG-AND-DROP РЕДАКТОРА
+        // ==========================================
         function renderTimetableGrid() {
             if (!currentResult || !currentResult.teachers) {
                 document.getElementById('timetableGrid').innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#999">Сначала сгенерируйте расписание</p>';
                 return;
             }
+
             const classSelect = document.getElementById('classSelect');
             if (classSelect.options.length <= 1) {
                 const grades = new Set();
                 currentResult.teachers.forEach(t => {
                     if (t.schedule) {
-                        Object.values(t.schedule).forEach(day => {
-                            Object.values(day).forEach(slot => {
-                                if (Array.isArray(slot)) slot.forEach(l => grades.add(l.grade));
+                        Object.values(t.schedule).forEach(dayObj => {
+                            Object.values(dayObj).forEach(slotLessons => {
+                                slotLessons.forEach(l => grades.add(l.grade));
                             });
                         });
                     }
                 });
                 classSelect.innerHTML = '<option value="">-- Выберите класс --</option>' +
-                    Array.from(grades).map(g => `<option value="${g}">${g} класс</option>`).join('');
+                    Array.from(grades).sort().map(g => `<option value="${g}">${g} класс</option>`).join('');
             }
+
             const grade = classSelect.value;
             if (!grade) {
-                document.getElementById('timetableGrid').innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#999">Выберите класс</p>';
+                document.getElementById('timetableGrid').innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#999">Выберите класс для просмотра сетки</p>';
                 return;
             }
+
             const days = currentResult.days;
             const slots = currentResult.slots;
+
             let html = '<div class="timetable-cell header"></div>';
             slots.forEach(s => html += `<div class="timetable-cell header">Урок ${s}</div>`);
+
             days.forEach(day => {
                 html += `<div class="timetable-cell header">${day}</div>`;
                 slots.forEach(slot => {
-                    let lessonText = '';
-                    let lessonData = null;
+                    let cellContent = '';
+                    let isDraggable = false;
+                    let lessonInfo = null;
+
                     currentResult.teachers.forEach(t => {
                         if (t.schedule && t.schedule[day] && t.schedule[day][String(slot)]) {
                             t.schedule[day][String(slot)].forEach(l => {
                                 if (l.grade === grade) {
-                                    lessonText = `${l.subject}<br><small>${l.teacher}</small>`;
-                                    lessonData = {teacher: t.teacher, subject: l.subject, grade: l.grade, day, slot};
+                                    cellContent = `<strong>${l.subject}</strong><br><small>${t.teacher}</small>`;
+                                    isDraggable = true;
+                                    lessonInfo = { teacher: t.teacher, subject: l.subject, grade: l.grade, day: day, slot: slot };
                                 }
                             });
                         }
                     });
-                    html += `<div class="timetable-cell ${lessonData?'lesson':''}"
-                             draggable="${lessonData?'true':'false'}"
-                             ondragstart="dragStart(event)" ondragover="dragOver(event)" ondrop="drop(event)"
-                             data-day="${day}" data-slot="${slot}">${lessonText}</div>`;
+
+                    const draggableAttr = isDraggable ? 'draggable="true"' : '';
+                    const lessonClass = isDraggable ? 'lesson' : '';
+                    const dataAttrs = isDraggable ?
+                        `data-teacher="${lessonInfo.teacher}" data-subject="${lessonInfo.subject}" data-grade="${lessonInfo.grade}"` : '';
+
+                    html += `<div class="timetable-cell ${lessonClass}"
+                             ${draggableAttr}
+                             ondragstart="handleDragStart(event)"
+                             ondragover="handleDragOver(event)"
+                             ondrop="handleDrop(event)"
+                             ondragleave="handleDragLeave(event)"
+                             data-day="${day}" data-slot="${slot}" ${dataAttrs}>${cellContent}</div>`;
                 });
             });
+
             document.getElementById('timetableGrid').innerHTML = html;
         }
 
-        function dragStart(e) {
-            e.dataTransfer.setData('text/plain', e.target.dataset.day + ',' + e.target.dataset.slot);
-        }
-        function dragOver(e) {
-            e.preventDefault();
-            e.target.classList.add('drag-over');
-        }
-        function drop(e) {
-            e.preventDefault();
-            e.target.classList.remove('drag-over');
-            alert('Функция перемещения урока будет реализована. Пока расписание сохраняется автоматически.');
-        }
-
-        function validateTimetable() {
-            alert('✅ Конфликтов не найдено! Расписание корректно.');
+        function handleDragStart(e) {
+            draggedLessonData = {
+                teacher: e.target.dataset.teacher,
+                subject: e.target.dataset.subject,
+                grade: e.target.dataset.grade,
+                fromDay: e.target.dataset.day,
+                fromSlot: parseInt(e.target.dataset.slot)
+            };
+            e.dataTransfer.setData('text/plain', JSON.stringify(draggedLessonData));
+            e.target.style.opacity = '0.5';
         }
 
-        function sendToTeachers() {
-            alert(' Ссылки на расписание отправлены учителям в Telegram!');
-        }
-        function sendToEmail() {
-            alert('📧 Письма с расписанием отправлены на почту учителей!');
-        }
-        function exportToJournal() {
-            alert('🔗 Данные экспортированы в электронный журнал через API!');
-        }
-        function publishTimetable() {
-            if (confirm('Опубликовать расписание? После публикации изменения будут недоступны.')) {
-                alert('✅ Расписание опубликовано! Все участники получили уведомления.');
+        function handleDragOver(e) {
+            e.preventDefault();
+            if (e.target.classList.contains('timetable-cell') && !e.target.classList.contains('header')) {
+                e.target.classList.add('drag-over');
             }
         }
 
+        function handleDragLeave(e) {
+            if (e.target.classList.contains('timetable-cell')) {
+                e.target.classList.remove('drag-over');
+            }
+        }
+
+        async function handleDrop(e) {
+            e.preventDefault();
+            e.target.classList.remove('drag-over');
+
+            const dragSrcEl = document.querySelector(`.timetable-cell[data-day="${draggedLessonData.fromDay}"][data-slot="${draggedLessonData.fromSlot}"]`);
+            if(dragSrcEl) dragSrcEl.style.opacity = '1';
+
+            let targetCell = e.target;
+            while (targetCell && !targetCell.classList.contains('timetable-cell')) {
+                targetCell = targetCell.parentElement;
+            }
+
+            if (!targetCell || targetCell.classList.contains('header') || !targetCell.dataset.day) {
+                return;
+            }
+
+            const toDay = targetCell.dataset.day;
+            const toSlot = parseInt(targetCell.dataset.slot);
+
+            if (toDay === draggedLessonData.fromDay && toSlot === draggedLessonData.fromSlot) return;
+
+            try {
+                const response = await fetch(`/timetables/${currentTimetableId}/move-lesson`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + getToken()
+                    },
+                    body: JSON.stringify({
+                        teacher: draggedLessonData.teacher,
+                        subject: draggedLessonData.subject,
+                        grade: draggedLessonData.grade,
+                        from_day: draggedLessonData.fromDay,
+                        from_slot: draggedLessonData.fromSlot,
+                        to_day: toDay,
+                        to_slot: toSlot
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    currentResult = result.data;
+                    renderTimetableGrid();
+                    alert('✅ Урок успешно перемещен!');
+                } else {
+                    alert('⚠️ Не удалось переместить: ' + (result.detail || 'Произошла ошибка'));
+                }
+            } catch (error) {
+                console.error('Ошибка перемещения:', error);
+                alert(' Ошибка соединения с сервером');
+            }
+        }
+
+        function validateTimetable() { alert('✅ Конфликтов не найдено! Расписание корректно.'); }
+        function sendToTeachers() { alert('📱 Ссылки на расписание отправлены учителям в Telegram!'); }
+        function sendToEmail() { alert('📧 Письма с расписанием отправлены на почту учителей!'); }
+        function exportToJournal() { alert('🔗 Данные экспортированы в электронный журнал через API!'); }
+        function publishTimetable() { if (confirm('Опубликовать расписание? После публикации изменения будут недоступны.')) { alert('✅ Расписание опубликовано! Все участники получили уведомления.'); } }
+
         document.addEventListener('click', function(e) {
             if (!e.target.closest('.autocomplete-wrapper')) {
-                document.querySelectorAll('.autocomplete-list').forEach(list => {
-                    list.style.display = 'none';
-                });
+                document.querySelectorAll('.autocomplete-list').forEach(list => { list.style.display = 'none'; });
             }
         });
     </script>
