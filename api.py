@@ -94,40 +94,131 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
             "school_name": db_user.school_name, "access_token": access_token, "token_type": "bearer"}
 
 
+# ============================================================
+# УЛУЧШЕННЫЙ AI-ПАРСЕР С ПОДДЕРЖКОЙ ВРЕМЕНИ
+# ============================================================
 @app.post("/api/ai-parse")
 def ai_parse_text(request: AIInputRequest, current_user: User = Depends(get_current_user)):
-    text = request.text
+    text = request.text.lower()
     result = {"teacher_name": "", "lessons": [], "availability": {}, "max_days": 5}
-    name_match = re.search(r'^Учитель\s+([А-Яа-я\s]+?)(?:\s+может|\s+ведет|\s+преподает)', text, re.IGNORECASE)
-    if name_match:
-        result["teacher_name"] = name_match.group(1).strip()
-    else:
-        name_match = re.search(r'^([А-Яа-я\s]+?)\s+(?:может|ведет|преподает)', text)
-        if name_match:
-            result["teacher_name"] = name_match.group(1).strip()
 
+    # 1. Извлекаем имя
+    name_match = re.search(r'(?:учитель\s+)?([а-яё]+(?:\s+[а-яё\.]+){1,3})\s+(?:может|ведет|преподает|работает)', text)
+    if name_match:
+        raw_name = name_match.group(1).strip()
+        result["teacher_name"] = raw_name.title()
+
+    # 2. Извлекаем предметы
     lesson_patterns = [
-        r'ведет\s+урок\s+([А-Яа-я\s]+?)\s+в\s+(\d+(?:-\d+)?)\s*класс',
-        r'преподает\s+([А-Яа-я\s]+?)\s+(\d+(?:,\s*\d+)*)\s*класс',
-        r'([А-Яа-я\s]+?)\s+в\s+(\d+(?:-\d+)?)\s*класс',
+        r'ведет\s+(?:урок\s+)?([а-яё\s]+?)\s+(?:в\s+)?(\d+(?:-\d+)?)\s*(?:класс|кл)',
+        r'преподает\s+([а-яё\s]+?)\s+(\d+(?:-\d+)?)\s*(?:класс|кл)',
     ]
     for pattern in lesson_patterns:
-        matches = re.findall(pattern, text, re.IGNORECASE)
+        matches = re.findall(pattern, text)
         for match in matches:
-            result["lessons"].append({"subject": match[0].strip(), "grade": match[1].strip(), "hours": 2})
+            result["lessons"].append({"subject": match[0].strip().title(), "grade": match[1].strip(), "hours": 2})
 
-    days_map = {"понедельник": "Понедельник", "вторник": "Вторник", "среда": "Среда", "четверг": "Четверг",
-                "пятница": "Пятница", "суббота": "Суббота"}
-    for day_ru, day_norm in days_map.items():
-        if day_ru in text.lower():
-            if "до 15" in text.lower() and day_ru == "вторник":
-                result["availability"][day_norm] = [1, 2, 3, 4, 5]
-            elif "в любое время" in text.lower() or "весь день" in text.lower():
-                result["availability"][day_norm] = [1, 2, 3, 4, 5, 6, 7]
-            elif "в первой половине" in text.lower():
-                result["availability"][day_norm] = [1, 2, 3, 4]
+    # 3. Стандартная сетка времени (должна совпадать с Шагом 1 по умолчанию)
+    LESSON_TIMES = [
+        ("08:30", "09:15"),  # Урок 1
+        ("09:25", "10:10"),  # Урок 2
+        ("10:20", "11:05"),  # Урок 3
+        ("11:25", "12:10"),  # Урок 4
+        ("12:20", "13:05"),  # Урок 5
+        ("13:15", "14:00"),  # Урок 6
+        ("14:10", "14:55"),  # Урок 7
+        ("15:05", "15:50"),  # Урок 8
+    ]
+
+    def time_to_slots_before(time_str):
+        """Возвращает уроки, которые ЗАКАНЧИВАЮТСЯ до указанного времени"""
+        clean_time = time_str.replace('.', ':').strip()
+        parts = clean_time.split(':')
+        if len(parts) != 2: return []
+        try:
+            h, m = int(parts[0]), int(parts[1])
+            target_min = h * 60 + m
+            available = []
+            for i, (start, end) in enumerate(LESSON_TIMES):
+                s_parts = start.split(':')
+                e_parts = end.split(':')
+                end_min = int(e_parts[0]) * 60 + int(e_parts[1])
+                if end_min <= target_min:
+                    available.append(i + 1)
+            return available
+        except:
+            return []
+
+    def time_to_slots_after(time_str):
+        """Возвращает уроки, которые НАЧИНАЮТСЯ после указанного времени"""
+        clean_time = time_str.replace('.', ':').strip()
+        parts = clean_time.split(':')
+        if len(parts) != 2: return []
+        try:
+            h, m = int(parts[0]), int(parts[1])
+            target_min = h * 60 + m
+            available = []
+            for i, (start, end) in enumerate(LESSON_TIMES):
+                s_parts = start.split(':')
+                start_min = int(s_parts[0]) * 60 + int(s_parts[1])
+                if start_min >= target_min:
+                    available.append(i + 1)
+            return available
+        except:
+            return []
+
+    days_map = {
+        "понедельник": "Понедельник", "вторник": "Вторник", "среда": "Среда",
+        "четверг": "Четверг", "пятница": "Пятница", "суббота": "Суббота",
+        "каждый день": "ALL"
+    }
+
+    # Ищем фразы про дни и время
+    # Регулярка ищет: "во вторник и четверг после 12.00" или "каждый день до 14:00"
+    time_phrases = re.finditer(
+        r'(?:в\s+)?(понедельник|вторник|среда|четверг|пятница|суббота|каждый день)(?:\s+и\s+(понедельник|вторник|среда|четверг|пятница|суббота))?\s+(.+?)(?:\s*(?:\.|,|;|$))',
+        text)
+
+    for match in time_phrases:
+        day1 = match.group(1)
+        day2 = match.group(2)
+        time_desc = match.group(3).lower()
+
+        target_days = []
+        if day1 in days_map:
+            if day1 == "каждый день":
+                target_days = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"]
             else:
-                result["availability"][day_norm] = [1, 2, 3, 4, 5, 6, 7]
+                target_days.append(days_map[day1])
+        if day2 and day2 in days_map:
+            target_days.append(days_map[day2])
+
+        slots = []
+
+        # Анализ описания времени
+        if "в любое время" in time_desc or "весь день" in time_desc:
+            slots = list(range(1, len(LESSON_TIMES) + 1))
+        elif "первая половина" in time_desc:
+            slots = [1, 2, 3, 4]
+        elif "после" in time_desc:
+            t_match = re.search(r'после\s+(\d{1,2}[.:]\d{2})', time_desc)
+            if t_match:
+                slots = time_to_slots_after(t_match.group(1))
+        elif "до" in time_desc:
+            t_match = re.search(r'до\s+(\d{1,2}[.:]\d{2})', time_desc)
+            if t_match:
+                slots = time_to_slots_before(t_match.group(1))
+
+        # Если нашли конкретные номера уроков (например "1, 2 урок")
+        lesson_nums = re.findall(r'(\d+)\s*(?:-й)?\s*урок', time_desc)
+        if lesson_nums:
+            slots = [int(x) for x in lesson_nums]
+
+        # Записываем в результат
+        for d in target_days:
+            if slots:
+                result["availability"][d] = slots
+
     return result
 
 
@@ -149,15 +240,15 @@ def response_to_dict(result: TimetableResponse, request: TimetableRequest) -> Di
 def generate_timetable(request: TimetableRequest, current_user: User = Depends(get_current_user),
                        db: Session = Depends(get_db)):
     try:
-        print(f"🚀 НАЧАЛО ГЕНЕРАЦИИ для пользователя {current_user.id}")
-        print(f"📊 Данные: {len(request.teachers)} учителей, {len(request.days)} дней, {len(request.slots)} слотов")
+        print(f" НАЧАЛО ГЕНЕРАЦИИ для пользователя {current_user.id}")
+        print(f" Данные: {len(request.teachers)} учителей, {len(request.days)} дней, {len(request.slots)} слотов")
 
         is_valid, teacher_stats, errors = validate_teachers(request)
         if not is_valid:
             return {"message": "Ошибки валидации", "status": "INVALID", "errors": errors,
                     "teacher_stats": teacher_stats}
 
-        print("️ Запускаю OR-Tools solver...")
+        print("⚙️ Запускаю OR-Tools solver...")
         result: TimetableResponse = solve_timetable(request)
         print(f"✅ Solver завершил работу. Статус: {result.status}")
 
@@ -237,9 +328,6 @@ def delete_timetable(timetable_id: int, current_user: User = Depends(get_current
     return {"message": "Расписание удалено"}
 
 
-# ============================================================
-# НОВЫЙ ЭНДПОИНТ ДЛЯ ОБЩЕГО РАСПИСАНИЯ (MASTER VIEW)
-# ============================================================
 @app.get("/timetables/{timetable_id}/master-view")
 def get_master_view(
         timetable_id: int,
@@ -260,7 +348,6 @@ def get_master_view(
     slots = data.get("slots", [])
     teachers = data.get("teachers", [])
 
-    # Структура результата: { day: { slot: { grade: {subject, teacher, classroom} } } }
     master_schedule = {}
 
     for day in days:
@@ -269,7 +356,6 @@ def get_master_view(
             slot_str = str(slot)
             master_schedule[day][slot_str] = {}
 
-            # Проходим по всем учителям и собираем уроки для этого времени
             for t in teachers:
                 t_sched = t.get('schedule', {})
                 if day in t_sched and slot_str in t_sched[day]:
