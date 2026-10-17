@@ -142,7 +142,7 @@
 </head>
 <body>
     <div id="authContainer" class="container auth-container">
-        <h1>🎓 Генератор школьного расписания</h1>
+        <h1> Генератор школьного расписания</h1>
         <p class="subtitle">Войдите или создайте аккаунт</p>
         <div class="tabs">
             <button class="tab active" onclick="showLogin()">Вход</button>
@@ -157,7 +157,7 @@
         <div id="registerForm" class="form-section">
             <div class="form-group"><label for="regFullName"> ФИО</label><input type="text" id="regFullName" placeholder="Иванов Иван Иванович"></div>
             <div class="form-group"><label for="regEmail">📧 Email</label><input type="email" id="regEmail" placeholder="your@email.com"></div>
-            <div class="form-group"><label for="regSchool">🏫 Школа</label><input type="text" id="regSchool" placeholder="Школа №123"></div>
+            <div class="form-group"><label for="regSchool"> Школа</label><input type="text" id="regSchool" placeholder="Школа №123"></div>
             <div class="form-group"><label for="regPassword">🔒 Пароль</label><input type="password" id="regPassword" placeholder="••••••••"></div>
             <button class="full" onclick="register()">Зарегистрироваться</button>
             <div id="regError" class="error"></div>
@@ -238,11 +238,11 @@
                     <p style="color:#666;font-size:14px;margin-bottom:15px">Заполните карточку учителя вручную</p>
                     <div class="form-group"><label for="teacherSelect">Выберите учителя</label><select id="teacherSelect" onchange="loadTeacherCard()"><option value="">-- Выберите учителя --</option></select></div>
                     <div id="teacherCard" style="display:none">
-                        <div class="teacher-info"><h4>👨‍ <span id="currentTeacherName"></span></h4><p class="help-text">Заполните предметы и доступность для этого учителя</p></div>
+                        <div class="teacher-info"><h4>‍ <span id="currentTeacherName"></span></h4><p class="help-text">Заполните предметы и доступность для этого учителя</p></div>
                         <h4>📚 Нагрузки (предметы и часы)</h4>
                         <div id="workloadList"></div>
                         <button class="small primary" onclick="addWorkload()"> Добавить предмет</button>
-                        <h4 style="margin-top:20px">📅 Доступность (кликните по ячейке для изменения)</h4>
+                        <h4 style="margin-top:20px"> Доступность (кликните по ячейке для изменения)</h4>
                         <p class="help-text">Зеленые ячейки - учитель доступен, красные - недоступен</p>
                         <div id="availabilityGrid" class="availability-grid"></div>
                         <div style="margin-top:20px; padding:15px; background:#f0f4ff; border-radius:8px;"><p style="color:#667eea; font-weight:600;">✅ Данные автоматически сохраняются при переключении учителя</p></div>
@@ -381,8 +381,8 @@
                     <button class="outline" onclick="downloadPDF('teachers')"> PDF (учителя)</button>
                     <button class="outline" onclick="downloadPDF('classes')"> PDF (классы)</button>
                     <button class="outline" onclick="downloadExcel('teachers')"> Excel (учителя)</button>
-                    <button class="outline" onclick="downloadExcel('classes')">📊 Excel (классы)</button>
-                    <button class="primary" onclick="showMasterView()">📋 Общее расписание</button>
+                    <button class="outline" onclick="downloadExcel('classes')"> Excel (классы)</button>
+                    <button class="primary" onclick="showMasterView()"> Общее расписание</button>
                     <button class="secondary" onclick="completeStep(4)">➡️ Перейти к редактору</button>
                 </div>
             </div>
@@ -593,7 +593,7 @@
                         <div class="autocomplete-list" style="display:none"></div>
                     </div>
                     <div class="form-group hours-group">
-                        <label for="hours-${i}">⏰ Часы</label>
+                        <label for="hours-${i}"> Часы</label>
                         <input type="number" id="hours-${i}" class="workload-hours" value="${w.hours}" data-idx="${i}" data-field="hours" min="1" max="20" onchange="updateWorkloadFromInput(this)">
                     </div>
                     <button class="small danger" onclick="removeWorkload(${i})">️ Удалить</button>
@@ -659,7 +659,7 @@
         }
 
         // ============================================================
-        // ИСПРАВЛЕННЫЕ ФУНКЦИИ ДЛЯ ШАБЛОНОВ AI-ВВОДА
+        // ИСПРАВЛЕННЫЕ ФУНКЦИИ ДЛЯ ШАБЛОНОВ AI-ВВОДА (ПОЛНЫЙ СБРОС)
         // ============================================================
         function selectTemplate(card, type) {
             document.querySelectorAll('.template-card').forEach(c => c.classList.remove('selected'));
@@ -687,7 +687,7 @@
             loadTeacherCard();
         }
 
-        // ✅ ЖЕЛЕЗОБЕТОННАЯ ЛОГИКА ВРЕМЕНИ
+        // ✅ ЖЕЛЕЗОБЕТОННАЯ ЛОГИКА ВРЕМЕНИ С ПОЛНЫМ СБРОСОМ
         function applyTimeTemplate() {
             const name = document.getElementById('tmpl_name').value.trim();
             if (!ensureTeacherExists(name)) return;
@@ -729,26 +729,42 @@
             });
 
             if (slots.length === 0) {
-                alert(` В диапазоне ${startTime} - ${endTime} не найдено уроков.\nТекущая сетка: ${lessonTimes.join(', ')}\nПопробуйте расширить диапазон.`);
+                alert(`❌ В диапазоне ${startTime} - ${endTime} не найдено уроков.\nТекущая сетка: ${lessonTimes.join(', ')}\nПопробуйте расширить диапазон.`);
                 return;
             }
 
             // ✅ ПРОВЕРКА КОНФЛИКТОВ
             if (schoolData.availability[name] && Object.keys(schoolData.availability[name]).length > 0) {
-                if (!confirm(`⚠️ У учителя "${name}" уже есть настройки доступности. \nНовые значения ЗАМЕНЯТ старые для дней: ${days.join(', ')}. \nПродолжить?`)) {
+                if (!confirm(`️ У учителя "${name}" уже есть настройки доступности. \nНовые значения ПОЛНОСТЬЮ ЗАМЕНЯТ старые для ВСЕХ дней. \nПродолжить?`)) {
                     return;
                 }
             }
 
-            // Применяем доступность
-            if (!schoolData.availability[name]) schoolData.availability[name] = {};
-            days.forEach(day => { schoolData.availability[name][day] = [...slots]; });
+            // ✅ ПОЛНЫЙ СБРОС И ПРИМЕНЕНИЕ НОВЫХ НАСТРОЕК
+            // Сначала создаем пустой объект доступности
+            schoolData.availability[name] = {};
+
+            // Все дни недели
+            const allDays = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
+
+            // Для выбранных дней устанавливаем найденные слоты
+            days.forEach(day => {
+                schoolData.availability[name][day] = [...slots];
+            });
+
+            // Для НЕвыбранных дней устанавливаем пустой массив (недоступен)
+            allDays.forEach(day => {
+                if (!days.includes(day)) {
+                    schoolData.availability[name][day] = [];
+                }
+            });
 
             saveSchoolData();
             refreshTeacherCard(name);
-            alert(`✅ Доступность применена для ${name}: ${days.join(', ')} — уроки ${slots.join(', ')} (${startTime} - ${endTime})`);
+            alert(`✅ Доступность применена для ${name}:\n Рабочие дни: ${days.join(', ')} — уроки ${slots.join(', ')} (${startTime} - ${endTime})\n🔴 Остальные дни: недоступен`);
         }
 
+        // ✅ ИСПРАВЛЕННАЯ ФУНКЦИЯ ДЛЯ ШАБЛОНА 2
         function applyDaysTemplate() {
             const name = document.getElementById('tmpl_name2').value.trim();
             if (!ensureTeacherExists(name)) return;
@@ -757,22 +773,36 @@
             if (days.length === 0) { alert('Выберите хотя бы один день'); return; }
 
             const allSlots = Array.from({length: schoolData.lessonsPerDay}, (_, i) => i+1);
+            const allDays = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
 
             // Проверка конфликтов
             if (schoolData.availability[name] && Object.keys(schoolData.availability[name]).length > 0) {
-                if (!confirm(`⚠️ У учителя "${name}" уже есть настройки доступности. \nНовые значения ЗАМЕНЯТ старые для выбранных дней. Продолжить?`)) {
+                if (!confirm(`️ У учителя "${name}" уже есть настройки доступности. \nНовые значения ПОЛНОСТЬЮ ЗАМЕНЯТ старые. Продолжить?`)) {
                     return;
                 }
             }
 
-            if (!schoolData.availability[name]) schoolData.availability[name] = {};
-            days.forEach(day => { schoolData.availability[name][day] = [...allSlots]; });
+            // ✅ ПОЛНЫЙ СБРОС И ПРИМЕНЕНИЕ
+            schoolData.availability[name] = {};
+
+            // Выбранные дни - все уроки доступны
+            days.forEach(day => {
+                schoolData.availability[name][day] = [...allSlots];
+            });
+
+            // Не выбранные дни - недоступен
+            allDays.forEach(day => {
+                if (!days.includes(day)) {
+                    schoolData.availability[name][day] = [];
+                }
+            });
 
             saveSchoolData();
             refreshTeacherCard(name);
-            alert(`✅ Дни применены для ${name}: ${days.join(', ')} (все уроки)`);
+            alert(`✅ Дни применены для ${name}:\n🟢 Рабочие дни: ${days.join(', ')} (все уроки)\n Остальные дни: недоступен`);
         }
 
+        // ✅ ИСПРАВЛЕННАЯ ФУНКЦИЯ ДЛЯ ШАБЛОНА 3
         function applyExcludeTemplate() {
             const name = document.getElementById('tmpl_name3').value.trim();
             if (!ensureTeacherExists(name)) return;
@@ -786,18 +816,27 @@
 
             // Проверка конфликтов
             if (schoolData.availability[name] && Object.keys(schoolData.availability[name]).length > 0) {
-                if (!confirm(`️ У учителя "${name}" уже есть настройки доступности. \nНовые значения ЗАМЕНЯТ старые. Продолжить?`)) {
+                if (!confirm(`⚠️ У учителя "${name}" уже есть настройки доступности. \nНовые значения ПОЛНОСТЬЮ ЗАМЕНЯТ старые. Продолжить?`)) {
                     return;
                 }
             }
 
-            if (!schoolData.availability[name]) schoolData.availability[name] = {};
-            workingDays.forEach(day => { schoolData.availability[name][day] = [...allSlots]; });
-            excludedDays.forEach(day => { schoolData.availability[name][day] = []; });
+            // ✅ ПОЛНЫЙ СБРОС И ПРИМЕНЕНИЕ
+            schoolData.availability[name] = {};
+
+            // Рабочие дни - все уроки доступны
+            workingDays.forEach(day => {
+                schoolData.availability[name][day] = [...allSlots];
+            });
+
+            // Исключенные дни - недоступен
+            excludedDays.forEach(day => {
+                schoolData.availability[name][day] = [];
+            });
 
             saveSchoolData();
             refreshTeacherCard(name);
-            alert(`✅ Исключения применены для ${name}. НЕ работает: ${excludedDays.join(', ')}`);
+            alert(`✅ Исключения применены для ${name}:\n🟢 Рабочие дни: ${workingDays.join(', ')} (все уроки)\n🔴 НЕ работает: ${excludedDays.join(', ')}`);
         }
 
         async function generateTimetable() {
@@ -937,7 +976,7 @@
             }
             finally {
                 btn.disabled = false;
-                btn.textContent = '🎯 Сгенерировать расписание';
+                btn.textContent = ' Сгенерировать расписание';
             }
         }
 
@@ -1043,8 +1082,8 @@
                             html += `
                                 <td class="lesson-cell">
                                     <span class="lesson-subject">${lesson.subject}</span>
-                                    <span class="lesson-details">👨‍🏫 ${lesson.teacher}</span>
-                                    <span class="lesson-details"> 🏫 ${lesson.classroom || '-'}</span>
+                                    <span class="lesson-details">‍🏫 ${lesson.teacher}</span>
+                                    <span class="lesson-details">  ${lesson.classroom || '-'}</span>
                                 </td>
                             `;
                         } else {
@@ -1067,7 +1106,7 @@
             });
 
             html += `</tbody></table></div>`;
-            html += `<button class="outline" style="margin-top: 15px;" onclick="hideMasterView()">⬅️ Вернуться к виду по учителям</button>`;
+            html += `<button class="outline" style="margin-top: 15px;" onclick="hideMasterView()">️ Вернуться к виду по учителям</button>`;
 
             container.innerHTML = html;
         }
@@ -1102,7 +1141,7 @@
                                 <button class="small primary" onclick="window.loadSavedTimetable(${t.id})">️ Открыть</button>
                                 <button class="small outline" onclick="window.downloadSavedPDF(${t.id}, 'teachers')">📄 PDF (уч.)</button>
                                 <button class="small outline" onclick="window.downloadSavedPDF(${t.id}, 'classes')"> PDF (кл.)</button>
-                                <button class="small outline" onclick="window.downloadSavedExcel(${t.id}, 'teachers')">📊 Excel (уч.)</button>
+                                <button class="small outline" onclick="window.downloadSavedExcel(${t.id}, 'teachers')"> Excel (уч.)</button>
                                 <button class="small outline" onclick="window.downloadSavedExcel(${t.id}, 'classes')">📊 Excel (кл.)</button>
                                 <button class="small danger" onclick="window.deleteSavedTimetable(${t.id})">️ Удалить</button>
                             </div>
