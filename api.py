@@ -148,27 +148,39 @@ def response_to_dict(result: TimetableResponse, request: TimetableRequest) -> Di
 def generate_timetable(request: TimetableRequest, current_user: User = Depends(get_current_user),
                        db: Session = Depends(get_db)):
     try:
+        print(f"🚀 НАЧАЛО ГЕНЕРАЦИИ для пользователя {current_user.id}")
+        print(f"📊 Данные: {len(request.teachers)} учителей, {len(request.days)} дней, {len(request.slots)} слотов")
+
         is_valid, teacher_stats, errors = validate_teachers(request)
         if not is_valid:
             return {"message": "Ошибки валидации", "status": "INVALID", "errors": errors,
                     "teacher_stats": teacher_stats}
+
+        print("⚙️ Запускаю OR-Tools solver...")
         result: TimetableResponse = solve_timetable(request)
+        print(f"✅ Solver завершил работу. Статус: {result.status}")
+
         if result.status not in ("OPTIMAL", "FEASIBLE"):
             return {"message": "Не удалось составить расписание", "status": result.status,
                     "solution_time": result.solution_time,
                     "validation_errors": result.validation_errors or ["Проверьте ограничения"]}
 
         data_dict = response_to_dict(result, request)
-        saved = SavedTimetable(user_id=current_user.id,
-                               name=f"Расписание {datetime.utcnow().strftime('%d.%m.%Y %H:%M')}", data=data_dict)
-        db.add(saved);
-        db.commit();
+        saved = SavedTimetable(
+            user_id=current_user.id,
+            name=f"Расписание {datetime.utcnow().strftime('%d.%m.%Y %H:%M')}",
+            data=data_dict,
+        )
+        db.add(saved)
+        db.commit()
         db.refresh(saved)
+        print(f"💾 Расписание сохранено с ID: {saved.id}")
+
         return {"message": "Расписание сгенерировано", "id": saved.id, "status": result.status,
                 "solution_time": result.solution_time, "validation_errors": result.validation_errors}
     except Exception as e:
-        print(f"❌ Ошибка генерации: {e}")
-        import traceback;
+        print(f"❌ КРИТИЧЕСКАЯ ОШИБКА ГЕНЕРАЦИИ: {e}")
+        import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Ошибка генерации: {str(e)}")
 
@@ -224,9 +236,6 @@ def delete_timetable(timetable_id: int, current_user: User = Depends(get_current
     return {"message": "Расписание удалено"}
 
 
-# ============================================================
-# НОВЫЙ ЭНДПОИНТ ДЛЯ DRAG-AND-DROP
-# ============================================================
 @app.post("/timetables/{timetable_id}/move-lesson")
 def move_lesson(
         timetable_id: int,
