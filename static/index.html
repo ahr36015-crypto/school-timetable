@@ -532,14 +532,36 @@
                 document.getElementById('aiResult').style.display = 'block'; document.getElementById('aiResultText').textContent = JSON.stringify(data, null, 2); window._aiResult = data;
             } catch(e) { alert('Ошибка: ' + e.message); }
         }
-        function applyAIResult() {
+                function applyAIResult() {
             if (!window._aiResult) { alert('Сначала проанализируйте текст'); return; }
             const data = window._aiResult;
-            if (data.teacher_name && !schoolData.teachers.find(t => t.full_name === data.teacher_name)) { schoolData.teachers.push({full_name: data.teacher_name, email: ''}); renderTeachers(); }
-            data.lessons.forEach(l => { schoolData.workloads.push({teacher: data.teacher_name, subject: l.subject, grade: l.grade, hours: l.hours}); });
-            schoolData.availability[data.teacher_name] = data.availability; saveSchoolData();
-            alert('✅ Данные применены! Теперь выберите учителя в выпадающем списке для проверки.');
-            updateTeacherSelect(); document.getElementById('teacherSelect').value = data.teacher_name; loadTeacherCard();
+
+            // 1. Добавляем учителя, если его нет
+            if (data.teacher_name && !schoolData.teachers.find(t => t.full_name === data.teacher_name)) {
+                schoolData.teachers.push({full_name: data.teacher_name, email: ''});
+                renderTeachers(); // Обновляем таблицу учителей
+            }
+
+            // 2. Добавляем нагрузки
+            data.lessons.forEach(l => {
+                schoolData.workloads.push({teacher: data.teacher_name, subject: l.subject, grade: l.grade, hours: l.hours});
+            });
+
+            // 3. Применяем доступность
+            schoolData.availability[data.teacher_name] = data.availability;
+            saveSchoolData();
+
+            // 4. ОБНОВЛЯЕМ ВЫБОР И КАРТОЧКУ УЧИТЕЛЯ
+            updateTeacherSelect();
+
+            // Принудительно выбираем этого учителя в выпадающем списке
+            const select = document.getElementById('teacherSelect');
+            select.value = data.teacher_name;
+
+            // Запускаем отрисовку карточки с предметами и сеткой доступности
+            loadTeacherCard();
+
+            alert('✅ Данные применены! Карточка учителя обновлена.');
         }
 
         async function generateTimetable() {
