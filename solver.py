@@ -2,6 +2,30 @@ from ortools.sat.python import cp_model
 from models import TimetableRequest, TimetableResponse, TeacherSchedule, LessonAssignment
 
 
+def get_classroom(subject: str, grade: str) -> str:
+    """Автоматически назначает кабинет на основе предмета"""
+    subj_lower = subject.lower()
+
+    # Специализированные кабинеты
+    if any(word in subj_lower for word in ['физик', 'астроном']): return '301 (Физика)'
+    if any(word in subj_lower for word in ['хим', 'опыт', 'pro опыт']): return '302 (Химия)'
+    if any(word in subj_lower for word in ['информатик', 'ит', 'it', 'ai', 'искусственный интеллект', 'старт it']):
+        return '205 (Компьютерный класс)'
+    if any(word in subj_lower for word in ['спорт', 'физкульт', 'физо']): return 'Спортзал'
+    if any(word in subj_lower for word in ['изо', 'технолог', 'труд']): return '104 (Мастерская)'
+    if any(word in subj_lower for word in ['музык', 'пение']): return 'Актовый зал'
+    if any(word in subj_lower for word in ['биолог', 'эколог']): return '303 (Биология)'
+
+    # Для остальных предметов генерируем кабинет на основе номера класса
+    try:
+        g_num = int(''.join(filter(str.isdigit, grade.split('-')[0])))
+        floor = 1 if g_num <= 4 else 2
+        room_num = (g_num * 10) + 1
+        return f'{floor}{room_num}'
+    except:
+        return '101'
+
+
 def validate_teachers(request: TimetableRequest):
     errors = []
     teacher_stats = []
@@ -118,7 +142,7 @@ def solve_timetable(request: TimetableRequest):
 
     # Решение
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 120  # Максимум 2 минуты на поиск
+    solver.parameters.max_time_in_seconds = 120
 
     status = solver.Solve(model)
 
@@ -138,16 +162,19 @@ def solve_timetable(request: TimetableRequest):
                             if day not in schedule:
                                 schedule[day] = {}
 
-                            # ИСПРАВЛЕНО: преобразуем slot в строку для совместимости с Pydantic/JSON
                             slot_str = str(slot)
                             if slot_str not in schedule[day]:
                                 schedule[day][slot_str] = []
+
+                            # Назначаем кабинет при создании урока
+                            classroom = get_classroom(lesson.subject, lesson.grade)
 
                             schedule[day][slot_str].append(
                                 LessonAssignment(
                                     subject=lesson.subject,
                                     grade=lesson.grade,
-                                    teacher=teacher_id
+                                    teacher=teacher_id,
+                                    classroom=classroom  # <-- Передаем кабинет
                                 )
                             )
                             total_lessons += 1

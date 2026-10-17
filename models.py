@@ -25,6 +25,7 @@ class LessonAssignment(BaseModel):
     subject: str
     grade: str
     teacher: str
+    classroom: Optional[str] = None
 
 
 class TeacherSchedule(BaseModel):

@@ -149,15 +149,15 @@ def response_to_dict(result: TimetableResponse, request: TimetableRequest) -> Di
 def generate_timetable(request: TimetableRequest, current_user: User = Depends(get_current_user),
                        db: Session = Depends(get_db)):
     try:
-        print(f" НАЧАЛО ГЕНЕРАЦИИ для пользователя {current_user.id}")
-        print(f" Данные: {len(request.teachers)} учителей, {len(request.days)} дней, {len(request.slots)} слотов")
+        print(f"🚀 НАЧАЛО ГЕНЕРАЦИИ для пользователя {current_user.id}")
+        print(f"📊 Данные: {len(request.teachers)} учителей, {len(request.days)} дней, {len(request.slots)} слотов")
 
         is_valid, teacher_stats, errors = validate_teachers(request)
         if not is_valid:
             return {"message": "Ошибки валидации", "status": "INVALID", "errors": errors,
                     "teacher_stats": teacher_stats}
 
-        print("⚙️ Запускаю OR-Tools solver...")
+        print("️ Запускаю OR-Tools solver...")
         result: TimetableResponse = solve_timetable(request)
         print(f"✅ Solver завершил работу. Статус: {result.status}")
 
@@ -359,7 +359,7 @@ def move_lesson(
             'subject': move_data['subject'],
             'grade': move_data['grade'],
             'teacher': move_data['teacher'],
-            'classroom': move_data.get('classroom', '')  # Сохраняем кабинет при перемещении
+            'classroom': move_data.get('classroom', '')
         })
 
         timetable.data = data
@@ -370,7 +370,7 @@ def move_lesson(
     except HTTPException:
         raise
     except Exception as e:
-        print(f" Ошибка при перемещении урока: {e}")
+        print(f"❌ Ошибка при перемещении урока: {e}")
         import traceback;
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Внутренняя ошибка сервера: {str(e)}")
