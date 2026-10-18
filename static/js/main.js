@@ -48,9 +48,9 @@ async function goToStep(step) {
     }
     if (step === 4) { loadSavedTimetables(); }
 
-    // ✅ ИСПРАВЛЕНИЕ ДЛЯ ШАГА 5: Используем только рабочий эндпоинт /timetables/{id}
+    // ✅ ИСПРАВЛЕНИЕ ДЛЯ ШАГА 5: Используем ТОЛЬКО рабочий эндпоинт /timetables/{id}
     if (step === 5) {
-        console.log("🔍 Проверка данных для редактора...");
+        console.log(" Проверка данных для редактора...");
 
         // Если данных нет или потерялся ID, загружаем последнее расписание
         if (!currentResult || !currentResult.teachers || !currentTimetableId) {
@@ -97,7 +97,7 @@ async function goToStep(step) {
 
         // Рендерим таблицу
         if (currentResult && currentResult.teachers && currentTimetableId) {
-            console.log("🎨 Рендеринг таблицы редактора...");
+            console.log(" Рендеринг таблицы редактора...");
             updateEditorClassFilter();
             renderGlobalEditor();
         } else {
@@ -150,7 +150,7 @@ window.hideMasterView = hideMasterView;
 window.downloadPDF = downloadPDF;
 window.downloadExcel = downloadExcel;
 window.publishTimetable = function() { if(confirm('Опубликовать?')) alert('✅ Опубликовано'); };
-window.exportToJournal = function() { alert('🔗 Экспорт API'); };
+window.exportToJournal = function() { alert(' Экспорт API'); };
 window.sendToTeachers = function() { alert('📱 Отправлено в Telegram'); };
 window.sendToEmail = function() { alert(' Отправлено на почту'); };
 

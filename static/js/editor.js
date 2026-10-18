@@ -213,7 +213,7 @@ async function handleGlobalDrop(e) {
 
     // ✅ ЗАЩИТА: Проверяем наличие ID перед запросом
     if (!currentTimetableId) {
-        alert('⚠️ Ошибка: Потерян ID расписания. Пожалуйста, обновите страницу.');
+        alert('️ Ошибка: Потерян ID расписания. Пожалуйста, обновите страницу.');
         isDragging = false;
         return;
     }
