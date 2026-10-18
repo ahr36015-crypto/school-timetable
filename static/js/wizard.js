@@ -15,8 +15,18 @@ async function goToStep(step) {
 
     console.log(`🔄 Переход на шаг ${step}`);
 
-    if (step === 2) { renderClasses(); renderTeachers(); renderSubjects(); renderClassrooms(); }
-    if (step === 3) { updateTeacherSelect(); updateTeacherDatalist(); renderAvailabilityGrid(document.getElementById('teacherSelect').value); }
+    if (step === 2) {
+        renderClasses();
+        renderTeachers();
+        renderSubjects();
+        renderClassrooms();
+        updateTeacherSubjectSelect(); // ✅ Обновляем список предметов в форме учителя
+    }
+    if (step === 3) {
+        updateTeacherSelect();
+        updateTeacherDatalist();
+        renderAvailabilityGrid(document.getElementById('teacherSelect').value);
+    }
     if (step === 4) loadSavedTimetables();
 
     // ✅ ЛОГИКА ДЛЯ ШАГА 5 (РЕДАКТОР)
@@ -104,30 +114,97 @@ function addClass() {
     schoolData.classes.push({name, grade: match?parseInt(match[1]):0, letter: match?match[2]:''});
     renderClasses(); saveSchoolData(); document.getElementById('newClassName').value = '';
 }
-function renderClasses() { document.getElementById('classesTable').innerHTML = schoolData.classes.map((c,i) => `<tr><td>${c.name}</td><td>${c.grade}</td><td><button class="small danger" onclick="removeClass(${i})">️ Удалить</button></td></tr>`).join(''); }
+function renderClasses() { document.getElementById('classesTable').innerHTML = schoolData.classes.map((c,i) => `<tr><td>${c.name}</td><td>${c.grade}</td><td><button class="small danger" onclick="removeClass(${i})">🗑️ Удалить</button></td></tr>`).join(''); }
 function removeClass(i) { schoolData.classes.splice(i,1); renderClasses(); saveSchoolData(); }
 
+// ✅ ОБНОВЛЕННЫЕ УЧИТЕЛЯ С ЗАКРЕПЛЕННЫМИ ПРЕДМЕТАМИ
 function addTeacher() {
-    const name = document.getElementById('newTeacherName').value.trim(); const email = document.getElementById('newTeacherEmail').value.trim(); const warning = document.getElementById('teacherDuplicateWarning');
+    const name = document.getElementById('newTeacherName').value.trim();
+    const email = document.getElementById('newTeacherEmail').value.trim();
+    const subjectSelect = document.getElementById('newTeacherSubjects');
+    const selectedSubjects = Array.from(subjectSelect.selectedOptions).map(opt => opt.value);
+
+    const warning = document.getElementById('teacherDuplicateWarning');
     if (!name) { alert('Введите ФИО учителя'); return; }
     const exists = schoolData.teachers.some(t => t.full_name.toLowerCase() === name.toLowerCase());
     if (exists) { warning.classList.add('show'); setTimeout(() => warning.classList.remove('show'), 3000); return; }
-    schoolData.teachers.push({full_name: name, email}); renderTeachers(); saveSchoolData();
-    document.getElementById('newTeacherName').value = ''; document.getElementById('newTeacherEmail').value = '';
+
+    schoolData.teachers.push({
+        full_name: name,
+        email,
+        subjects: selectedSubjects // Сохраняем закрепленные предметы
+    });
+
+    renderTeachers();
+    saveSchoolData();
+    document.getElementById('newTeacherName').value = '';
+    document.getElementById('newTeacherEmail').value = '';
+    subjectSelect.selectedIndex = -1; // Сброс выбора
     updateTeacherDatalist();
 }
-function renderTeachers() { document.getElementById('teachersTable').innerHTML = schoolData.teachers.map((t,i) => `<tr><td>${t.full_name}</td><td>${t.email||'-'}</td><td><button class="small danger" onclick="removeTeacher(${i})">🗑️ Удалить</button></td></tr>`).join(''); }
-function removeTeacher(i) { schoolData.teachers.splice(i,1); renderTeachers(); saveSchoolData(); updateTeacherDatalist(); }
 
+function renderTeachers() {
+    document.getElementById('teachersTable').innerHTML = schoolData.teachers.map((t,i) => {
+        const subjectsHtml = t.subjects && t.subjects.length > 0
+            ? t.subjects.map(s => `<span style="background:#eef; padding:2px 6px; border-radius:4px; font-size:11px; margin-right:4px;">${s}</span>`).join('')
+            : '<span style="color:#999;">Не назначены</span>';
+
+        return `<tr>
+            <td>${t.full_name}</td>
+            <td>${t.email||'-'}</td>
+            <td>${subjectsHtml}</td>
+            <td><button class="small danger" onclick="removeTeacher(${i})">️ Удалить</button></td>
+        </tr>`;
+    }).join('');
+}
+
+function removeTeacher(i) {
+    schoolData.teachers.splice(i,1);
+    renderTeachers();
+    saveSchoolData();
+    updateTeacherDatalist();
+}
+
+// Обновление выпадающего списка предметов в форме добавления учителя
+function updateTeacherSubjectSelect() {
+    const select = document.getElementById('newTeacherSubjects');
+    if (!select) return;
+    select.innerHTML = schoolData.subjects.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
+}
+
+// ✅ ОБНОВЛЕННЫЕ ПРЕДМЕТЫ С КАТЕГОРИЯМИ
 function addSubject() {
-    const name = document.getElementById('newSubjectName').value.trim(); const warning = document.getElementById('subjectDuplicateWarning');
+    const name = document.getElementById('newSubjectName').value.trim();
+    const category = document.getElementById('newSubjectCategory').value;
+    const warning = document.getElementById('subjectDuplicateWarning');
+
     if (!name) { alert('Введите название предмета'); return; }
     const exists = schoolData.subjects.some(s => s.name.toLowerCase() === name.toLowerCase());
     if (exists) { warning.classList.add('show'); setTimeout(() => warning.classList.remove('show'), 3000); return; }
-    schoolData.subjects.push({name}); renderSubjects(); saveSchoolData(); document.getElementById('newSubjectName').value = '';
+
+    schoolData.subjects.push({name, category});
+    renderSubjects();
+    updateTeacherSubjectSelect(); // ✅ Обновляем список в форме учителя
+    saveSchoolData();
+    document.getElementById('newSubjectName').value = '';
 }
-function renderSubjects() { document.getElementById('subjectsTable').innerHTML = schoolData.subjects.map((s,i) => `<tr><td>${s.name}</td><td><button class="small danger" onclick="removeSubject(${i})">🗑️ Удалить</button></td></tr>`).join(''); }
-function removeSubject(i) { schoolData.subjects.splice(i,1); renderSubjects(); saveSchoolData(); }
+
+function renderSubjects() {
+    document.getElementById('subjectsTable').innerHTML = schoolData.subjects.map((s,i) =>
+        `<tr>
+            <td>${s.name}</td>
+            <td><span style="background:#eef; padding:2px 6px; border-radius:4px; font-size:12px;">${s.category || 'Основной'}</span></td>
+            <td><button class="small danger" onclick="removeSubject(${i})">🗑️ Удалить</button></td>
+        </tr>`
+    ).join('');
+}
+
+function removeSubject(i) {
+    schoolData.subjects.splice(i,1);
+    renderSubjects();
+    updateTeacherSubjectSelect();
+    saveSchoolData();
+}
 
 function addClassroom() {
     const number = document.getElementById('newClassroomNumber').value.trim(); const capacity = document.getElementById('newClassroomCapacity').value; const warning = document.getElementById('classroomDuplicateWarning');
@@ -141,16 +218,16 @@ function renderClassrooms() { document.getElementById('classroomsTable').innerHT
 function removeClassroom(i) { schoolData.classrooms.splice(i,1); renderClassrooms(); saveSchoolData(); }
 
 function importFromExcel() {
-    alert('📥 Функция импорта из Excel:\n\nВ реальной версии здесь откроется диалог выбора файла.\nСейчас добавлены демонстрационные данные для теста.');
+    alert(' Функция импорта из Excel:\n\nВ реальной версии здесь откроется диалог выбора файла.\nСейчас добавлены демонстрационные данные для теста.');
     if(schoolData.teachers.length === 0) {
-        schoolData.teachers.push({full_name: "Иванова М.П.", email: ""});
-        schoolData.teachers.push({full_name: "Петров С.С.", email: ""});
+        schoolData.teachers.push({full_name: "Иванова М.П.", email: "", subjects: []});
+        schoolData.teachers.push({full_name: "Петров С.С.", email: "", subjects: []});
         renderTeachers(); updateTeacherDatalist();
     }
     if(schoolData.subjects.length === 0) {
-        schoolData.subjects.push({name: "Математика"});
-        schoolData.subjects.push({name: "Русский язык"});
-        renderSubjects();
+        schoolData.subjects.push({name: "Математика", category: "Основной"});
+        schoolData.subjects.push({name: "Русский язык", category: "Основной"});
+        renderSubjects(); updateTeacherSubjectSelect();
     }
     saveSchoolData();
 }
@@ -267,7 +344,7 @@ function getSelectedDays(selector) {
 function ensureTeacherExists(name) {
     if (!name) { alert('Введите ФИО учителя'); return false; }
     if (!schoolData.teachers.find(t => t.full_name.toLowerCase() === name.toLowerCase())) {
-        schoolData.teachers.push({full_name: name, email: ''});
+        schoolData.teachers.push({full_name: name, email: '', subjects: []});
         renderTeachers();
         updateTeacherSelect();
         updateTeacherDatalist();
@@ -356,7 +433,7 @@ function applyExcludeTemplate() {
     const allSlots = Array.from({length: schoolData.lessonsPerDay}, (_, i) => i+1);
 
     if (schoolData.availability[name] && Object.keys(schoolData.availability[name]).length > 0) {
-        if (!confirm(`⚠️ У учителя "${name}" уже есть настройки. Заменить?`)) return;
+        if (!confirm(`️ У учителя "${name}" уже есть настройки. Заменить?`)) return;
     }
 
     schoolData.availability[name] = {};
@@ -392,7 +469,7 @@ async function generateTimetable() {
     const requestData = { days, slots, teachers };
 
     err.classList.remove('show'); succ.classList.remove('show');
-    btn.disabled = true; btn.textContent = '⏳ Генерация...';
+    btn.disabled = true; btn.textContent = ' Генерация...';
     document.getElementById('progressOverlay').classList.add('active');
 
     try {
