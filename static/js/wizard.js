@@ -74,7 +74,7 @@ async function goToStep(step) {
         }
 
         if (currentResult && currentResult.teachers && currentTimetableId) {
-            console.log(" Рендеринг таблицы редактора...");
+            console.log("🎨 Рендеринг таблицы редактора...");
             updateEditorClassFilter();
             renderGlobalEditor();
         } else {
@@ -156,7 +156,6 @@ function addTeacher() {
     if (subjectSelect) subjectSelect.selectedIndex = -1;
 
     updateTeacherDatalist();
-    // alert(`✅ Учитель ${name} добавлен с предметами: ${selectedSubjects.join(', ') || 'нет'}`);
 }
 
 function renderTeachers() {
@@ -243,7 +242,7 @@ function renderClassrooms() { document.getElementById('classroomsTable').innerHT
 function removeClassroom(i) { schoolData.classrooms.splice(i,1); renderClassrooms(); saveSchoolData(); }
 
 function importFromExcel() {
-    alert('📥 Функция импорта из Excel:\n\nВ реальной версии здесь откроется диалог выбора файла.\nСейчас добавлены демонстрационные данные для теста.');
+    alert(' Функция импорта из Excel:\n\nВ реальной версии здесь откроется диалог выбора файла.\nСейчас добавлены демонстрационные данные для теста.');
     if(schoolData.teachers.length === 0) {
         schoolData.teachers.push({full_name: "Иванова М.П.", email: "", subjects: []});
         schoolData.teachers.push({full_name: "Петров С.С.", email: "", subjects: []});
@@ -451,7 +450,7 @@ function applyExcludeTemplate() {
     const name = document.getElementById('tmpl_name3').value.trim();
     if (!ensureTeacherExists(name)) return;
     const excludedDays = getSelectedDays('.tmpl-day3');
-    if (excludedDays.length === 0) { alert('️ Выберите дни для исключения!'); return; }
+    if (excludedDays.length === 0) { alert('⚠️ Выберите дни для исключения!'); return; }
 
     const allDays = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
     const workingDays = allDays.filter(d => !excludedDays.includes(d));
@@ -494,7 +493,7 @@ async function generateTimetable() {
     const requestData = { days, slots, teachers };
 
     err.classList.remove('show'); succ.classList.remove('show');
-    btn.disabled = true; btn.textContent = '⏳ Генерация...';
+    btn.disabled = true; btn.textContent = ' Генерация...';
     document.getElementById('progressOverlay').classList.add('active');
 
     try {
@@ -653,7 +652,7 @@ async function loadSavedTimetables() {
                 <div class="saved-timetable-item">
                     <div><h4>${t.name}</h4><p>${new Date(t.created_at).toLocaleString('ru-RU')}</p></div>
                     <div class="saved-timetable-actions">
-                        <button class="small primary" onclick="window.loadSavedTimetable(${t.id})">👁️ Открыть</button>
+                        <button class="small primary" onclick="window.loadSavedTimetable(${t.id})">️ Открыть</button>
                         <button class="small outline" onclick="window.downloadSavedPDF(${t.id}, 'teachers')">PDF (уч.)</button>
                         <button class="small outline" onclick="window.downloadSavedPDF(${t.id}, 'classes')">PDF (кл.)</button>
                         <button class="small danger" onclick="window.deleteSavedTimetable(${t.id})">🗑️</button>
