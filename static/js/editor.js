@@ -237,7 +237,7 @@ async function handleGlobalDrop(e) {
         return;
     }
 
-    console.log(" Отправка перемещения:", draggedLessonData, "->", toDay, toSlot);
+    console.log("🔄 Отправка перемещения:", draggedLessonData, "->", toDay, toSlot);
 
     try {
         const response = await fetch(`/timetables/${currentTimetableId}/move-lesson`, {
@@ -267,8 +267,19 @@ async function handleGlobalDrop(e) {
             if (result.data) {
                 currentResult = result.data;
             } else {
-                console.warn("⚠️ Сервер не вернул data, запрашиваем заново...");
-                await loadSavedTimetable(currentTimetableId);
+                // ✅ ИСПРАВЛЕНИЕ: Проверяем, есть ли ID и пытаемся загрузить заново
+                if (currentTimetableId) {
+                    console.warn("️ Сервер не вернул data, запрашиваем заново...");
+                    try {
+                        await loadSavedTimetable(currentTimetableId);
+                    } catch (loadError) {
+                        console.error(" Не удалось перезагрузить расписание:", loadError);
+                        alert('⚠️ Урок перемещен, но не удалось обновить отображение. Обновите страницу.');
+                    }
+                } else {
+                    console.error("❌ Нет currentTimetableId для перезагрузки");
+                    alert('⚠️ Урок перемещен, но потеряна связь с расписанием. Обновите страницу.');
+                }
             }
 
             // Полная перерисовка на основе НОВЫХ данных
@@ -284,7 +295,7 @@ async function handleGlobalDrop(e) {
 
         } else {
             console.error("❌ Ошибка сервера:", result.detail);
-            alert('️ Не удалось переместить: ' + (result.detail || 'Произошла ошибка'));
+            alert('⚠️ Не удалось переместить: ' + (result.detail || 'Произошла ошибка'));
             // При ошибке перерисовываем, чтобы вернуть всё как было
             renderGlobalEditor();
         }

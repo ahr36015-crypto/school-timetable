@@ -81,7 +81,7 @@ async function goToStep(step) {
                     if (timetables && timetables.length > 0) {
                         // Берем самое свежее (первое в списке)
                         const latestId = timetables[0].id;
-                        console.log(`📥 Загружаю расписание ID: ${latestId}`);
+                        console.log(` Загружаю расписание ID: ${latestId}`);
 
                         // Загружаем полные данные
                         const fullRes = await fetch(`/timetables/${latestId}`, {
