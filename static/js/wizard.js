@@ -15,6 +15,7 @@ async function goToStep(step) {
 
     console.log(`🔄 Переход на шаг ${step}`);
 
+    // Инициализация шагов
     if (step === 2) {
         renderClasses();
         renderTeachers();
@@ -73,7 +74,7 @@ async function goToStep(step) {
         }
 
         if (currentResult && currentResult.teachers && currentTimetableId) {
-            console.log("🎨 Рендеринг таблицы редактора...");
+            console.log(" Рендеринг таблицы редактора...");
             updateEditorClassFilter();
             renderGlobalEditor();
         } else {
@@ -121,55 +122,79 @@ function removeClass(i) { schoolData.classes.splice(i,1); renderClasses(); saveS
 function addTeacher() {
     const name = document.getElementById('newTeacherName').value.trim();
     const email = document.getElementById('newTeacherEmail').value.trim();
+
+    // Получаем выбранные предметы из мультиселекта
     const subjectSelect = document.getElementById('newTeacherSubjects');
-    const selectedSubjects = Array.from(subjectSelect.selectedOptions).map(opt => opt.value);
+    let selectedSubjects = [];
+    if (subjectSelect) {
+        selectedSubjects = Array.from(subjectSelect.selectedOptions).map(opt => opt.value);
+    }
 
     const warning = document.getElementById('teacherDuplicateWarning');
     if (!name) { alert('Введите ФИО учителя'); return; }
-    const exists = schoolData.teachers.some(t => t.full_name.toLowerCase() === name.toLowerCase());
-    if (exists) { warning.classList.add('show'); setTimeout(() => warning.classList.remove('show'), 3000); return; }
 
+    const exists = schoolData.teachers.some(t => t.full_name.toLowerCase() === name.toLowerCase());
+    if (exists) {
+        if(warning) { warning.classList.add('show'); setTimeout(() => warning.classList.remove('show'), 3000); }
+        else alert('Такой учитель уже существует!');
+        return;
+    }
+
+    // Добавляем учителя с предметами
     schoolData.teachers.push({
         full_name: name,
         email,
-        subjects: selectedSubjects // Сохраняем закрепленные предметы
+        subjects: selectedSubjects // Сохраняем массив предметов
     });
 
     renderTeachers();
     saveSchoolData();
+
+    // Очищаем поля
     document.getElementById('newTeacherName').value = '';
     document.getElementById('newTeacherEmail').value = '';
-    subjectSelect.selectedIndex = -1; // Сброс выбора
+    if (subjectSelect) subjectSelect.selectedIndex = -1;
+
     updateTeacherDatalist();
+    // alert(`✅ Учитель ${name} добавлен с предметами: ${selectedSubjects.join(', ') || 'нет'}`);
 }
 
 function renderTeachers() {
-    document.getElementById('teachersTable').innerHTML = schoolData.teachers.map((t,i) => {
+    const tbody = document.getElementById('teachersTable');
+    if (!tbody) return;
+
+    tbody.innerHTML = schoolData.teachers.map((t,i) => {
+        // Формируем красивые бейджики для предметов
         const subjectsHtml = t.subjects && t.subjects.length > 0
-            ? t.subjects.map(s => `<span style="background:#eef; padding:2px 6px; border-radius:4px; font-size:11px; margin-right:4px;">${s}</span>`).join('')
-            : '<span style="color:#999;">Не назначены</span>';
+            ? t.subjects.map(s => `<span style="background:#eef; color:#333; padding:3px 8px; border-radius:12px; font-size:11px; margin-right:4px; display:inline-block; border:1px solid #ddd;">${s}</span>`).join('')
+            : '<span style="color:#999; font-style:italic;">Не назначены</span>';
 
         return `<tr>
-            <td>${t.full_name}</td>
+            <td style="font-weight:500;">${t.full_name}</td>
             <td>${t.email||'-'}</td>
-            <td>${subjectsHtml}</td>
-            <td><button class="small danger" onclick="removeTeacher(${i})">️ Удалить</button></td>
+            <td style="line-height:1.6;">${subjectsHtml}</td>
+            <td><button class="small danger" onclick="removeTeacher(${i})">🗑️ Удалить</button></td>
         </tr>`;
     }).join('');
 }
 
 function removeTeacher(i) {
-    schoolData.teachers.splice(i,1);
-    renderTeachers();
-    saveSchoolData();
-    updateTeacherDatalist();
+    if(confirm('Удалить учителя?')) {
+        schoolData.teachers.splice(i,1);
+        renderTeachers();
+        saveSchoolData();
+        updateTeacherDatalist();
+    }
 }
 
 // Обновление выпадающего списка предметов в форме добавления учителя
 function updateTeacherSubjectSelect() {
     const select = document.getElementById('newTeacherSubjects');
-    if (!select) return;
-    select.innerHTML = schoolData.subjects.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
+    if (!select) {
+        console.warn("⚠️ Элемент #newTeacherSubjects не найден в HTML!");
+        return;
+    }
+    select.innerHTML = schoolData.subjects.map(s => `<option value="${s.name}">${s.name} (${s.category || 'Основной'})</option>`).join('');
 }
 
 // ✅ ОБНОВЛЕННЫЕ ПРЕДМЕТЫ С КАТЕГОРИЯМИ
@@ -218,7 +243,7 @@ function renderClassrooms() { document.getElementById('classroomsTable').innerHT
 function removeClassroom(i) { schoolData.classrooms.splice(i,1); renderClassrooms(); saveSchoolData(); }
 
 function importFromExcel() {
-    alert(' Функция импорта из Excel:\n\nВ реальной версии здесь откроется диалог выбора файла.\nСейчас добавлены демонстрационные данные для теста.');
+    alert('📥 Функция импорта из Excel:\n\nВ реальной версии здесь откроется диалог выбора файла.\nСейчас добавлены демонстрационные данные для теста.');
     if(schoolData.teachers.length === 0) {
         schoolData.teachers.push({full_name: "Иванова М.П.", email: "", subjects: []});
         schoolData.teachers.push({full_name: "Петров С.С.", email: "", subjects: []});
@@ -389,7 +414,7 @@ function applyTimeTemplate() {
     if (slots.length === 0) { alert(`❌ В диапазоне ${startTime} - ${endTime} не найдено уроков.`); return; }
 
     if (schoolData.availability[name] && Object.keys(schoolData.availability[name]).length > 0) {
-        if (!confirm(`⚠️ У учителя "${name}" уже есть настройки. Новые значения ПОЛНОСТЬЮ ЗАМЕНЯТ старые. Продолжить?`)) return;
+        if (!confirm(`️ У учителя "${name}" уже есть настройки. Новые значения ПОЛНОСТЬЮ ЗАМЕНЯТ старые. Продолжить?`)) return;
     }
 
     schoolData.availability[name] = {};
@@ -426,14 +451,14 @@ function applyExcludeTemplate() {
     const name = document.getElementById('tmpl_name3').value.trim();
     if (!ensureTeacherExists(name)) return;
     const excludedDays = getSelectedDays('.tmpl-day3');
-    if (excludedDays.length === 0) { alert('⚠️ Выберите дни для исключения!'); return; }
+    if (excludedDays.length === 0) { alert('️ Выберите дни для исключения!'); return; }
 
     const allDays = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
     const workingDays = allDays.filter(d => !excludedDays.includes(d));
     const allSlots = Array.from({length: schoolData.lessonsPerDay}, (_, i) => i+1);
 
     if (schoolData.availability[name] && Object.keys(schoolData.availability[name]).length > 0) {
-        if (!confirm(`️ У учителя "${name}" уже есть настройки. Заменить?`)) return;
+        if (!confirm(`⚠️ У учителя "${name}" уже есть настройки. Заменить?`)) return;
     }
 
     schoolData.availability[name] = {};
@@ -469,7 +494,7 @@ async function generateTimetable() {
     const requestData = { days, slots, teachers };
 
     err.classList.remove('show'); succ.classList.remove('show');
-    btn.disabled = true; btn.textContent = ' Генерация...';
+    btn.disabled = true; btn.textContent = '⏳ Генерация...';
     document.getElementById('progressOverlay').classList.add('active');
 
     try {
@@ -628,7 +653,7 @@ async function loadSavedTimetables() {
                 <div class="saved-timetable-item">
                     <div><h4>${t.name}</h4><p>${new Date(t.created_at).toLocaleString('ru-RU')}</p></div>
                     <div class="saved-timetable-actions">
-                        <button class="small primary" onclick="window.loadSavedTimetable(${t.id})">️ Открыть</button>
+                        <button class="small primary" onclick="window.loadSavedTimetable(${t.id})">👁️ Открыть</button>
                         <button class="small outline" onclick="window.downloadSavedPDF(${t.id}, 'teachers')">PDF (уч.)</button>
                         <button class="small outline" onclick="window.downloadSavedPDF(${t.id}, 'classes')">PDF (кл.)</button>
                         <button class="small danger" onclick="window.deleteSavedTimetable(${t.id})">🗑️</button>
