@@ -1,16 +1,84 @@
 // static/js/wizard.js
 
 // --- Навигация по мастеру ---
-function goToStep(step) {
+async function goToStep(step) {
     document.querySelectorAll('.wizard-content').forEach(c => c.classList.remove('active'));
-    document.querySelectorAll('.wizard-step').forEach((s,i) => { s.classList.remove('active'); if (i+1 < step) s.classList.add('completed'); });
+    document.querySelectorAll('.wizard-step').forEach((s,i) => {
+        s.classList.remove('active');
+        if (i+1 < step) s.classList.add('completed');
+        else s.classList.remove('completed');
+    });
+
     document.getElementById('step'+step).classList.add('active');
     document.querySelectorAll('.wizard-step')[step-1].classList.add('active');
     currentStep = step;
 
+    console.log(`🔄 Переход на шаг ${step}`);
+
     if (step === 2) { renderClasses(); renderTeachers(); renderSubjects(); renderClassrooms(); }
     if (step === 3) { updateTeacherSelect(); updateTeacherDatalist(); renderAvailabilityGrid(document.getElementById('teacherSelect').value); }
     if (step === 4) loadSavedTimetables();
+
+    // ✅ ИСПРАВЛЕНИЕ ДЛЯ ШАГА 5: Загружаем данные через РАБОЧИЙ эндпоинт
+    if (step === 5) {
+        console.log("🔍 Проверка данных для редактора...");
+
+        // Если данных нет или потерялся ID, загружаем последнее расписание
+        if (!currentResult || !currentResult.teachers || !currentTimetableId) {
+            console.warn("️ Данные или ID отсутствуют. Загружаю последнее расписание...");
+
+            try {
+                const res = await fetch('/timetables', {
+                    headers: {'Authorization': 'Bearer ' + getToken()}
+                });
+
+                if (res.ok) {
+                    const timetables = await res.json();
+                    if (timetables && timetables.length > 0) {
+                        const latest = timetables[0]; // Самое свежее
+                        console.log(`📥 Загружаю ID: ${latest.id}`);
+
+                        // ✅ ИСПОЛЬЗУЕМ ГАРАНТИРОВАННО РАБОЧИЙ ЭНДПОИНТ
+                        const fullRes = await fetch(`/timetables/${latest.id}`, {
+                            headers: {'Authorization': 'Bearer ' + getToken()}
+                        });
+
+                        if (fullRes.ok) {
+                            const data = await fullRes.json();
+                            // ⚠️ ВАЖНО: Данные лежат в поле data, как видно из api.py
+                            if (data && data.data) {
+                                currentResult = data.data;
+                                currentTimetableId = latest.id; // Жестко фиксируем ID
+                                console.log("✅ Данные и ID успешно восстановлены!");
+                            } else {
+                                throw new Error("Ответ сервера не содержит поля data");
+                            }
+                        } else {
+                            throw new Error(`Server returned ${fullRes.status}`);
+                        }
+                    } else {
+                        alert('Сначала сгенерируйте расписание на Шаге 4!');
+                        goToStep(4);
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.error("❌ Ошибка загрузки:", e);
+                alert('Не удалось загрузить расписание. Попробуйте обновить страницу.');
+                return;
+            }
+        }
+
+        // Рендерим таблицу
+        if (currentResult && currentResult.teachers && currentTimetableId) {
+            console.log("🎨 Рендеринг таблицы редактора...");
+            updateEditorClassFilter();
+            renderGlobalEditor();
+        } else {
+            document.getElementById('globalEditorContainer').innerHTML =
+                '<p style="padding:20px;text-align:center;color:#c33">Ошибка: Нет данных или ID расписания.</p>';
+        }
+    }
 }
 
 function completeStep(step) {
@@ -399,7 +467,7 @@ function renderSchedule() {
         html += '<h4 style="color:#667eea;margin-bottom:15px">👨‍🏫 ' + teacher.teacher + ' (' + teacher.total_lessons + ' уроков)</h4>';
         const days = Object.keys(teacher.schedule).sort();
         days.forEach(day => {
-            html += '<div style="margin-bottom:10px"><strong>📅 ' + day + ':</strong><br>';
+            html += '<div style="margin-bottom:10px"><strong> ' + day + ':</strong><br>';
             const slots = Object.keys(teacher.schedule[day]).map(s => parseInt(s)).sort((a,b) => a-b);
             slots.forEach(slot => {
                 const lessons = teacher.schedule[day][String(slot)];
@@ -416,57 +484,10 @@ function renderSchedule() {
     container.innerHTML = html;
 }
 
-async function showMasterView() {
-    if (!currentTimetableId) { alert('Сначала сгенерируйте расписание'); return; }
-    try {
-        const res = await fetch(`/timetables/${currentTimetableId}/master-view`, { headers: {'Authorization': 'Bearer ' + getToken()} });
-        const data = await res.json();
-        if (res.ok) {
-            masterViewData = data; renderMasterView();
-            document.getElementById('scheduleView').style.display = 'none';
-            document.getElementById('masterViewContainer').style.display = 'block';
-        } else alert('Ошибка: ' + data.detail);
-    } catch(e) { alert('Ошибка соединения'); }
-}
-
-function renderMasterView() {
-    if (!masterViewData) return;
-    const container = document.getElementById('masterViewContainer');
-    const { days, slots, schedule } = masterViewData;
-    const times = schoolData.lessonTimes || [];
-
-    const allGrades = new Set();
-    Object.values(schedule).forEach(dayObj => Object.values(dayObj).forEach(slotObj => Object.keys(slotObj).forEach(g => allGrades.add(g))));
-    const sortedGrades = Array.from(allGrades).sort((a,b) => parseInt(a) - parseInt(b));
-
-    let html = `<div class="master-table-container"><h3>📋 Общее расписание</h3><table class="master-table"><thead><tr><th style="width:120px">Время</th>${sortedGrades.map(g=>`<th>${g} кл</th>`).join('')}</tr></thead><tbody>`;
-
-    days.forEach(day => {
-        html += `<tr><td colspan="${sortedGrades.length+1}" class="day-header">${day}</td></tr>`;
-        slots.forEach((slot, idx) => {
-            const timeLabel = times[idx] || '';
-            html += `<tr><td style="font-weight:bold;text-align:center;background:#fafafa"><div>Урок ${slot}</div><div style="font-size:11px;color:#666">${timeLabel}</div></td>`;
-            sortedGrades.forEach(grade => {
-                const lesson = schedule[day][String(slot)]?.[grade];
-                if (lesson) html += `<td class="lesson-cell"><span class="lesson-subject">${lesson.subject}</span><span class="lesson-details">👨🏫 ${lesson.teacher}</span><span class="lesson-details">🏫 ${lesson.classroom||'-'}</span></td>`;
-                else html += `<td class="empty-cell"></td>`;
-            });
-            html += `</tr>`;
-            if (idx < slots.length - 1) {
-                const nextT = times[idx+1]?.split('-')[0]; const currE = timeLabel?.split('-')[1];
-                const brk = (currE && nextT) ? `${currE}-${nextT}` : '';
-                html += `<tr class="break-row"><td>Перемена ${brk?`(${brk})`:''}</td><td colspan="${sortedGrades.length}" style="background:#fff3cd"></td></tr>`;
-            }
-        });
-    });
-    html += `</tbody></table></div><button class="outline" style="margin-top:15px" onclick="hideMasterView()">⬅️ Назад</button>`;
-    container.innerHTML = html;
-}
-
-function hideMasterView() {
-    document.getElementById('masterViewContainer').style.display = 'none';
-    document.getElementById('scheduleView').style.display = 'block';
-}
+// ❌ УДАЛЕНА ФУНКЦИЯ showMasterView(), ТАК КАК ЭНДПОИНТ /master-view НЕ СУЩЕСТВУЕТ
+// async function showMasterView() { ... }
+// function renderMasterView() { ... }
+// function hideMasterView() { ... }
 
 // Сохраненные расписания
 async function loadSavedTimetables() {
@@ -482,7 +503,7 @@ async function loadSavedTimetables() {
                 <div class="saved-timetable-item">
                     <div><h4>${t.name}</h4><p>${new Date(t.created_at).toLocaleString('ru-RU')}</p></div>
                     <div class="saved-timetable-actions">
-                        <button class="small primary" onclick="window.loadSavedTimetable(${t.id})">👁️ Открыть</button>
+                        <button class="small primary" onclick="window.loadSavedTimetable(${t.id})">️ Открыть</button>
                         <button class="small outline" onclick="window.downloadSavedPDF(${t.id}, 'teachers')">PDF (уч.)</button>
                         <button class="small outline" onclick="window.downloadSavedPDF(${t.id}, 'classes')">PDF (кл.)</button>
                         <button class="small danger" onclick="window.deleteSavedTimetable(${t.id})">🗑️</button>

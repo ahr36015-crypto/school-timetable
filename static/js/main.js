@@ -25,90 +25,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-async function goToStep(step) {
-    document.querySelectorAll('.wizard-content').forEach(c => c.classList.remove('active'));
-    document.querySelectorAll('.wizard-step').forEach((s,i) => {
-        s.classList.remove('active');
-        if (i+1 < step) s.classList.add('completed');
-        else s.classList.remove('completed');
-    });
-
-    document.getElementById('step'+step).classList.add('active');
-    document.querySelectorAll('.wizard-step')[step-1].classList.add('active');
-    currentStep = step;
-
-    console.log(`🔄 Переход на шаг ${step}`);
-
-    if (step === 2) { renderClasses(); renderTeachers(); renderSubjects(); renderClassrooms(); }
-    if (step === 3) {
-        updateTeacherSelect();
-        updateTeacherDatalist();
-        const sel = document.getElementById('teacherSelect').value;
-        if(sel) renderAvailabilityGrid(sel);
-    }
-    if (step === 4) { loadSavedTimetables(); }
-
-    // ✅ ИСПРАВЛЕНИЕ ДЛЯ ШАГА 5: Используем ТОЛЬКО рабочий эндпоинт /timetables/{id}
-    if (step === 5) {
-        console.log("🔍 Проверка данных для редактора...");
-
-        // Если данных нет или потерялся ID, загружаем последнее расписание
-        if (!currentResult || !currentResult.teachers || !currentTimetableId) {
-            console.warn("⚠️ Данные или ID отсутствуют. Загружаю последнее расписание...");
-
-            try {
-                const res = await fetch('/timetables', {
-                    headers: {'Authorization': 'Bearer ' + getToken()}
-                });
-
-                if (res.ok) {
-                    const timetables = await res.json();
-                    if (timetables && timetables.length > 0) {
-                        const latest = timetables[0]; // Самое свежее
-                        console.log(`📥 Загружаю ID: ${latest.id}`);
-
-                        // ✅ ИСПОЛЬЗУЕМ ГАРАНТИРОВАННО РАБОЧИЙ ЭНДПОИНТ
-                        const fullRes = await fetch(`/timetables/${latest.id}`, {
-                            headers: {'Authorization': 'Bearer ' + getToken()}
-                        });
-
-                        if (fullRes.ok) {
-                            const data = await fullRes.json();
-                            // ⚠️ ВАЖНО: Данные лежат в поле data, как видно из api.py
-                            if (data && data.data) {
-                                currentResult = data.data;
-                                currentTimetableId = latest.id; // Жестко фиксируем ID
-                                console.log("✅ Данные и ID успешно восстановлены!");
-                            } else {
-                                throw new Error("Ответ сервера не содержит поля data");
-                            }
-                        } else {
-                            throw new Error(`Server returned ${fullRes.status}`);
-                        }
-                    } else {
-                        alert('Сначала сгенерируйте расписание на Шаге 4!');
-                        goToStep(4);
-                        return;
-                    }
-                }
-            } catch (e) {
-                console.error("❌ Ошибка загрузки:", e);
-                alert('Не удалось загрузить расписание. Попробуйте обновить страницу.');
-                return;
-            }
-        }
-
-        // Рендерим таблицу
-        if (currentResult && currentResult.teachers && currentTimetableId) {
-            console.log("🎨 Рендеринг таблицы редактора...");
-            updateEditorClassFilter();
-            renderGlobalEditor();
-        } else {
-            document.getElementById('globalEditorContainer').innerHTML =
-                '<p style="padding:20px;text-align:center;color:#c33">Ошибка: Нет данных или ID расписания.</p>';
-        }
-    }
-}
+// ❌ УДАЛЕНА ФУНКЦИЯ goToStep(), ЧТОБЫ НЕ БЫЛО КОНФЛИКТОВ С wizard.js
+// function goToStep(step) { ... }
 
 function completeStep(step) {
     if (step === 1) {
@@ -126,7 +44,7 @@ window.showRegister = showRegister;
 window.login = login;
 window.register = register;
 window.logout = logout;
-window.goToStep = goToStep;
+window.goToStep = goToStep; // Теперь ссылается на версию из wizard.js
 window.completeStep = completeStep;
 window.showRefTab = showRefTab;
 window.addClass = addClass;
@@ -148,14 +66,14 @@ window.applyTimeTemplate = applyTimeTemplate;
 window.applyDaysTemplate = applyDaysTemplate;
 window.applyExcludeTemplate = applyExcludeTemplate;
 window.generateTimetable = generateTimetable;
-// Убираем showMasterView из глобальных, если он вызывает 404
+//  УДАЛЕНЫ showMasterView и hideMasterView, так как они больше не существуют
 // window.showMasterView = showMasterView;
-window.hideMasterView = hideMasterView;
+// window.hideMasterView = hideMasterView;
 window.downloadPDF = downloadPDF;
 window.downloadExcel = downloadExcel;
 window.publishTimetable = function() { if(confirm('Опубликовать?')) alert('✅ Опубликовано'); };
 window.exportToJournal = function() { alert('🔗 Экспорт API'); };
-window.sendToTeachers = function() { alert('📱 Отправлено в Telegram'); };
+window.sendToTeachers = function() { alert(' Отправлено в Telegram'); };
 window.sendToEmail = function() { alert('📧 Отправлено на почту'); };
 
 // Редактор

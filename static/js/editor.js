@@ -72,7 +72,7 @@ function renderGlobalEditor() {
                 let cellContent = '';
                 visibleLessons.forEach(l => {
                     if (!l) return;
-                    const classroom = l.classroom ? ` ${l.classroom}` : '';
+                    const classroom = l.classroom ? ` 🏫${l.classroom}` : '';
                     const chipId = `chip-${teacher.teacher}-${day}-${slot}-${l.subject}-${l.grade}`.replace(/\s+/g, '-');
 
                     cellContent += `
@@ -213,7 +213,7 @@ async function handleGlobalDrop(e) {
 
     // ✅ ЗАЩИТА: Проверяем наличие ID перед запросом
     if (!currentTimetableId) {
-        alert('️ Ошибка: Потерян ID расписания. Пожалуйста, обновите страницу.');
+        alert('⚠️ Ошибка: Потерян ID расписания. Пожалуйста, обновите страницу.');
         isDragging = false;
         return;
     }
