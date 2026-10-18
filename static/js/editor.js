@@ -1,11 +1,12 @@
 // static/js/editor.js
 
+let isDragging = false; // Флаг для блокировки повторных действий
+
 function updateEditorClassFilter() {
     if (!currentResult) return;
     const select = document.getElementById('editorClassFilter');
     const grades = new Set();
 
-    // Собираем все уникальные классы из текущего расписания
     if (currentResult.teachers) {
         currentResult.teachers.forEach(t => {
             if (t.schedule) {
@@ -29,7 +30,7 @@ function updateEditorClassFilter() {
 function renderGlobalEditor() {
     const container = document.getElementById('globalEditorContainer');
     if (!currentResult || !currentResult.teachers) {
-        container.innerHTML = '<p style="padding:20px;text-align:center;color:#999">Нет данных для редактирования. Сгенерируйте расписание на Шаге 4.</p>';
+        container.innerHTML = '<p style="padding:20px;text-align:center;color:#999">Нет данных. Сгенерируйте расписание.</p>';
         return;
     }
 
@@ -41,7 +42,6 @@ function renderGlobalEditor() {
     let html = '<table class="global-table"><thead><tr>';
     html += '<th class="teacher-header">Учитель / День</th>';
 
-    // Заголовки дней и уроков
     days.forEach(day => {
         html += `<th colspan="${slots.length}" class="day-subheader">${day}</th>`;
     });
@@ -54,29 +54,25 @@ function renderGlobalEditor() {
     });
     html += '</tr></thead><tbody>';
 
-    // Строки учителей
     currentResult.teachers.forEach(teacher => {
         html += `<tr><td class="teacher-header">${teacher.teacher}</td>`;
 
         days.forEach(day => {
             slots.forEach(slot => {
                 const slotKey = String(slot);
-                // Безопасное получение уроков
                 let lessons = [];
                 if (teacher.schedule && teacher.schedule[day] && teacher.schedule[day][slotKey]) {
                     lessons = teacher.schedule[day][slotKey];
                 }
 
-                // Фильтрация по классу
                 const visibleLessons = filterGrade
                     ? lessons.filter(l => l && l.grade === filterGrade)
                     : lessons;
 
                 let cellContent = '';
                 visibleLessons.forEach(l => {
-                    if (!l) return; // Защита от null
+                    if (!l) return;
                     const classroom = l.classroom ? ` 🏫${l.classroom}` : '';
-                    // Уникальный ID для чипа, чтобы избежать проблем с DnD
                     const chipId = `chip-${teacher.teacher}-${day}-${slot}-${l.subject}-${l.grade}`.replace(/\s+/g, '-');
 
                     cellContent += `
@@ -112,9 +108,11 @@ function renderGlobalEditor() {
     container.innerHTML = html;
 }
 
-let draggedChipId = null; // ID перетаскиваемого элемента для восстановления прозрачности
+let draggedChipId = null;
 
 function handleGlobalDragStart(e, chipId) {
+    if (isDragging) { e.preventDefault(); return; } // Блокируем, если уже идет перемещение
+
     draggedChipId = chipId;
     draggedLessonData = {
         teacher: e.target.dataset.teacher,
@@ -125,61 +123,92 @@ function handleGlobalDragStart(e, chipId) {
         fromSlot: parseInt(e.target.dataset.slot)
     };
     e.dataTransfer.setData('text/plain', JSON.stringify(draggedLessonData));
+    e.dataTransfer.effectAllowed = 'move';
     e.target.style.opacity = '0.4';
+    isDragging = true;
 }
 
 function handleGlobalDragOver(e) {
-    e.preventDefault(); // Обязательно для разрешения drop
-    if (e.target.classList.contains('drop-zone')) {
-        e.target.classList.add('drag-over');
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+
+    const zone = e.target.closest('.drop-zone');
+    if (!zone) return;
+
+    // Убираем старые классы подсветки
+    zone.classList.remove('drag-over-valid', 'drag-over-invalid');
+
+    // Логика проверки возможности дропа
+    const toTeacher = zone.dataset.teacher;
+    const toDay = zone.dataset.day;
+    const toSlot = parseInt(zone.dataset.slot);
+
+    // 1. Нельзя бросать другому учителю
+    if (toTeacher !== draggedLessonData.teacher) {
+        zone.classList.add('drag-over-invalid');
+        return;
+    }
+
+    // 2. Нельзя бросать в ту же ячейку
+    if (toDay === draggedLessonData.fromDay && toSlot === draggedLessonData.fromSlot) {
+        zone.classList.add('drag-over-invalid');
+        return;
+    }
+
+    // 3. Проверка занятости учителя (простая проверка по текущему DOM/данным)
+    // В реальном приложении лучше проверять по currentResult, но для UX хватит и этого
+    if (zone.children.length > 0 && !document.getElementById('editorClassFilter').value) {
+         // Если фильтр выключен и в ячейке уже есть уроки - это конфликт для учителя
+         zone.classList.add('drag-over-invalid');
     } else {
-        // Ищем родительскую drop-zone, если навели на дочерний элемент
-        const zone = e.target.closest('.drop-zone');
-        if (zone) zone.classList.add('drag-over');
+         zone.classList.add('drag-over-valid');
     }
 }
 
 function handleGlobalDragLeave(e) {
-    if (e.target.classList.contains('drop-zone')) {
-        e.target.classList.remove('drag-over');
+    const zone = e.target.closest('.drop-zone');
+    if (zone) {
+        zone.classList.remove('drag-over-valid', 'drag-over-invalid');
     }
 }
 
 async function handleGlobalDrop(e) {
     e.preventDefault();
+    if (!isDragging) return;
 
-    // Убираем подсветку со всех зон
-    document.querySelectorAll('.drop-zone.drag-over').forEach(el => el.classList.remove('drag-over'));
+    // Сброс всех подсветок
+    document.querySelectorAll('.drop-zone').forEach(el => {
+        el.classList.remove('drag-over-valid', 'drag-over-invalid');
+    });
 
-    // Восстанавливаем прозрачность исходного элемента
+    // Восстановление прозрачности
     if (draggedChipId) {
         const srcEl = document.getElementById(draggedChipId);
         if (srcEl) srcEl.style.opacity = '1';
-        draggedChipId = null;
     }
 
-    // Находим целевую ячейку (drop-zone)
-    let targetCell = e.target.closest('.drop-zone');
-    if (!targetCell || !targetCell.dataset.teacher) return;
+    const targetCell = e.target.closest('.drop-zone');
+    if (!targetCell || !targetCell.dataset.teacher) {
+        isDragging = false;
+        return;
+    }
 
     const toTeacher = targetCell.dataset.teacher;
     const toDay = targetCell.dataset.day;
     const toSlot = parseInt(targetCell.dataset.slot);
 
-    // Проверка: нельзя перетащить урок другому учителю
+    // Финальная проверка на клиенте перед отправкой
     if (toTeacher !== draggedLessonData.teacher) {
-        alert('⚠️ Нельзя перемещать уроки между разными учителями. Перетащите урок в другую ячейку того же учителя.');
-        renderGlobalEditor(); // Перерисовываем, чтобы сбросить визуальные артефакты
+        alert('️ Нельзя перемещать уроки между учителями.');
+        isDragging = false;
+        renderGlobalEditor();
         return;
     }
 
-    // Проверка: нельзя перетащить в ту же ячейку
     if (toDay === draggedLessonData.fromDay && toSlot === draggedLessonData.fromSlot) {
-        renderGlobalEditor(); // Просто перерисовываем для чистоты
+        isDragging = false;
         return;
     }
-
-    console.log("Перемещение:", draggedLessonData, "в", toTeacher, toDay, toSlot);
 
     try {
         const response = await fetch(`/timetables/${currentTimetableId}/move-lesson`, {
@@ -203,43 +232,38 @@ async function handleGlobalDrop(e) {
         const result = await response.json();
 
         if (response.ok) {
-            // ✅ КЛЮЧЕВОЙ МОМЕНТ: Полностью заменяем локальные данные данными с сервера
-            // Это гарантирует отсутствие дубликатов и рассинхрона
+            // ✅ ПОЛНАЯ ЗАМЕНА ДАННЫХ И ПЕРЕРИСОВКА
             if (result.data) {
                 currentResult = result.data;
             } else {
-                // Если сервер не вернул полные данные, запрашиваем их заново
-                console.warn("Сервер не вернул data, перезапрашиваем расписание...");
                 await loadSavedTimetable(currentTimetableId);
-                // loadSavedTimetable сам обновит currentResult
             }
 
-            // Обновляем фильтр и перерисовываем редактор
             updateEditorClassFilter();
-            renderGlobalEditor();
+            renderGlobalEditor(); // Полная перерисовка таблицы
 
-            // Показываем уведомление
             const msg = document.createElement('div');
-            msg.textContent = '✅ Урок успешно перемещен!';
-            msg.style.cssText = 'position:fixed;top:20px;right:20px;background:#27ae60;color:white;padding:15px 25px;border-radius:8px;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.15);animation:slideIn 0.3s ease;';
+            msg.textContent = '✅ Перемещено!';
+            msg.style.cssText = 'position:fixed;top:20px;right:20px;background:#27ae60;color:white;padding:15px 25px;border-radius:8px;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.15);';
             document.body.appendChild(msg);
-            setTimeout(() => msg.remove(), 2000);
+            setTimeout(() => msg.remove(), 1500);
 
         } else {
-            // Обработка ошибок сервера (конфликты и т.д.)
-            alert('⚠️ Не удалось переместить: ' + (result.detail || 'Произошла ошибка'));
-            // При ошибке тоже лучше перерисовать, чтобы убедиться в актуальности
-            renderGlobalEditor();
+            alert('⚠️ Ошибка: ' + (result.detail || 'Не удалось переместить'));
+            renderGlobalEditor(); // Возвращаем как было
         }
     } catch (error) {
-        console.error('Ошибка перемещения:', error);
-        alert('❌ Ошибка соединения с сервером');
-        // При ошибке сети перерисовываем, чтобы вернуть всё как было
+        console.error(error);
+        alert('❌ Ошибка сети');
         renderGlobalEditor();
+    } finally {
+        isDragging = false; // Разблокируем интерфейс
+        draggedChipId = null;
+        draggedLessonData = null;
     }
 }
 
 function validateTimetable() {
-    if (!currentResult) { alert('Нет данных для проверки'); return; }
-    alert('✅ Проверка конфликтов завершена. Расписание корректно.');
+    if (!currentResult) { alert('Нет данных'); return; }
+    alert('✅ Проверка завершена');
 }
