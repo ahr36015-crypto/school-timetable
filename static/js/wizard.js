@@ -13,7 +13,7 @@ async function goToStep(step) {
     document.querySelectorAll('.wizard-step')[step-1].classList.add('active');
     currentStep = step;
 
-    console.log(` Переход на шаг ${step}`);
+    console.log(`🔄 Переход на шаг ${step}`);
 
     if (step === 2) { renderClasses(); renderTeachers(); renderSubjects(); renderClassrooms(); }
     if (step === 3) { updateTeacherSelect(); updateTeacherDatalist(); renderAvailabilityGrid(document.getElementById('teacherSelect').value); }
@@ -35,7 +35,7 @@ async function goToStep(step) {
                     const timetables = await res.json();
                     if (timetables && timetables.length > 0) {
                         const latest = timetables[0];
-                        console.log(` Загружаю ID: ${latest.id}`);
+                        console.log(`📥 Загружаю ID: ${latest.id}`);
 
                         const fullRes = await fetch(`/timetables/${latest.id}`, {
                             headers: {'Authorization': 'Bearer ' + getToken()}
@@ -104,7 +104,7 @@ function addClass() {
     schoolData.classes.push({name, grade: match?parseInt(match[1]):0, letter: match?match[2]:''});
     renderClasses(); saveSchoolData(); document.getElementById('newClassName').value = '';
 }
-function renderClasses() { document.getElementById('classesTable').innerHTML = schoolData.classes.map((c,i) => `<tr><td>${c.name}</td><td>${c.grade}</td><td><button class="small danger" onclick="removeClass(${i})">️ Удалить</button></td></tr>`).join(''); }
+function renderClasses() { document.getElementById('classesTable').innerHTML = schoolData.classes.map((c,i) => `<tr><td>${c.name}</td><td>${c.grade}</td><td><button class="small danger" onclick="removeClass(${i})">🗑️ Удалить</button></td></tr>`).join(''); }
 function removeClass(i) { schoolData.classes.splice(i,1); renderClasses(); saveSchoolData(); }
 
 function addTeacher() {
@@ -116,7 +116,7 @@ function addTeacher() {
     document.getElementById('newTeacherName').value = ''; document.getElementById('newTeacherEmail').value = '';
     updateTeacherDatalist();
 }
-function renderTeachers() { document.getElementById('teachersTable').innerHTML = schoolData.teachers.map((t,i) => `<tr><td>${t.full_name}</td><td>${t.email||'-'}</td><td><button class="small danger" onclick="removeTeacher(${i})">️ Удалить</button></td></tr>`).join(''); }
+function renderTeachers() { document.getElementById('teachersTable').innerHTML = schoolData.teachers.map((t,i) => `<tr><td>${t.full_name}</td><td>${t.email||'-'}</td><td><button class="small danger" onclick="removeTeacher(${i})">🗑️ Удалить</button></td></tr>`).join(''); }
 function removeTeacher(i) { schoolData.teachers.splice(i,1); renderTeachers(); saveSchoolData(); updateTeacherDatalist(); }
 
 function addSubject() {
@@ -126,7 +126,7 @@ function addSubject() {
     if (exists) { warning.classList.add('show'); setTimeout(() => warning.classList.remove('show'), 3000); return; }
     schoolData.subjects.push({name}); renderSubjects(); saveSchoolData(); document.getElementById('newSubjectName').value = '';
 }
-function renderSubjects() { document.getElementById('subjectsTable').innerHTML = schoolData.subjects.map((s,i) => `<tr><td>${s.name}</td><td><button class="small danger" onclick="removeSubject(${i})">️ Удалить</button></td></tr>`).join(''); }
+function renderSubjects() { document.getElementById('subjectsTable').innerHTML = schoolData.subjects.map((s,i) => `<tr><td>${s.name}</td><td><button class="small danger" onclick="removeSubject(${i})">🗑️ Удалить</button></td></tr>`).join(''); }
 function removeSubject(i) { schoolData.subjects.splice(i,1); renderSubjects(); saveSchoolData(); }
 
 function addClassroom() {
@@ -137,11 +137,11 @@ function addClassroom() {
     schoolData.classrooms.push({number, capacity: capacity?parseInt(capacity):null}); renderClassrooms(); saveSchoolData();
     document.getElementById('newClassroomNumber').value = ''; document.getElementById('newClassroomCapacity').value = '';
 }
-function renderClassrooms() { document.getElementById('classroomsTable').innerHTML = schoolData.classrooms.map((c,i) => `<tr><td>${c.number}</td><td>${c.capacity||'-'}</td><td><button class="small danger" onclick="removeClassroom(${i})">️ Удалить</button></td></tr>`).join(''); }
+function renderClassrooms() { document.getElementById('classroomsTable').innerHTML = schoolData.classrooms.map((c,i) => `<tr><td>${c.number}</td><td>${c.capacity||'-'}</td><td><button class="small danger" onclick="removeClassroom(${i})">🗑️ Удалить</button></td></tr>`).join(''); }
 function removeClassroom(i) { schoolData.classrooms.splice(i,1); renderClassrooms(); saveSchoolData(); }
 
 function importFromExcel() {
-    alert(' Функция импорта из Excel:\n\nВ реальной версии здесь откроется диалог выбора файла.\nСейчас добавлены демонстрационные данные для теста.');
+    alert('📥 Функция импорта из Excel:\n\nВ реальной версии здесь откроется диалог выбора файла.\nСейчас добавлены демонстрационные данные для теста.');
     if(schoolData.teachers.length === 0) {
         schoolData.teachers.push({full_name: "Иванова М.П.", email: ""});
         schoolData.teachers.push({full_name: "Петров С.С.", email: ""});
@@ -192,7 +192,7 @@ function renderWorkloads(teacher) {
                 <label for="hours-${i}">Часы</label>
                 <input type="number" id="hours-${i}" class="workload-hours" value="${w.hours}" data-idx="${i}" data-field="hours" min="1" max="20" onchange="updateWorkloadFromInput(this)">
             </div>
-            <button class="small danger" onclick="removeWorkload(${i})">️ Удалить</button>
+            <button class="small danger" onclick="removeWorkload(${i})">🗑️ Удалить</button>
         </div>
     `).join('');
 }
@@ -312,7 +312,7 @@ function applyTimeTemplate() {
     if (slots.length === 0) { alert(`❌ В диапазоне ${startTime} - ${endTime} не найдено уроков.`); return; }
 
     if (schoolData.availability[name] && Object.keys(schoolData.availability[name]).length > 0) {
-        if (!confirm(`️ У учителя "${name}" уже есть настройки. Новые значения ПОЛНОСТЬЮ ЗАМЕНЯТ старые. Продолжить?`)) return;
+        if (!confirm(`⚠️ У учителя "${name}" уже есть настройки. Новые значения ПОЛНОСТЬЮ ЗАМЕНЯТ старые. Продолжить?`)) return;
     }
 
     schoolData.availability[name] = {};
@@ -349,14 +349,14 @@ function applyExcludeTemplate() {
     const name = document.getElementById('tmpl_name3').value.trim();
     if (!ensureTeacherExists(name)) return;
     const excludedDays = getSelectedDays('.tmpl-day3');
-    if (excludedDays.length === 0) { alert('️ Выберите дни для исключения!'); return; }
+    if (excludedDays.length === 0) { alert('⚠️ Выберите дни для исключения!'); return; }
 
     const allDays = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
     const workingDays = allDays.filter(d => !excludedDays.includes(d));
     const allSlots = Array.from({length: schoolData.lessonsPerDay}, (_, i) => i+1);
 
     if (schoolData.availability[name] && Object.keys(schoolData.availability[name]).length > 0) {
-        if (!confirm(`⚠️ У учителя "${name}" уже есть настройки. Заменить?`)) return;
+        if (!confirm(`️ У учителя "${name}" уже есть настройки. Заменить?`)) return;
     }
 
     schoolData.availability[name] = {};
@@ -446,10 +446,10 @@ async function generateTimetable() {
     } catch(e) {
         document.getElementById('progressOverlay').classList.remove('active');
         err.textContent = 'Ошибка: ' + e.message; err.classList.add('show');
-    } finally { btn.disabled = false; btn.textContent = ' Сгенерировать расписание'; }
+    } finally { btn.disabled = false; btn.textContent = '🎯 Сгенерировать расписание'; }
 }
 
-// ✅ НОВАЯ ФУНКЦИЯ ОТРИСОВКИ РАСПИСАНИЯ (ПО ШАБЛОНУ КЛАССОВ)
+// ✅ ИСПРАВЛЕННАЯ ФУНКЦИЯ ОТРИСОВКИ (СТРОГО ПО ШАБЛОНУ EXCEL)
 function renderSchedule() {
     if (!currentResult || !currentResult.teachers) {
         document.getElementById('scheduleView').innerHTML = '<p>Нет данных</p>';
@@ -493,6 +493,7 @@ function renderSchedule() {
 
         slots.forEach((slot, sIdx) => {
             const timeStr = times[sIdx] ? times[sIdx] : `Урок ${slot}`;
+            const lessonLabel = `Урок ${slot}`; // Надпись "Урок 1", "Урок 2" для второй колонки
 
             // Параметры урока (как в Excel)
             const params = [
@@ -504,8 +505,19 @@ function renderSchedule() {
 
             params.forEach(p => {
                 html += `<tr>`;
-                // Левая колонка (название параметра)
+                // Колонка 1: Название параметра (Предмет, Учитель...)
                 html += `<td style="font-weight:bold; color:#800080; text-align:center; border:1px solid #ddd; padding:5px;">${p.label}</td>`;
+
+                // Колонка 2: Название урока (Урок 1, Урок 2...) - ОБЪЕДИНЕННАЯ ЯЧЕЙКА ПО ВЕРТИКАЛИ
+                // Чтобы не дублировать "Урок 1" в каждой строке параметров, используем rowspan или просто ставим в первую строку
+                // Но в Excel это выглядит как одна большая ячейка слева от классов.
+                // Для простоты HTML таблицы, поставим "Урок X" только в строку "Предмет", а остальные оставим пустыми или объединим.
+                // Лучший вариант для HTML: поставить в каждую строку, но визуально скрыть границы, либо использовать rowspan.
+                // Сделаем проще: в первой строке (Предмет) пишем "Урок X", в остальных - пусто, но с границей.
+
+                if (p.label === "Предмет") {
+                     html += `<td rowspan="4" style="font-weight:bold; text-align:center; vertical-align:middle; border:1px solid #ddd; background:#fff;">${lessonLabel}</td>`;
+                }
 
                 // Колонки классов (значения)
                 sortedGrades.forEach(grade => {
@@ -529,17 +541,21 @@ function renderSchedule() {
                 html += `</tr>`;
             });
 
-            // Строка времени (Вычитано) - ТЕПЕРЬ В ТОЙ ЖЕ КОЛОНКЕ, ЧТО И УРОК
+            // Строка времени (Вычитано) - ТЕПЕРЬ В ТОЙ ЖЕ КОЛОНКЕ, ЧТО И УРОК (или рядом, как в шаблоне)
+            // В шаблоне "Вычитано" - это отдельная строка, где во 2-й колонке стоит время.
             html += `<tr>`;
-            html += `<td style="font-weight:bold; color:#800080; text-align:center; border:1px solid #ddd;">${timeStr}</td>`;
-            // Остальные ячейки пустые или с прочерками
+            html += `<td style="font-weight:bold; color:#800080; text-align:center; border:1px solid #ddd;">Вычитано</td>`;
+            // Во второй колонке (где был "Урок 1") теперь стоит время
+            html += `<td style="font-weight:bold; text-align:center; border:1px solid #ddd;">${timeStr}</td>`;
+
+            // Остальные ячейки (для классов) - прочерки или часы (если нужно)
             sortedGrades.forEach(() => {
                 html += `<td style="border:1px solid #ddd; padding:5px; text-align:center;">-</td>`;
             });
             html += `</tr>`;
 
             // Пустая строка-разделитель
-            html += `<tr><td colspan="${sortedGrades.length + 1}" style="height:10px; border:none;"></td></tr>`;
+            html += `<tr><td colspan="${sortedGrades.length + 2}" style="height:10px; border:none;"></td></tr>`;
         });
     });
 
@@ -561,7 +577,7 @@ async function loadSavedTimetables() {
                 <div class="saved-timetable-item">
                     <div><h4>${t.name}</h4><p>${new Date(t.created_at).toLocaleString('ru-RU')}</p></div>
                     <div class="saved-timetable-actions">
-                        <button class="small primary" onclick="window.loadSavedTimetable(${t.id})">️ Открыть</button>
+                        <button class="small primary" onclick="window.loadSavedTimetable(${t.id})">👁️ Открыть</button>
                         <button class="small outline" onclick="window.downloadSavedPDF(${t.id}, 'teachers')">PDF (уч.)</button>
                         <button class="small outline" onclick="window.downloadSavedPDF(${t.id}, 'classes')">PDF (кл.)</button>
                         <button class="small danger" onclick="window.deleteSavedTimetable(${t.id})">🗑️</button>
