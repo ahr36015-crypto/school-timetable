@@ -72,7 +72,7 @@ function renderGlobalEditor() {
                 let cellContent = '';
                 visibleLessons.forEach(l => {
                     if (!l) return;
-                    const classroom = l.classroom ? ` 🏫${l.classroom}` : '';
+                    const classroom = l.classroom ? ` ${l.classroom}` : '';
                     const chipId = `chip-${teacher.teacher}-${day}-${slot}-${l.subject}-${l.grade}`.replace(/\s+/g, '-');
 
                     cellContent += `
@@ -213,7 +213,7 @@ async function handleGlobalDrop(e) {
 
     // ✅ ЗАЩИТА: Проверяем наличие ID перед запросом
     if (!currentTimetableId) {
-        alert('⚠️ Ошибка: Потерян ID расписания. Пожалуйста, обновите страницу.');
+        alert('️ Ошибка: Потерян ID расписания. Пожалуйста, обновите страницу.');
         isDragging = false;
         return;
     }
@@ -244,7 +244,8 @@ async function handleGlobalDrop(e) {
         if (response.ok) {
             console.log("✅ Успех");
 
-            if (result.data) {
+            // ⚠️ ВАЖНО: Данные лежат в поле data, как видно из api.py
+            if (result && result.data) {
                 currentResult = result.data;
             } else {
                 // Если сервер не вернул data, пробуем перезагрузить по текущему ID
@@ -254,7 +255,7 @@ async function handleGlobalDrop(e) {
                     });
                     if (reloadRes.ok) {
                         const reloadData = await reloadRes.json();
-                        if (reloadData.data) currentResult = reloadData.data;
+                        if (reloadData && reloadData.data) currentResult = reloadData.data;
                     }
                 } catch (reloadErr) {
                     console.error("Не удалось перезагрузить:", reloadErr);

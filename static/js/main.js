@@ -74,10 +74,13 @@ async function goToStep(step) {
 
                         if (fullRes.ok) {
                             const data = await fullRes.json();
-                            if (data.data) {
+                            // ⚠️ ВАЖНО: Данные лежат в поле data, как видно из api.py
+                            if (data && data.data) {
                                 currentResult = data.data;
                                 currentTimetableId = latest.id; // Жестко фиксируем ID
                                 console.log("✅ Данные и ID успешно восстановлены!");
+                            } else {
+                                throw new Error("Ответ сервера не содержит поля data");
                             }
                         } else {
                             throw new Error(`Server returned ${fullRes.status}`);
@@ -145,14 +148,15 @@ window.applyTimeTemplate = applyTimeTemplate;
 window.applyDaysTemplate = applyDaysTemplate;
 window.applyExcludeTemplate = applyExcludeTemplate;
 window.generateTimetable = generateTimetable;
-window.showMasterView = showMasterView;
+// Убираем showMasterView из глобальных, если он вызывает 404
+// window.showMasterView = showMasterView;
 window.hideMasterView = hideMasterView;
 window.downloadPDF = downloadPDF;
 window.downloadExcel = downloadExcel;
 window.publishTimetable = function() { if(confirm('Опубликовать?')) alert('✅ Опубликовано'); };
 window.exportToJournal = function() { alert('🔗 Экспорт API'); };
 window.sendToTeachers = function() { alert('📱 Отправлено в Telegram'); };
-window.sendToEmail = function() { alert(' Отправлено на почту'); };
+window.sendToEmail = function() { alert('📧 Отправлено на почту'); };
 
 // Редактор
 window.renderGlobalEditor = renderGlobalEditor;
