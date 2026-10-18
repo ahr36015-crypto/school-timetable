@@ -137,7 +137,7 @@ function addClassroom() {
     schoolData.classrooms.push({number, capacity: capacity?parseInt(capacity):null}); renderClassrooms(); saveSchoolData();
     document.getElementById('newClassroomNumber').value = ''; document.getElementById('newClassroomCapacity').value = '';
 }
-function renderClassrooms() { document.getElementById('classroomsTable').innerHTML = schoolData.classrooms.map((c,i) => `<tr><td>${c.number}</td><td>${c.capacity||'-'}</td><td><button class="small danger" onclick="removeClassroom(${i})">🗑️ Удалить</button></td></tr>`).join(''); }
+function renderClassrooms() { document.getElementById('classroomsTable').innerHTML = schoolData.classrooms.map((c,i) => `<tr><td>${c.number}</td><td>${c.capacity||'-'}</td><td><button class="small danger" onclick="removeClassroom(${i})">️ Удалить</button></td></tr>`).join(''); }
 function removeClassroom(i) { schoolData.classrooms.splice(i,1); renderClassrooms(); saveSchoolData(); }
 
 function importFromExcel() {
@@ -312,7 +312,7 @@ function applyTimeTemplate() {
     if (slots.length === 0) { alert(`❌ В диапазоне ${startTime} - ${endTime} не найдено уроков.`); return; }
 
     if (schoolData.availability[name] && Object.keys(schoolData.availability[name]).length > 0) {
-        if (!confirm(`⚠️ У учителя "${name}" уже есть настройки. Новые значения ПОЛНОСТЬЮ ЗАМЕНЯТ старые. Продолжить?`)) return;
+        if (!confirm(`️ У учителя "${name}" уже есть настройки. Новые значения ПОЛНОСТЬЮ ЗАМЕНЯТ старые. Продолжить?`)) return;
     }
 
     schoolData.availability[name] = {};
@@ -349,7 +349,7 @@ function applyExcludeTemplate() {
     const name = document.getElementById('tmpl_name3').value.trim();
     if (!ensureTeacherExists(name)) return;
     const excludedDays = getSelectedDays('.tmpl-day3');
-    if (excludedDays.length === 0) { alert('⚠️ Выберите дни для исключения!'); return; }
+    if (excludedDays.length === 0) { alert('️ Выберите дни для исключения!'); return; }
 
     const allDays = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
     const workingDays = allDays.filter(d => !excludedDays.includes(d));
@@ -446,7 +446,7 @@ async function generateTimetable() {
     } catch(e) {
         document.getElementById('progressOverlay').classList.remove('active');
         err.textContent = 'Ошибка: ' + e.message; err.classList.add('show');
-    } finally { btn.disabled = false; btn.textContent = '🎯 Сгенерировать расписание'; }
+    } finally { btn.disabled = false; btn.textContent = ' Сгенерировать расписание'; }
 }
 
 // ✅ НОВАЯ ФУНКЦИЯ ОТРИСОВКИ РАСПИСАНИЯ (ПО ШАБЛОНУ КЛАССОВ)
@@ -480,8 +480,8 @@ function renderSchedule() {
 
     let html = '<div style="overflow-x:auto;"><table class="master-table" style="min-width:100%; border-collapse:collapse;">';
 
-    // Заголовок таблицы (Классы)
-    html += '<thead><tr><th style="background:#f8f9fa; width:150px;"></th>';
+    // Заголовок таблицы (Классы начинаются со 2-й колонки)
+    html += '<thead><tr><th style="background:#f8f9fa; width:150px;"></th>'; // Пустая ячейка слева
     sortedGrades.forEach(g => {
         html += `<th style="background:#9b59b6; color:white; padding:10px;">${g} класс</th>`;
     });
@@ -507,7 +507,7 @@ function renderSchedule() {
                 // Левая колонка (название параметра)
                 html += `<td style="font-weight:bold; color:#800080; text-align:center; border:1px solid #ddd; padding:5px;">${p.label}</td>`;
 
-                // Колонки классов
+                // Колонки классов (значения)
                 sortedGrades.forEach(grade => {
                     let val = "-";
                     // Поиск значения
@@ -529,10 +529,13 @@ function renderSchedule() {
                 html += `</tr>`;
             });
 
-            // Строка времени (Вычитано)
+            // Строка времени (Вычитано) - ТЕПЕРЬ В ТОЙ ЖЕ КОЛОНКЕ, ЧТО И УРОК
             html += `<tr>`;
-            html += `<td style="font-weight:bold; color:#800080; text-align:center; border:1px solid #ddd;">Вычитано</td>`;
-            html += `<td colspan="${sortedGrades.length}" style="text-align:center; border:1px solid #ddd; background:#f9f9f9;">${timeStr}</td>`;
+            html += `<td style="font-weight:bold; color:#800080; text-align:center; border:1px solid #ddd;">${timeStr}</td>`;
+            // Остальные ячейки пустые или с прочерками
+            sortedGrades.forEach(() => {
+                html += `<td style="border:1px solid #ddd; padding:5px; text-align:center;">-</td>`;
+            });
             html += `</tr>`;
 
             // Пустая строка-разделитель

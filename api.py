@@ -18,7 +18,6 @@ from database import init_db, get_db, User, SavedTimetable
 from auth import get_password_hash, verify_password, create_access_token, get_current_user
 from models import TimetableRequest, TimetableResponse, AIInputRequest
 from solver import validate_teachers, solve_timetable
-# Старые импорты генераторов можно оставить, но мы переопределим логику ниже
 from excel_generator import generate_teachers_excel
 from pdf_generator import generate_teachers_pdf, generate_classes_pdf
 
@@ -478,8 +477,10 @@ def generate_class_template_excel(data):
     current_row = 1
 
     # --- ЗАГОЛОВОК ТАБЛИЦЫ ---
+    # Первая колонка пустая (для параметров урока)
     ws.cell(row=current_row, column=1).value = ""
 
+    # Заголовки классов (начинаются со 2-й колонки)
     for col_idx, grade in enumerate(sorted_grades, start=2):
         cell = ws.cell(row=current_row, column=col_idx, value=f"{grade} класс")
         cell.font = header_font
@@ -501,12 +502,15 @@ def generate_class_template_excel(data):
                 ("Тема", "topic"),
             ]
 
+            # Строки параметров (Предмет, Учитель...)
             for p_idx, (param_name, param_key) in enumerate(params):
+                # Колонка 1: Название параметра
                 cell_param = ws.cell(row=current_row + p_idx, column=1, value=param_name)
                 cell_param.font = param_font
                 cell_param.alignment = center_align
                 cell_param.border = thin_border
 
+                # Колонки 2+: Значения для каждого класса
                 for col_idx, grade in enumerate(sorted_grades, start=2):
                     val = "-"
                     for t in data.get('teachers', []):
@@ -524,22 +528,24 @@ def generate_class_template_excel(data):
 
             current_row += len(params)
 
-            # Строка "Вычитано" (Время)
-            cell_time_label = ws.cell(row=current_row, column=1, value="Вычитано")
+            # Строка "Вычитано" (Время) - теперь в той же первой колонке
+            cell_time_label = ws.cell(row=current_row, column=1, value=time_str)
             cell_time_label.font = param_font
             cell_time_label.alignment = center_align
             cell_time_label.border = thin_border
 
-            ws.merge_cells(start_row=current_row, start_column=2, end_row=current_row,
-                           end_column=len(sorted_grades) + 1)
-            cell_time_val = ws.cell(row=current_row, column=2, value=time_str)
-            cell_time_val.alignment = center_align
-            cell_time_val.border = thin_border
+            # Значения вычитанного (если нужны цифры, можно добавить логику, пока прочерк или пусто)
+            for col_idx in range(2, len(sorted_grades) + 2):
+                cell_val = ws.cell(row=current_row, column=col_idx, value="-")
+                cell_val.alignment = center_align
+                cell_val.border = thin_border
 
             current_row += 1
 
+        # Пустая строка между днями
         current_row += 1
 
+    # Автоширина
     for col in ws.columns:
         max_length = 0
         col_letter = col[0].column_letter
