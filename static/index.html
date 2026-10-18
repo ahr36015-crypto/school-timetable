@@ -7,7 +7,7 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
-        .container { background: white; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); padding: 40px; max-width: 1400px; margin: 0 auto; }
+        .container { background: white; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); padding: 40px; max-width: 1600px; margin: 0 auto; }
         h1 { text-align: center; color: #333; margin-bottom: 10px; font-size: 32px; }
         .subtitle { text-align: center; color: #666; margin-bottom: 30px; }
         .auth-container { max-width: 450px; margin: 100px auto; }
@@ -60,6 +60,27 @@
         .availability-cell .time-label { font-size: 10px; font-weight: normal; opacity: 0.9; margin-top: 2px; }
         .availability-cell.available { background: #27ae60; color: white; }
         .availability-cell.unavailable { background: #e74c3c; color: white; }
+
+        /* Стили для ГЛОБАЛЬНОГО редактора */
+        .global-editor-container { overflow-x: auto; margin-top: 20px; border: 1px solid #eee; border-radius: 8px; }
+        .global-table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1200px; }
+        .global-table th, .global-table td { border: 1px solid #ddd; padding: 6px; text-align: center; vertical-align: middle; }
+        .global-table th { background: #667eea; color: white; font-weight: 600; position: sticky; top: 0; z-index: 10; }
+        .global-table .teacher-header { background: #f0f4ff; font-weight: bold; text-align: left; padding-left: 15px; width: 200px; position: sticky; left: 0; z-index: 11; }
+        .global-table .day-subheader { background: #eef2ff; font-size: 11px; color: #666; }
+
+        .lesson-chip {
+            background: white; border: 1px solid #667eea; border-radius: 4px;
+            padding: 4px; margin: 2px 0; font-size: 11px; cursor: grab;
+            transition: all 0.2s; text-align: left;
+        }
+        .lesson-chip:hover { background: #f0f4ff; transform: scale(1.02); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .lesson-chip:active { cursor: grabbing; }
+        .lesson-chip .subj { font-weight: bold; color: #333; display: block; }
+        .lesson-chip .meta { color: #666; font-size: 10px; display: block; }
+
+        .drop-zone { min-height: 40px; transition: background 0.2s; }
+        .drop-zone.drag-over { background: #fff3cd !important; border: 2px dashed #f39c12; }
 
         .timetable-grid { display: grid; grid-template-columns: 100px repeat(7, 1fr); gap: 2px; margin-top: 15px; }
         .timetable-cell { padding: 10px; min-height: 80px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; cursor: default; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
@@ -390,12 +411,22 @@
         </div>
 
         <div id="step5" class="wizard-content">
-            <h2>✏️ Шаг 5: Ручная корректировка (Drag-and-Drop)</h2>
-            <p style="color:#666;margin-bottom:20px">Перетащите уроки мышкой для изменения расписания. Система автоматически проверит конфликты.</p>
-            <div class="form-group"><label for="classSelect">Выберите класс для просмотра</label><select id="classSelect" onchange="renderTimetableGrid()"><option value="">-- Выберите класс --</option></select></div>
-            <div id="timetableGrid" class="timetable-grid"></div>
-            <div class="step-actions">
-                <button class="secondary" onclick="validateTimetable()"> Проверить конфликты</button>
+            <h2>✏️ Шаг 5: Редактор расписания (Drag-and-Drop)</h2>
+            <p style="color:#666;margin-bottom:20px">Перетаскивайте уроки в общей таблице. Система автоматически проверит конфликты учителей и классов.</p>
+
+            <div style="display:flex; gap:15px; margin-bottom:20px; align-items:center; flex-wrap:wrap;">
+                <div class="form-group" style="margin:0; flex:1; min-width:200px;">
+                    <label>🔍 Фильтр по классу (опционально):</label>
+                    <select id="editorClassFilter" onchange="renderGlobalEditor()">
+                        <option value="">-- Показать всех --</option>
+                    </select>
+                </div>
+                <button class="secondary small" onclick="validateTimetable()"> Проверить конфликты</button>
+            </div>
+
+            <div id="globalEditorContainer" class="global-editor-container"></div>
+
+            <div class="step-actions" style="margin-top:20px;">
                 <button class="primary" onclick="completeStep(5)">➡️ Перейти к публикации</button>
             </div>
         </div>
@@ -403,8 +434,8 @@
         <div id="step6" class="wizard-content">
             <h2>📢 Шаг 6: Публикация и экспорт</h2>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px">
-                <div class="stat-card"><h3>📄 PDF для печати</h3><p style="color:#666;margin:10px 0">Готовые файлы для размещения на стенде</p><button class="primary" onclick="downloadPDF('teachers')">👨 По учителям</button><button class="primary" onclick="downloadPDF('classes')" style="margin-top:10px">👥 По классам</button></div>
-                <div class="stat-card"><h3>📊 Excel для редактирования</h3><p style="color:#666;margin:10px 0">Файлы для дальнейшей работы</p><button class="primary" onclick="downloadExcel('teachers')">👨‍ По учителям</button><button class="primary" onclick="downloadExcel('classes')" style="margin-top:10px"> По классам</button></div>
+                <div class="stat-card"><h3>📄 PDF для печати</h3><p style="color:#666;margin:10px 0">Готовые файлы для размещения на стенде</p><button class="primary" onclick="downloadPDF('teachers')">👨 По учителям</button><button class="primary" onclick="downloadPDF('classes')" style="margin-top:10px"> По классам</button></div>
+                <div class="stat-card"><h3> Excel для редактирования</h3><p style="color:#666;margin:10px 0">Файлы для дальнейшей работы</p><button class="primary" onclick="downloadExcel('teachers')">👨‍ По учителям</button><button class="primary" onclick="downloadExcel('classes')" style="margin-top:10px"> По классам</button></div>
                 <div class="stat-card"><h3> Отправка учителям</h3><p style="color:#666;margin:10px 0">Ссылки на расписание</p><button class="outline" onclick="sendToTeachers()">📱 Отправить в Telegram</button><button class="outline" onclick="sendToEmail()" style="margin-top:10px">📧 Отправить на почту</button></div>
                 <div class="stat-card"><h3> Интеграция с журналом</h3><p style="color:#666;margin:10px 0">Выгрузка в электронный журнал</p><button class="secondary" onclick="exportToJournal()"> Экспорт API</button></div>
             </div>
@@ -473,7 +504,10 @@
             currentStep = step;
             if (step === 3) { updateTeacherSelect(); updateTeacherDatalist(); renderClasses(); renderTeachers(); renderSubjects(); renderClassrooms(); }
             if (step === 4) loadSavedTimetables();
-            if (step === 5) renderTimetableGrid();
+            if (step === 5) {
+                renderGlobalEditor();
+                updateEditorClassFilter();
+            }
         }
 
         function completeStep(step) {
@@ -754,7 +788,7 @@
 
             saveSchoolData();
             refreshTeacherCard(name);
-            alert(`✅ Доступность применена для ${name}:\n🟢 Рабочие дни: ${days.join(', ')} — уроки ${slots.join(', ')} (${startTime} - ${endTime})\n🔴 Остальные дни: недоступен`);
+            alert(`✅ Доступность применена для ${name}:\n🟢 Рабочие дни: ${days.join(', ')} — уроки ${slots.join(', ')} (${startTime} - ${endTime})\n Остальные дни: недоступен`);
         }
 
         function applyDaysTemplate() {
@@ -790,7 +824,7 @@
 
             saveSchoolData();
             refreshTeacherCard(name);
-            alert(`✅ Дни применены для ${name}:\n🟢 Рабочие дни: ${days.join(', ')} (все уроки)\n🔴 Остальные дни: недоступен`);
+            alert(`✅ Дни применены для ${name}:\n Рабочие дни: ${days.join(', ')} (все уроки)\n🔴 Остальные дни: недоступен`);
         }
 
         function applyExcludeTemplate() {
@@ -1071,7 +1105,7 @@
                             html += `
                                 <td class="lesson-cell">
                                     <span class="lesson-subject">${lesson.subject}</span>
-                                    <span class="lesson-details">‍🏫 ${lesson.teacher}</span>
+                                    <span class="lesson-details">🏫 ${lesson.teacher}</span>
                                     <span class="lesson-details">  ${lesson.classroom || '-'}</span>
                                 </td>
                             `;
@@ -1128,10 +1162,10 @@
                             <div><h4>${t.name}</h4><p>Создано: ${new Date(t.created_at).toLocaleString('ru-RU')}</p></div>
                             <div class="saved-timetable-actions">
                                 <button class="small primary" onclick="window.loadSavedTimetable(${t.id})">️ Открыть</button>
-                                <button class="small outline" onclick="window.downloadSavedPDF(${t.id}, 'teachers')">📄 PDF (уч.)</button>
+                                <button class="small outline" onclick="window.downloadSavedPDF(${t.id}, 'teachers')"> PDF (уч.)</button>
                                 <button class="small outline" onclick="window.downloadSavedPDF(${t.id}, 'classes')"> PDF (кл.)</button>
                                 <button class="small outline" onclick="window.downloadSavedExcel(${t.id}, 'teachers')"> Excel (уч.)</button>
-                                <button class="small outline" onclick="window.downloadSavedExcel(${t.id}, 'classes')">📊 Excel (кл.)</button>
+                                <button class="small outline" onclick="window.downloadSavedExcel(${t.id}, 'classes')"> Excel (кл.)</button>
                                 <button class="small danger" onclick="window.deleteSavedTimetable(${t.id})">️ Удалить</button>
                             </div>
                         </div>
@@ -1198,110 +1232,107 @@
         function downloadExcel(format) { if (!currentTimetableId) { alert('Сначала сгенерируйте расписание'); return; } if (!checkAuth()) return; window.downloadSavedExcel(currentTimetableId, format); }
 
         // ==========================================
-        // ЛОГИКА DRAG-AND-DROP РЕДАКТОРА
+        // ГЛОБАЛЬНЫЙ РЕДАКТОР (ШАГ 5)
         // ==========================================
-        function renderTimetableGrid() {
-            if (!currentResult) {
-                console.warn("currentResult пуст!");
-                document.getElementById('timetableGrid').innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#999">Нет данных для отображения. Сгенерируйте или загрузите расписание.</p>';
-                return;
-            }
-
-            if (!currentResult.teachers || currentResult.teachers.length === 0) {
-                 document.getElementById('timetableGrid').innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#999">В расписании нет учителей.</p>';
-                 return;
-            }
-
-            const classSelect = document.getElementById('classSelect');
-
+        function updateEditorClassFilter() {
+            if (!currentResult) return;
+            const select = document.getElementById('editorClassFilter');
             const grades = new Set();
             currentResult.teachers.forEach(t => {
                 if (t.schedule) {
                     Object.values(t.schedule).forEach(dayObj => {
-                        if(dayObj) {
-                            Object.values(dayObj).forEach(slotLessons => {
-                                if(Array.isArray(slotLessons)) {
-                                    slotLessons.forEach(l => {
-                                        if(l && l.grade) grades.add(l.grade);
-                                    });
-                                }
-                            });
-                        }
+                        Object.values(dayObj).forEach(slotLessons => {
+                            slotLessons.forEach(l => { if(l.grade) grades.add(l.grade); });
+                        });
                     });
                 }
             });
+            const currentVal = select.value;
+            select.innerHTML = '<option value="">-- Показать всех --</option>' +
+                Array.from(grades).sort().map(g => `<option value="${g}">${g} класс</option>`).join('');
+            select.value = currentVal;
+        }
 
-            const currentGrade = classSelect.value;
-            classSelect.innerHTML = '<option value="">-- Выберите класс --</option>' +
-                Array.from(grades).sort().map(g => `<option value="${g}" ${g === currentGrade ? 'selected' : ''}>${g} класс</option>`).join('');
-
-            const grade = classSelect.value || currentGrade;
-
-            if (!grade) {
-                document.getElementById('timetableGrid').innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#999">Выберите класс для просмотра сетки</p>';
+        function renderGlobalEditor() {
+            const container = document.getElementById('globalEditorContainer');
+            if (!currentResult || !currentResult.teachers) {
+                container.innerHTML = '<p style="padding:20px;text-align:center;color:#999">Нет данных для редактирования. Сгенерируйте расписание на Шаге 4.</p>';
                 return;
             }
 
+            const filterGrade = document.getElementById('editorClassFilter').value;
             const days = currentResult.days || ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"];
             const slots = currentResult.slots || [1, 2, 3, 4, 5, 6, 7];
             const times = schoolData.lessonTimes || [];
 
-            let html = '<div class="timetable-cell header"></div>';
-            slots.forEach((s, i) => {
-                const timeStr = times[i] ? `<br><small style="font-weight:normal">${times[i]}</small>` : '';
-                html += `<div class="timetable-cell header">Урок ${s}${timeStr}</div>`;
-            });
+            let html = '<table class="global-table"><thead><tr>';
+            html += '<th class="teacher-header">Учитель / День</th>';
 
+            // Заголовки дней и уроков
             days.forEach(day => {
-                html += `<div class="timetable-cell header">${day}</div>`;
-                slots.forEach(slot => {
-                    let cellContent = '';
-                    let isDraggable = false;
-                    let lessonInfo = null;
-
-                    currentResult.teachers.forEach(t => {
-                        if (t.schedule && t.schedule[day]) {
-                            const slotKey = String(slot);
-                            if (t.schedule[day][slotKey]) {
-                                t.schedule[day][slotKey].forEach(l => {
-                                    if (l && l.grade === grade) {
-                                        const classroom = l.classroom ? `<br><small style="color:#888"> ${l.classroom}</small>` : '';
-                                        cellContent = `<strong>${l.subject}</strong><br><small>🏫 ${t.teacher}</small>${classroom}`;
-                                        isDraggable = true;
-                                        lessonInfo = {
-                                            teacher: t.teacher,
-                                            subject: l.subject,
-                                            grade: l.grade,
-                                            classroom: l.classroom || '',
-                                            day: day,
-                                            slot: slot
-                                        };
-                                    }
-                                });
-                            }
-                        }
-                    });
-
-                    const draggableAttr = isDraggable ? 'draggable="true"' : '';
-                    const lessonClass = isDraggable ? 'lesson' : '';
-
-                    const dataAttrs = isDraggable && lessonInfo ?
-                        `data-teacher="${lessonInfo.teacher}" data-subject="${lessonInfo.subject}" data-grade="${lessonInfo.grade}" data-classroom="${lessonInfo.classroom}"` : '';
-
-                    html += `<div class="timetable-cell ${lessonClass}"
-                             ${draggableAttr}
-                             ondragstart="handleDragStart(event)"
-                             ondragover="handleDragOver(event)"
-                             ondrop="handleDrop(event)"
-                             ondragleave="handleDragLeave(event)"
-                             data-day="${day}" data-slot="${slot}" ${dataAttrs}>${cellContent}</div>`;
+                html += `<th colspan="${slots.length}" class="day-subheader">${day}</th>`;
+            });
+            html += '</tr><tr><th class="teacher-header"></th>';
+            days.forEach(() => {
+                slots.forEach((s, i) => {
+                    const timeStr = times[i] ? `<br><small style="font-weight:normal;font-size:9px">${times[i]}</small>` : '';
+                    html += `<th style="min-width:80px">Урок ${s}${timeStr}</th>`;
                 });
             });
+            html += '</tr></thead><tbody>';
 
-            document.getElementById('timetableGrid').innerHTML = html;
+            // Строки учителей
+            currentResult.teachers.forEach(teacher => {
+                html += `<tr><td class="teacher-header">${teacher.teacher}</td>`;
+
+                days.forEach(day => {
+                    slots.forEach(slot => {
+                        const slotKey = String(slot);
+                        const lessons = teacher.schedule?.[day]?.[slotKey] || [];
+
+                        // Фильтрация по классу
+                        const visibleLessons = filterGrade
+                            ? lessons.filter(l => l.grade === filterGrade)
+                            : lessons;
+
+                        let cellContent = '';
+                        visibleLessons.forEach(l => {
+                            const classroom = l.classroom ? ` ${l.classroom}` : '';
+                            cellContent += `
+                                <div class="lesson-chip" draggable="true"
+                                     ondragstart="handleGlobalDragStart(event)"
+                                     data-teacher="${teacher.teacher}"
+                                     data-subject="${l.subject}"
+                                     data-grade="${l.grade}"
+                                     data-classroom="${l.classroom || ''}"
+                                     data-day="${day}"
+                                     data-slot="${slot}">
+                                    <span class="subj">${l.subject}</span>
+                                    <span class="meta">${l.grade} кл | ${classroom}</span>
+                                </div>
+                            `;
+                        });
+
+                        html += `<td class="drop-zone"
+                                    ondragover="handleGlobalDragOver(event)"
+                                    ondrop="handleGlobalDrop(event)"
+                                    ondragleave="handleGlobalDragLeave(event)"
+                                    data-teacher="${teacher.teacher}"
+                                    data-day="${day}"
+                                    data-slot="${slot}">
+                                    ${cellContent}
+                                 </td>`;
+                    });
+                });
+                html += '</tr>';
+            });
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
         }
 
-        function handleDragStart(e) {
+        // Drag-and-Drop для глобального редактора
+        function handleGlobalDragStart(e) {
             draggedLessonData = {
                 teacher: e.target.dataset.teacher,
                 subject: e.target.dataset.subject,
@@ -1314,41 +1345,47 @@
             e.target.style.opacity = '0.5';
         }
 
-        function handleDragOver(e) {
+        function handleGlobalDragOver(e) {
             e.preventDefault();
-            if (e.target.classList.contains('timetable-cell') && !e.target.classList.contains('header')) {
+            if (e.target.classList.contains('drop-zone')) {
                 e.target.classList.add('drag-over');
             }
         }
 
-        function handleDragLeave(e) {
-            if (e.target.classList.contains('timetable-cell')) {
+        function handleGlobalDragLeave(e) {
+            if (e.target.classList.contains('drop-zone')) {
                 e.target.classList.remove('drag-over');
             }
         }
 
-        async function handleDrop(e) {
+        async function handleGlobalDrop(e) {
             e.preventDefault();
             e.target.classList.remove('drag-over');
 
-            const dragSrcEl = document.querySelector(`.timetable-cell[data-day="${draggedLessonData.fromDay}"][data-slot="${draggedLessonData.fromSlot}"]`);
-            if(dragSrcEl) dragSrcEl.style.opacity = '1';
+            // Восстанавливаем прозрачность
+            const dragSrcEls = document.querySelectorAll('.lesson-chip[style*="opacity: 0.5"]');
+            dragSrcEls.forEach(el => el.style.opacity = '1');
 
             let targetCell = e.target;
-            while (targetCell && !targetCell.classList.contains('timetable-cell')) {
+            while (targetCell && !targetCell.classList.contains('drop-zone')) {
                 targetCell = targetCell.parentElement;
             }
 
-            if (!targetCell || targetCell.classList.contains('header') || !targetCell.dataset.day) {
-                return;
-            }
+            if (!targetCell || !targetCell.dataset.teacher) return;
 
+            const toTeacher = targetCell.dataset.teacher;
             const toDay = targetCell.dataset.day;
             const toSlot = parseInt(targetCell.dataset.slot);
 
+            // Нельзя перетащить урок учителя другому учителю (пока что)
+            if (toTeacher !== draggedLessonData.teacher) {
+                alert('️ Нельзя перемещать уроки между разными учителями. Перетащите урок в другую ячейку того же учителя.');
+                return;
+            }
+
             if (toDay === draggedLessonData.fromDay && toSlot === draggedLessonData.fromSlot) return;
 
-            console.log("Попытка перемещения:", draggedLessonData, "в", toDay, toSlot);
+            console.log("Глобальное перемещение:", draggedLessonData, "в", toTeacher, toDay, toSlot);
 
             try {
                 const response = await fetch(`/timetables/${currentTimetableId}/move-lesson`, {
@@ -1370,18 +1407,17 @@
                 });
 
                 const result = await response.json();
-                console.log("Ответ сервера:", result);
 
                 if (response.ok) {
                     if (result.data) {
                         currentResult = result.data;
-                        console.log("Данные обновлены из сервера");
                     } else {
-                        console.warn("Сервер не вернул полные данные, перечитываем расписание...");
                         await loadSavedTimetable(currentTimetableId);
                     }
 
-                    renderTimetableGrid();
+                    // Перерисовываем глобальный редактор и обновляем фильтр
+                    updateEditorClassFilter();
+                    renderGlobalEditor();
 
                     const successMsg = document.createElement('div');
                     successMsg.textContent = '✅ Урок успешно перемещен!';
@@ -1390,13 +1426,11 @@
                     setTimeout(() => successMsg.remove(), 2000);
 
                 } else {
-                    alert('⚠️ Не удалось переместить: ' + (result.detail || 'Произошла ошибка'));
-                    await loadSavedTimetable(currentTimetableId);
+                    alert('️ Не удалось переместить: ' + (result.detail || 'Произошла ошибка'));
                 }
             } catch (error) {
                 console.error('Ошибка перемещения:', error);
                 alert('❌ Ошибка соединения с сервером');
-                await loadSavedTimetable(currentTimetableId);
             }
         }
 
