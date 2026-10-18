@@ -66,14 +66,14 @@ window.applyTimeTemplate = applyTimeTemplate;
 window.applyDaysTemplate = applyDaysTemplate;
 window.applyExcludeTemplate = applyExcludeTemplate;
 window.generateTimetable = generateTimetable;
-//  УДАЛЕНЫ showMasterView и hideMasterView, так как они больше не существуют
+// ❌ УДАЛЕНЫ showMasterView и hideMasterView
 // window.showMasterView = showMasterView;
 // window.hideMasterView = hideMasterView;
 window.downloadPDF = downloadPDF;
 window.downloadExcel = downloadExcel;
 window.publishTimetable = function() { if(confirm('Опубликовать?')) alert('✅ Опубликовано'); };
-window.exportToJournal = function() { alert('🔗 Экспорт API'); };
-window.sendToTeachers = function() { alert(' Отправлено в Telegram'); };
+window.exportToJournal = function() { alert(' Экспорт API'); };
+window.sendToTeachers = function() { alert('📱 Отправлено в Telegram'); };
 window.sendToEmail = function() { alert('📧 Отправлено на почту'); };
 
 // Редактор

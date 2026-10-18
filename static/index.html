@@ -34,7 +34,7 @@
     <!-- Основное приложение -->
     <div id="mainApp" class="container">
         <div class="header">
-            <div><h1> Генератор школьного расписания</h1><p class="subtitle" id="userInfo">Загрузка...</p></div>
+            <div><h1>🎓 Генератор школьного расписания</h1><p class="subtitle" id="userInfo">Загрузка...</p></div>
             <button class="logout-btn" onclick="logout()">Выйти</button>
         </div>
 
@@ -50,7 +50,7 @@
 
         <!-- Шаг 1: Профиль -->
         <div id="step1" class="wizard-content active">
-            <h2> Шаг 1: Профиль школы</h2>
+            <h2>📋 Шаг 1: Профиль школы</h2>
             <div class="form-group"><label>Название школы</label><input type="text" id="schoolName" placeholder="Школа №123"></div>
             <div class="form-group"><label>Дней в неделе</label><select id="daysPerWeek"><option value="5">5</option><option value="6">6</option></select></div>
             <div class="form-group"><label>Уроков в день</label><input type="number" id="lessonsPerDay" value="7" min="1" max="10"></div>
@@ -91,8 +91,8 @@
                 <div class="form-group"><input type="text" id="newClassroomNumber" placeholder="101"><input type="number" id="newClassroomCapacity" placeholder="Мест" style="margin-top:5px"><button class="add-btn" onclick="addClassroom()">➕ Добавить</button></div>
                 <table class="data-table"><thead><tr><th>Кабинет</th><th>Вместимость</th><th></th></tr></thead><tbody id="classroomsTable"></tbody></table>
                 <div class="step-actions">
-                    <button class="outline" onclick="importFromExcel()">📥 Импорт Excel</button>
-                    <button class="primary" onclick="completeStep(2)">💾 Далее →</button>
+                    <button class="outline" onclick="importFromExcel()"> Импорт Excel</button>
+                    <button class="primary" onclick="completeStep(2)"> Далее →</button>
                 </div>
             </div>
         </div>
@@ -114,11 +114,11 @@
                     </div>
                 </div>
                 <div>
-                    <h3>🤖 Быстрый ввод (Шаблоны)</h3>
+                    <h3> Быстрый ввод (Шаблоны)</h3>
                     <datalist id="teacherDatalist"></datalist>
                     <div class="template-selector">
                         <div class="template-card" onclick="selectTemplate(this, 'time_range')">
-                            <h4> По времени</h4>
+                            <h4>⏰ По времени</h4>
                             <div class="template-fields">
                                 <input type="text" id="tmpl_name" list="teacherDatalist" placeholder="ФИО учителя">
                                 <div class="checkbox-group" style="margin:10px 0">
@@ -169,13 +169,13 @@
                     </div>
                 </div>
             </div>
-            <div class="step-actions"><button class="primary" onclick="completeStep(3)"> Далее →</button></div>
+            <div class="step-actions"><button class="primary" onclick="completeStep(3)">Далее →</button></div>
         </div>
 
         <!-- Шаг 4: Генерация -->
         <div id="step4" class="wizard-content">
-            <h2> Шаг 4: Генерация</h2>
-            <div style="text-align:center;padding:40px"><button id="generateBtn" onclick="generateTimetable()" style="font-size:20px;padding:20px 40px">🎯 Сгенерировать</button></div>
+            <h2>🚀 Шаг 4: Генерация</h2>
+            <div style="text-align:center;padding:40px"><button id="generateBtn" onclick="generateTimetable()" style="font-size:20px;padding:20px 40px"> Сгенерировать</button></div>
             <div id="genError" class="error"></div><div id="genSuccess" class="success"></div>
             <div id="resultsSection" class="results-section">
                 <div class="stats-grid">
@@ -189,7 +189,8 @@
                 <div class="step-actions">
                     <button class="outline" onclick="downloadPDF('teachers')">PDF (уч.)</button>
                     <button class="outline" onclick="downloadPDF('classes')">PDF (кл.)</button>
-                    <button class="primary" onclick="showMasterView()">📋 Общая таблица</button>
+                    <!-- ❌ УБРАН ВЫЗОВ showMasterView(), ТАК КАК ЭНДПОИНТ НЕ СУЩЕСТВУЕТ -->
+                    <!-- <button class="primary" onclick="showMasterView()">📋 Общая таблица</button> -->
                     <button class="secondary" onclick="completeStep(4)">➡️ К редактору</button>
                 </div>
             </div>

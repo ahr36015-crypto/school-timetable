@@ -1,8 +1,11 @@
 // static/js/editor.js
 
-let isDragging = false;
-let draggedChipId = null;
-let draggedLessonData = null;
+//  УДАЛЕНО: let isDragging = false; (объявим ниже как свойство, если нужно, или используем локально)
+// ❌ УДАЛЕНО: let draggedChipId = null;
+// ❌ УДАЛЕНО: let draggedLessonData = null; (уже есть в state.js)
+
+// Используем глобальные переменные из state.js
+// draggedLessonData, currentResult, currentTimetableId и т.д.
 
 function updateEditorClassFilter() {
     if (!currentResult) return;
@@ -72,7 +75,7 @@ function renderGlobalEditor() {
                 let cellContent = '';
                 visibleLessons.forEach(l => {
                     if (!l) return;
-                    const classroom = l.classroom ? ` 🏫${l.classroom}` : '';
+                    const classroom = l.classroom ? ` ${l.classroom}` : '';
                     const chipId = `chip-${teacher.teacher}-${day}-${slot}-${l.subject}-${l.grade}`.replace(/\s+/g, '-');
 
                     cellContent += `
@@ -111,10 +114,15 @@ function renderGlobalEditor() {
     container.innerHTML = html;
 }
 
-function handleGlobalDragStart(e, chipId) {
-    if (isDragging) { e.preventDefault(); return; }
+// Локальные переменные для Drag-and-Drop (чтобы не конфликтовать с глобальными)
+let _isDragging = false;
+let _draggedChipId = null;
 
-    draggedChipId = chipId;
+function handleGlobalDragStart(e, chipId) {
+    if (_isDragging) { e.preventDefault(); return; }
+
+    _draggedChipId = chipId;
+    // Используем глобальную переменную draggedLessonData из state.js
     draggedLessonData = {
         teacher: e.target.dataset.teacher,
         subject: e.target.dataset.subject,
@@ -126,7 +134,7 @@ function handleGlobalDragStart(e, chipId) {
     e.dataTransfer.setData('text/plain', JSON.stringify(draggedLessonData));
     e.dataTransfer.effectAllowed = 'move';
     e.target.style.opacity = '0.4';
-    isDragging = true;
+    _isDragging = true;
 }
 
 function handleGlobalDragOver(e) {
@@ -182,23 +190,23 @@ function handleGlobalDragLeave(e) {
 
 async function handleGlobalDrop(e) {
     e.preventDefault();
-    if (!isDragging || !draggedLessonData) return;
+    if (!_isDragging || !draggedLessonData) return;
 
     document.querySelectorAll('.drop-zone').forEach(el => el.classList.remove('drag-over-valid', 'drag-over-invalid'));
 
-    if (draggedChipId) {
-        const srcEl = document.getElementById(draggedChipId);
+    if (_draggedChipId) {
+        const srcEl = document.getElementById(_draggedChipId);
         if (srcEl) srcEl.style.opacity = '1';
     }
 
     const targetCell = e.target.closest('.drop-zone');
 
-    if (!targetCell || !targetCell.dataset.teacher || isDragging === 'processing') {
-        isDragging = false;
+    if (!targetCell || !targetCell.dataset.teacher || _isDragging === 'processing') {
+        _isDragging = false;
         return;
     }
 
-    isDragging = 'processing';
+    _isDragging = 'processing';
 
     const toTeacher = targetCell.dataset.teacher;
     const toDay = targetCell.dataset.day;
@@ -206,7 +214,7 @@ async function handleGlobalDrop(e) {
 
     if (toTeacher !== draggedLessonData.teacher ||
        (toDay === draggedLessonData.fromDay && toSlot === draggedLessonData.fromSlot)) {
-        isDragging = false;
+        _isDragging = false;
         renderGlobalEditor();
         return;
     }
@@ -214,7 +222,7 @@ async function handleGlobalDrop(e) {
     // ✅ ЗАЩИТА: Проверяем наличие ID перед запросом
     if (!currentTimetableId) {
         alert('⚠️ Ошибка: Потерян ID расписания. Пожалуйста, обновите страницу.');
-        isDragging = false;
+        _isDragging = false;
         return;
     }
 
@@ -280,8 +288,8 @@ async function handleGlobalDrop(e) {
         alert('❌ Ошибка соединения');
         renderGlobalEditor();
     } finally {
-        isDragging = false;
-        draggedChipId = null;
+        _isDragging = false;
+        _draggedChipId = null;
         draggedLessonData = null;
     }
 }
