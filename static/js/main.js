@@ -50,7 +50,7 @@ async function goToStep(step) {
 
     // ✅ ИСПРАВЛЕНИЕ ДЛЯ ШАГА 5: Используем ТОЛЬКО рабочий эндпоинт /timetables/{id}
     if (step === 5) {
-        console.log(" Проверка данных для редактора...");
+        console.log("🔍 Проверка данных для редактора...");
 
         // Если данных нет или потерялся ID, загружаем последнее расписание
         if (!currentResult || !currentResult.teachers || !currentTimetableId) {
@@ -65,7 +65,7 @@ async function goToStep(step) {
                     const timetables = await res.json();
                     if (timetables && timetables.length > 0) {
                         const latest = timetables[0]; // Самое свежее
-                        console.log(` Загружаю ID: ${latest.id}`);
+                        console.log(`📥 Загружаю ID: ${latest.id}`);
 
                         // ✅ ИСПОЛЬЗУЕМ ГАРАНТИРОВАННО РАБОЧИЙ ЭНДПОИНТ
                         const fullRes = await fetch(`/timetables/${latest.id}`, {
@@ -97,7 +97,7 @@ async function goToStep(step) {
 
         // Рендерим таблицу
         if (currentResult && currentResult.teachers && currentTimetableId) {
-            console.log(" Рендеринг таблицы редактора...");
+            console.log("🎨 Рендеринг таблицы редактора...");
             updateEditorClassFilter();
             renderGlobalEditor();
         } else {
@@ -150,7 +150,7 @@ window.hideMasterView = hideMasterView;
 window.downloadPDF = downloadPDF;
 window.downloadExcel = downloadExcel;
 window.publishTimetable = function() { if(confirm('Опубликовать?')) alert('✅ Опубликовано'); };
-window.exportToJournal = function() { alert(' Экспорт API'); };
+window.exportToJournal = function() { alert('🔗 Экспорт API'); };
 window.sendToTeachers = function() { alert('📱 Отправлено в Telegram'); };
 window.sendToEmail = function() { alert(' Отправлено на почту'); };
 
