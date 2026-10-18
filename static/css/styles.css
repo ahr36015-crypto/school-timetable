@@ -1,4 +1,5 @@
-/* static/css/styles.css */
+/* static/css/css - Полные стили проекта */
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
 .container { background: white; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); padding: 40px; max-width: 1600px; margin: 0 auto; }
@@ -46,18 +47,23 @@ button.add-btn { margin-top: 10px; padding: 12px 24px; background: linear-gradie
 .data-table th, .data-table td { border: 1px solid #ddd; padding: 10px; text-align: left; }
 .data-table th { background: #667eea; color: white; font-weight: 600; }
 .data-table tr:nth-child(even) { background: #f8f9fa; }
+
+/* Стили для сетки доступности с временем */
 .availability-grid { display: grid; grid-template-columns: 100px repeat(7, 1fr); gap: 5px; margin-top: 15px; }
 .availability-cell { padding: 10px 5px; text-align: center; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 60px; }
 .availability-cell.header { background: #667eea; color: white; font-weight: 600; }
 .availability-cell .time-label { font-size: 10px; font-weight: normal; opacity: 0.9; margin-top: 2px; }
 .availability-cell.available { background: #27ae60; color: white; }
 .availability-cell.unavailable { background: #e74c3c; color: white; }
+
+/* Стили для ГЛОБАЛЬНОГО редактора */
 .global-editor-container { overflow-x: auto; margin-top: 20px; border: 1px solid #eee; border-radius: 8px; }
-.global-table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1200px; }
+.global-table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1200px; user-select: none; }
 .global-table th, .global-table td { border: 1px solid #ddd; padding: 6px; text-align: center; vertical-align: middle; }
 .global-table th { background: #667eea; color: white; font-weight: 600; position: sticky; top: 0; z-index: 10; }
 .global-table .teacher-header { background: #f0f4ff; font-weight: bold; text-align: left; padding-left: 15px; width: 200px; position: sticky; left: 0; z-index: 11; }
 .global-table .day-subheader { background: #eef2ff; font-size: 11px; color: #666; }
+
 .lesson-chip {
     background: white; border: 1px solid #667eea; border-radius: 4px;
     padding: 4px; margin: 2px 0; font-size: 11px; cursor: grab;
@@ -67,8 +73,23 @@ button.add-btn { margin-top: 10px; padding: 12px 24px; background: linear-gradie
 .lesson-chip:active { cursor: grabbing; }
 .lesson-chip .subj { font-weight: bold; color: #333; display: block; }
 .lesson-chip .meta { color: #666; font-size: 10px; display: block; }
-.drop-zone { min-height: 40px; transition: background 0.2s; }
-.drop-zone.drag-over { background: #fff3cd !important; border: 2px dashed #f39c12; }
+
+.drop-zone { min-height: 40px; transition: background 0.2s, border 0.2s; }
+
+/* УМНАЯ ПОДСВЕТКА ПРИ DRAG-AND-DROP */
+.drop-zone.drag-over-valid {
+    background-color: #d1fae5 !important; /* Светло-зеленый */
+    border: 2px dashed #10b981 !important;
+    box-shadow: inset 0 0 10px rgba(16, 185, 129, 0.2);
+}
+
+.drop-zone.drag-over-invalid {
+    background-color: #fee2e2 !important; /* Светло-красный */
+    border: 2px dashed #ef4444 !important;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
 .timetable-grid { display: grid; grid-template-columns: 100px repeat(7, 1fr); gap: 2px; margin-top: 15px; }
 .timetable-cell { padding: 10px; min-height: 80px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; cursor: default; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
 .timetable-cell.header { background: #667eea; color: white; font-weight: 600; text-align: center; min-height: auto; }
@@ -76,6 +97,7 @@ button.add-btn { margin-top: 10px; padding: 12px 24px; background: linear-gradie
 .timetable-cell.lesson:active { cursor: grabbing; }
 .timetable-cell.drag-over { background: #ffeaa7 !important; border: 2px dashed #f39c12 !important; transform: scale(1.02); }
 .timetable-cell.conflict { background: #fee !important; border: 2px solid #e74c3c !important; }
+
 .results-section { display: none; margin-top: 30px; }
 .results-section.active { display: block; }
 .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 25px; }
@@ -111,6 +133,8 @@ button.add-btn { margin-top: 10px; padding: 12px 24px; background: linear-gradie
 .saved-timetable-item h4 { color: #667eea; margin-bottom: 5px; }
 .saved-timetable-item p { color: #666; font-size: 12px; }
 .saved-timetable-actions { display: flex; gap: 5px; flex-wrap: wrap; }
+
+/* Стили для общей таблицы */
 .master-table-container { overflow-x: auto; margin-top: 20px; }
 .master-table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 800px; }
 .master-table th, .master-table td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
@@ -121,6 +145,8 @@ button.add-btn { margin-top: 10px; padding: 12px 24px; background: linear-gradie
 .master-table .break-row td { background: #fff3cd; font-style: italic; color: #856404; text-align: center; font-weight: bold; }
 .lesson-subject { font-weight: bold; color: #333; margin-bottom: 4px; display: block; }
 .lesson-details { font-size: 11px; color: #666; display: block; line-height: 1.4; }
+
+/* Стили для шаблонов AI */
 .template-selector { margin-bottom: 20px; }
 .template-card {
     background: white; border: 2px solid #e0e0e0; border-radius: 8px;
@@ -139,21 +165,5 @@ button.add-btn { margin-top: 10px; padding: 12px 24px; background: linear-gradie
 .checkbox-group label {
     display: flex; align-items: center; gap: 5px; font-size: 13px;
     background: #f8f9fa; padding: 6px 12px; border-radius: 6px; cursor: pointer;
-    /* Подсветка при перетаскивании */
-.drop-zone.drag-over-valid {
-    background-color: #d1fae5 !important; /* Светло-зеленый */
-    border: 2px dashed #10b981 !important;
-    box-shadow: inset 0 0 10px rgba(16, 185, 129, 0.2);
-}
-
-.drop-zone.drag-over-invalid {
-    background-color: #fee2e2 !important; /* Светло-красный */
-    border: 2px dashed #ef4444 !important;
-    cursor: not-allowed;
-}
-
-/* Запрет выделения текста при драге */
-.global-table {
-    user-select: none;
 }
 .checkbox-group input[type="checkbox"] { width: auto; }
