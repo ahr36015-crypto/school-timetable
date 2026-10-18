@@ -10,13 +10,16 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 
-# ВАЖНО: Импортируем из правильных мест, судя по твоим скриншотам
+# ВАЖНО: Импортируем из правильных мест
 from database import init_db, get_db, User, SavedTimetable
 from auth import get_password_hash, verify_password, create_access_token, get_current_user
 from models import TimetableRequest, TimetableResponse, AIInputRequest
 from solver import validate_teachers, solve_timetable
-from excel_generator import generate_teachers_excel, generate_classes_excel
+# Старые импорты генераторов можно оставить, но мы переопределим логику ниже
+from excel_generator import generate_teachers_excel
 from pdf_generator import generate_teachers_pdf, generate_classes_pdf
 
 
@@ -214,7 +217,7 @@ def response_to_dict(result: TimetableResponse, request: TimetableRequest) -> Di
             "schedule": {day: {
                 str(slot): [{"subject": a.subject, "grade": a.grade, "teacher": a.teacher, "classroom": a.classroom} for
                             a in assignments] for slot, assignments in slots.items()} for day, slots in
-                         t.schedule.items()}
+                t.schedule.items()}
         } for t in result.teachers],
         "validation_errors": result.validation_errors
     }
@@ -311,9 +314,6 @@ def delete_timetable(timetable_id: int, current_user: User = Depends(get_current
     return {"message": "Расписание удалено"}
 
 
-# ============================================================
-# ИСПРАВЛЕННЫЙ ЭНДПОИНТ ПЕРЕМЕЩЕНИЯ УРОКОВ
-# ============================================================
 @app.post("/timetables/{timetable_id}/move-lesson")
 def move_lesson(
         timetable_id: int,
@@ -336,12 +336,10 @@ def move_lesson(
         data = timetable.data
         teachers = data.get('teachers', [])
 
-        # Нормализуем входные данные
         req_teacher = move_data['teacher'].strip().lower()
         req_subject = move_data['subject'].strip().lower()
         req_grade = str(move_data['grade']).strip()
 
-        # Находим учителя
         target_teacher = None
         for t in teachers:
             if t['teacher'].strip().lower() == req_teacher:
@@ -355,7 +353,6 @@ def move_lesson(
         from_day = move_data['from_day']
         from_slot = str(move_data['from_slot'])
 
-        # --- ШАГ 1: УДАЛЕНИЕ СО СТАРОГО МЕСТА ---
         removed_count = 0
         if from_day in old_schedule and from_slot in old_schedule[from_day]:
             lessons_list = old_schedule[from_day][from_slot]
@@ -375,7 +372,6 @@ def move_lesson(
 
             old_schedule[from_day][from_slot] = new_lessons_list
 
-            # Чистка пустых структур
             if not new_lessons_list:
                 del old_schedule[from_day][from_slot]
                 if not old_schedule[from_day]:
@@ -383,16 +379,13 @@ def move_lesson(
 
         print(f"🗑️ Total removed: {removed_count}")
 
-        # --- ШАГ 2: ПРОВЕРКА КОНФЛИКТОВ НА НОВОМ МЕСТЕ ---
         to_day = move_data['to_day']
         to_slot = str(move_data['to_slot'])
 
-        # Конфликт у этого же учителя
         if to_day in old_schedule and to_slot in old_schedule[to_day]:
             raise HTTPException(status_code=409,
                                 detail=f"Конфликт: {move_data['teacher']} уже занят в {to_day} на {to_slot} уроке")
 
-        # Конфликт у класса (проверяем ВСЕХ учителей)
         for t in teachers:
             if t['teacher'].strip().lower() == req_teacher: continue
 
@@ -403,7 +396,6 @@ def move_lesson(
                         raise HTTPException(status_code=409,
                                             detail=f"Конфликт: Класс {req_grade} уже имеет урок в это время у учителя {t['teacher']}")
 
-        # --- ШАГ 3: ДОБАВЛЕНИЕ НА НОВОЕ МЕСТО ---
         if to_day not in old_schedule:
             old_schedule[to_day] = {}
         if to_slot not in old_schedule[to_day]:
@@ -419,15 +411,11 @@ def move_lesson(
         old_schedule[to_day][to_slot].append(new_lesson)
         print(f"➕ ADDED: {new_lesson['subject']} {new_lesson['grade']} to {to_day} slot {to_slot}")
 
-        # --- ШАГ 4: ПРИНУДИТЕЛЬНАЯ ДЕДУПЛИКАЦИЯ (ФИКС БАГА) ---
-        # Проходим по всему расписанию учителя и удаляем полные дубликаты
-        # Это страховка на случай, если удаление на шаге 1 не сработало идеально
         for d_key, d_val in old_schedule.items():
             for s_key, s_val in d_val.items():
                 seen = set()
                 unique_lessons = []
                 for lesson in s_val:
-                    # Создаем уникальный ключ для урока
                     key = f"{lesson.get('subject', '')}_{lesson.get('grade', '')}_{lesson.get('teacher', '')}"
                     if key not in seen:
                         seen.add(key)
@@ -450,21 +438,143 @@ def move_lesson(
         raise HTTPException(status_code=500, detail=f"Внутренняя ошибка сервера: {str(e)}")
 
 
+# ============================================================
+# НОВЫЙ ГЕНЕРАТОР EXCEL ПО ШАБЛОНУ (КЛАССЫ В СТОЛБЦАХ)
+# ============================================================
+def generate_class_template_excel(data):
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Расписание занятий"
+
+    # Стили
+    header_font = Font(bold=True, size=11, color="FFFFFF")
+    param_font = Font(bold=True, size=10, color="800080")
+    center_align = Alignment(horizontal='center', vertical='center', wrap_text=True)
+
+    purple_fill = PatternFill(start_color="9B59B6", end_color="9B59B6", fill_type="solid")
+    thin_border = Border(
+        left=Side(style='thin'), right=Side(style='thin'),
+        top=Side(style='thin'), bottom=Side(style='thin')
+    )
+
+    # 1. Собираем все уникальные классы
+    all_grades = set()
+    for teacher in data.get('teachers', []):
+        for day_schedule in teacher.get('schedule', {}).values():
+            for slot_lessons in day_schedule.values():
+                for lesson in slot_lessons:
+                    if 'grade' in lesson:
+                        all_grades.add(str(lesson['grade']))
+
+    sorted_grades = sorted(list(all_grades))
+    if not sorted_grades:
+        ws.append(["Нет данных о классах"])
+        return wb
+
+    days = data.get('days', ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница'])
+    slots = data.get('slots', [1, 2, 3, 4, 5, 6, 7])
+    times = data.get('lessonTimes', [])
+
+    current_row = 1
+
+    # --- ЗАГОЛОВОК ТАБЛИЦЫ ---
+    ws.cell(row=current_row, column=1).value = ""
+
+    for col_idx, grade in enumerate(sorted_grades, start=2):
+        cell = ws.cell(row=current_row, column=col_idx, value=f"{grade} класс")
+        cell.font = header_font
+        cell.fill = purple_fill
+        cell.alignment = center_align
+        cell.border = thin_border
+
+    current_row += 1
+
+    # --- ЦИКЛ ПО ДНЯМ И УРОКАМ ---
+    for day in days:
+        for slot_idx, slot in enumerate(slots):
+            time_str = times[slot_idx] if slot_idx < len(times) else f"Урок {slot}"
+
+            params = [
+                ("Предмет", "subject"),
+                ("Преподаватель", "teacher"),
+                ("Кабинет", "classroom"),
+                ("Тема", "topic"),
+            ]
+
+            for p_idx, (param_name, param_key) in enumerate(params):
+                cell_param = ws.cell(row=current_row + p_idx, column=1, value=param_name)
+                cell_param.font = param_font
+                cell_param.alignment = center_align
+                cell_param.border = thin_border
+
+                for col_idx, grade in enumerate(sorted_grades, start=2):
+                    val = "-"
+                    for t in data.get('teachers', []):
+                        sched = t.get('schedule', {})
+                        if day in sched and str(slot) in sched[day]:
+                            for l in sched[day][str(slot)]:
+                                if str(l.get('grade')) == grade:
+                                    val = l.get(param_key, "-")
+                                    break
+                        if val != "-": break
+
+                    cell_val = ws.cell(row=current_row + p_idx, column=col_idx, value=val)
+                    cell_val.alignment = center_align
+                    cell_val.border = thin_border
+
+            current_row += len(params)
+
+            # Строка "Вычитано" (Время)
+            cell_time_label = ws.cell(row=current_row, column=1, value="Вычитано")
+            cell_time_label.font = param_font
+            cell_time_label.alignment = center_align
+            cell_time_label.border = thin_border
+
+            ws.merge_cells(start_row=current_row, start_column=2, end_row=current_row,
+                           end_column=len(sorted_grades) + 1)
+            cell_time_val = ws.cell(row=current_row, column=2, value=time_str)
+            cell_time_val.alignment = center_align
+            cell_time_val.border = thin_border
+
+            current_row += 1
+
+        current_row += 1
+
+    for col in ws.columns:
+        max_length = 0
+        col_letter = col[0].column_letter
+        for cell in col:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        ws.column_dimensions[col_letter].width = max(min(max_length + 2, 50), 10)
+
+    return wb
+
+
 @app.get("/timetables/{timetable_id}/export/excel")
 def export_excel(timetable_id: int, format: str = Query("teachers", regex="^(teachers|classes)$"),
                  current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     timetable = db.query(SavedTimetable).filter(SavedTimetable.id == timetable_id,
                                                 SavedTimetable.user_id == current_user.id).first()
     if not timetable: raise HTTPException(status_code=404, detail="Расписание не найдено")
+
     data = timetable.data
-    days = data.get("days", ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"])
-    slots = data.get("slots", [1, 2, 3, 4, 5, 6, 7])
-    if format == "teachers":
-        wb = generate_teachers_excel(data, days, slots);
-        filename = f"timetable_teachers_{timetable_id}.xlsx"
+    # Добавляем времена уроков в data для генератора, если их нет
+    if 'lessonTimes' not in data:
+        data['lessonTimes'] = ["08:30-09:15", "09:25-10:10", "10:20-11:05", "11:25-12:10", "12:20-13:05", "13:15-14:00",
+                               "14:10-14:55"]
+
+    if format == "classes":
+        # ✅ ИСПОЛЬЗУЕМ НОВЫЙ ГЕНЕРАТОР ПО ШАБЛОНУ
+        wb = generate_class_template_excel(data)
+        filename = f"raspisanie_{timetable_id}.xlsx"
     else:
-        wb = generate_classes_excel(data, days, slots);
-        filename = f"timetable_classes_{timetable_id}.xlsx"
+        wb = generate_teachers_excel(data, data.get("days"), data.get("slots"))
+        filename = f"teachers_{timetable_id}.xlsx"
+
     output = io.BytesIO();
     wb.save(output);
     output.seek(0)

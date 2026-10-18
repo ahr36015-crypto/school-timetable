@@ -13,19 +13,18 @@ async function goToStep(step) {
     document.querySelectorAll('.wizard-step')[step-1].classList.add('active');
     currentStep = step;
 
-    console.log(`🔄 Переход на шаг ${step}`);
+    console.log(` Переход на шаг ${step}`);
 
     if (step === 2) { renderClasses(); renderTeachers(); renderSubjects(); renderClassrooms(); }
     if (step === 3) { updateTeacherSelect(); updateTeacherDatalist(); renderAvailabilityGrid(document.getElementById('teacherSelect').value); }
     if (step === 4) loadSavedTimetables();
 
-    // ✅ ИСПРАВЛЕНИЕ ДЛЯ ШАГА 5: Загружаем данные через РАБОЧИЙ эндпоинт
+    // ✅ ЛОГИКА ДЛЯ ШАГА 5 (РЕДАКТОР)
     if (step === 5) {
         console.log("🔍 Проверка данных для редактора...");
 
-        // Если данных нет или потерялся ID, загружаем последнее расписание
         if (!currentResult || !currentResult.teachers || !currentTimetableId) {
-            console.warn("️ Данные или ID отсутствуют. Загружаю последнее расписание...");
+            console.warn("⚠️ Данные или ID отсутствуют. Загружаю последнее расписание...");
 
             try {
                 const res = await fetch('/timetables', {
@@ -35,26 +34,20 @@ async function goToStep(step) {
                 if (res.ok) {
                     const timetables = await res.json();
                     if (timetables && timetables.length > 0) {
-                        const latest = timetables[0]; // Самое свежее
-                        console.log(`📥 Загружаю ID: ${latest.id}`);
+                        const latest = timetables[0];
+                        console.log(` Загружаю ID: ${latest.id}`);
 
-                        // ✅ ИСПОЛЬЗУЕМ ГАРАНТИРОВАННО РАБОЧИЙ ЭНДПОИНТ
                         const fullRes = await fetch(`/timetables/${latest.id}`, {
                             headers: {'Authorization': 'Bearer ' + getToken()}
                         });
 
                         if (fullRes.ok) {
                             const data = await fullRes.json();
-                            // ⚠️ ВАЖНО: Данные лежат в поле data, как видно из api.py
                             if (data && data.data) {
                                 currentResult = data.data;
-                                currentTimetableId = latest.id; // Жестко фиксируем ID
+                                currentTimetableId = latest.id;
                                 console.log("✅ Данные и ID успешно восстановлены!");
-                            } else {
-                                throw new Error("Ответ сервера не содержит поля data");
                             }
-                        } else {
-                            throw new Error(`Server returned ${fullRes.status}`);
                         }
                     } else {
                         alert('Сначала сгенерируйте расписание на Шаге 4!');
@@ -64,19 +57,18 @@ async function goToStep(step) {
                 }
             } catch (e) {
                 console.error("❌ Ошибка загрузки:", e);
-                alert('Не удалось загрузить расписание. Попробуйте обновить страницу.');
+                alert('Не удалось загрузить расписание.');
                 return;
             }
         }
 
-        // Рендерим таблицу
         if (currentResult && currentResult.teachers && currentTimetableId) {
-            console.log("🎨 Рендеринг таблицы редактора...");
+            console.log(" Рендеринг таблицы редактора...");
             updateEditorClassFilter();
             renderGlobalEditor();
         } else {
             document.getElementById('globalEditorContainer').innerHTML =
-                '<p style="padding:20px;text-align:center;color:#c33">Ошибка: Нет данных или ID расписания.</p>';
+                '<p style="padding:20px;text-align:center;color:#c33">Ошибка: Нет данных.</p>';
         }
     }
 }
@@ -429,7 +421,6 @@ async function generateTimetable() {
             err.classList.add('show'); return;
         }
 
-        // Загрузка полного расписания
         attempts = 0; let fullData;
         while (attempts < 3) {
             try {
@@ -458,36 +449,100 @@ async function generateTimetable() {
     } finally { btn.disabled = false; btn.textContent = '🎯 Сгенерировать расписание'; }
 }
 
+// ✅ НОВАЯ ФУНКЦИЯ ОТРИСОВКИ РАСПИСАНИЯ (ПО ШАБЛОНУ КЛАССОВ)
 function renderSchedule() {
-    if (!currentResult || !currentResult.teachers) { document.getElementById('scheduleView').innerHTML = '<p>Нет данных</p>'; return; }
+    if (!currentResult || !currentResult.teachers) {
+        document.getElementById('scheduleView').innerHTML = '<p>Нет данных</p>';
+        return;
+    }
+
     const container = document.getElementById('scheduleView');
-    let html = '<h3>📋 Расписание по учителям</h3>';
-    currentResult.teachers.forEach(teacher => {
-        html += '<div style="background:#f8f9fa;padding:20px;border-radius:10px;margin-bottom:20px">';
-        html += '<h4 style="color:#667eea;margin-bottom:15px">👨‍🏫 ' + teacher.teacher + ' (' + teacher.total_lessons + ' уроков)</h4>';
-        const days = Object.keys(teacher.schedule).sort();
-        days.forEach(day => {
-            html += '<div style="margin-bottom:10px"><strong> ' + day + ':</strong><br>';
-            const slots = Object.keys(teacher.schedule[day]).map(s => parseInt(s)).sort((a,b) => a-b);
-            slots.forEach(slot => {
-                const lessons = teacher.schedule[day][String(slot)];
-                lessons.forEach(lesson => {
-                    const classroom = lesson.classroom ? ` | 🏫 ${lesson.classroom}` : '';
-                    const timeStr = schoolData.lessonTimes[slot-1] ? ` (${schoolData.lessonTimes[slot-1]})` : '';
-                    html += '<div style="background:#f0f4ff;padding:8px;margin:5px 0;border-left:3px solid #667eea;border-radius:4px"><strong>Урок ' + slot + timeStr + ':</strong> ' + lesson.subject + ' <span style="color:#666">(' + lesson.grade + ' класс' + classroom + ')</span></div>';
-                });
+
+    // 1. Собираем классы
+    const allGrades = new Set();
+    currentResult.teachers.forEach(t => {
+        Object.values(t.schedule || {}).forEach(dayObj => {
+            Object.values(dayObj).forEach(slotLessons => {
+                slotLessons.forEach(l => { if(l.grade) allGrades.add(l.grade); });
             });
-            html += '</div>';
         });
-        html += '</div>';
     });
+    const sortedGrades = Array.from(allGrades).sort();
+
+    if (sortedGrades.length === 0) {
+        container.innerHTML = '<p>В расписании нет классов.</p>';
+        return;
+    }
+
+    const days = currentResult.days || ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"];
+    const slots = currentResult.slots || [1, 2, 3, 4, 5, 6, 7];
+    const times = schoolData.lessonTimes || [];
+
+    let html = '<div style="overflow-x:auto;"><table class="master-table" style="min-width:100%; border-collapse:collapse;">';
+
+    // Заголовок таблицы (Классы)
+    html += '<thead><tr><th style="background:#f8f9fa; width:150px;"></th>';
+    sortedGrades.forEach(g => {
+        html += `<th style="background:#9b59b6; color:white; padding:10px;">${g} класс</th>`;
+    });
+    html += '</tr></thead><tbody>';
+
+    // Тело таблицы
+    days.forEach(day => {
+        html += `<tr><td colspan="${sortedGrades.length + 1}" style="background:#eee; font-weight:bold; text-align:center; padding:5px;">${day}</td></tr>`;
+
+        slots.forEach((slot, sIdx) => {
+            const timeStr = times[sIdx] ? times[sIdx] : `Урок ${slot}`;
+
+            // Параметры урока (как в Excel)
+            const params = [
+                { label: "Предмет", key: "subject" },
+                { label: "Преподаватель", key: "teacher" },
+                { label: "Кабинет", key: "classroom" },
+                { label: "Тема", key: "topic" }
+            ];
+
+            params.forEach(p => {
+                html += `<tr>`;
+                // Левая колонка (название параметра)
+                html += `<td style="font-weight:bold; color:#800080; text-align:center; border:1px solid #ddd; padding:5px;">${p.label}</td>`;
+
+                // Колонки классов
+                sortedGrades.forEach(grade => {
+                    let val = "-";
+                    // Поиск значения
+                    for (const t of currentResult.teachers) {
+                        const daySched = t.schedule?.[day];
+                        if (daySched) {
+                            const slotLessons = daySched[String(slot)];
+                            if (slotLessons) {
+                                const found = slotLessons.find(l => l.grade === grade);
+                                if (found) {
+                                    val = found[p.key] || "-";
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    html += `<td style="border:1px solid #ddd; padding:5px; text-align:center;">${val}</td>`;
+                });
+                html += `</tr>`;
+            });
+
+            // Строка времени (Вычитано)
+            html += `<tr>`;
+            html += `<td style="font-weight:bold; color:#800080; text-align:center; border:1px solid #ddd;">Вычитано</td>`;
+            html += `<td colspan="${sortedGrades.length}" style="text-align:center; border:1px solid #ddd; background:#f9f9f9;">${timeStr}</td>`;
+            html += `</tr>`;
+
+            // Пустая строка-разделитель
+            html += `<tr><td colspan="${sortedGrades.length + 1}" style="height:10px; border:none;"></td></tr>`;
+        });
+    });
+
+    html += '</tbody></table></div>';
     container.innerHTML = html;
 }
-
-// ❌ УДАЛЕНА ФУНКЦИЯ showMasterView(), ТАК КАК ЭНДПОИНТ /master-view НЕ СУЩЕСТВУЕТ
-// async function showMasterView() { ... }
-// function renderMasterView() { ... }
-// function hideMasterView() { ... }
 
 // Сохраненные расписания
 async function loadSavedTimetables() {
