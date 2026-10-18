@@ -256,7 +256,7 @@ def generate_timetable(request: TimetableRequest, current_user: User = Depends(g
         return {"message": "Расписание сгенерировано", "id": saved.id, "status": result.status,
                 "solution_time": result.solution_time, "validation_errors": result.validation_errors}
     except Exception as e:
-        print(f"❌ КРИТИЧЕСКАЯ ОШИБКА ГЕНЕРАЦИИ: {e}")
+        print(f" КРИТИЧЕСКАЯ ОШИБКА ГЕНЕРАЦИИ: {e}")
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Ошибка генерации: {str(e)}")
@@ -408,7 +408,7 @@ def move_lesson(
         }
 
         old_schedule[to_day][to_slot].append(new_lesson)
-        print(f"➕ ADDED: {new_lesson['subject']} {new_lesson['grade']} to {to_day} slot {to_slot}")
+        print(f" ADDED: {new_lesson['subject']} {new_lesson['grade']} to {to_day} slot {to_slot}")
 
         for d_key, d_val in old_schedule.items():
             for s_key, s_val in d_val.items():
@@ -438,7 +438,7 @@ def move_lesson(
 
 
 # ============================================================
-# НОВЫЙ ГЕНЕРАТОР EXCEL ПО ШАБЛОНУ (КЛАССЫ В СТОЛБЦАХ)
+# ГЕНЕРАТОР EXCEL ПО ШАБЛОНУ (КЛАССЫ В СТОЛБЦАХ, УРОК В ОТДЕЛЬНОЙ КОЛОНКЕ)
 # ============================================================
 def generate_class_template_excel(data):
     wb = Workbook()
@@ -477,11 +477,13 @@ def generate_class_template_excel(data):
     current_row = 1
 
     # --- ЗАГОЛОВОК ТАБЛИЦЫ ---
-    # Первая колонка пустая (для параметров урока)
+    # Колонка 1: Пустая (для параметров)
     ws.cell(row=current_row, column=1).value = ""
+    # Колонка 2: Пустая (для названия урока)
+    ws.cell(row=current_row, column=2).value = ""
 
-    # Заголовки классов (начинаются со 2-й колонки)
-    for col_idx, grade in enumerate(sorted_grades, start=2):
+    # Заголовки классов (начинаются с 3-й колонки)
+    for col_idx, grade in enumerate(sorted_grades, start=3):
         cell = ws.cell(row=current_row, column=col_idx, value=f"{grade} класс")
         cell.font = header_font
         cell.fill = purple_fill
@@ -494,6 +496,7 @@ def generate_class_template_excel(data):
     for day in days:
         for slot_idx, slot in enumerate(slots):
             time_str = times[slot_idx] if slot_idx < len(times) else f"Урок {slot}"
+            lesson_label = f"Урок {slot}"
 
             params = [
                 ("Предмет", "subject"),
@@ -502,7 +505,7 @@ def generate_class_template_excel(data):
                 ("Тема", "topic"),
             ]
 
-            # Строки параметров (Предмет, Учитель...)
+            # Строки параметров (4 строки)
             for p_idx, (param_name, param_key) in enumerate(params):
                 # Колонка 1: Название параметра
                 cell_param = ws.cell(row=current_row + p_idx, column=1, value=param_name)
@@ -510,8 +513,18 @@ def generate_class_template_excel(data):
                 cell_param.alignment = center_align
                 cell_param.border = thin_border
 
-                # Колонки 2+: Значения для каждого класса
-                for col_idx, grade in enumerate(sorted_grades, start=2):
+                # Колонка 2: "Урок X" (объединяем 4 строки)
+                if p_idx == 0:
+                    cell_lesson = ws.cell(row=current_row + p_idx, column=2, value=lesson_label)
+                    cell_lesson.alignment = center_align
+                    cell_lesson.border = thin_border
+                    cell_lesson.font = Font(bold=True)
+                    # Объединяем ячейки для "Урок X" на 4 строки вниз
+                    ws.merge_cells(start_row=current_row + p_idx, start_column=2,
+                                   end_row=current_row + p_idx + 3, end_column=2)
+
+                # Колонки 3+: Значения для каждого класса
+                for col_idx, grade in enumerate(sorted_grades, start=3):
                     val = "-"
                     for t in data.get('teachers', []):
                         sched = t.get('schedule', {})
@@ -526,16 +539,22 @@ def generate_class_template_excel(data):
                     cell_val.alignment = center_align
                     cell_val.border = thin_border
 
-            current_row += len(params)
+            current_row += 4  # Пропускаем 4 строки параметров
 
-            # Строка "Вычитано" (Время) - теперь в той же первой колонке
-            cell_time_label = ws.cell(row=current_row, column=1, value=time_str)
+            # Строка "Вычитано" (Время) - 5-я строка блока
+            cell_time_label = ws.cell(row=current_row, column=1, value="Вычитано")
             cell_time_label.font = param_font
             cell_time_label.alignment = center_align
             cell_time_label.border = thin_border
 
-            # Значения вычитанного (если нужны цифры, можно добавить логику, пока прочерк или пусто)
-            for col_idx in range(2, len(sorted_grades) + 2):
+            # Во второй колонке ставим время
+            cell_time_val = ws.cell(row=current_row, column=2, value=time_str)
+            cell_time_val.alignment = center_align
+            cell_time_val.border = thin_border
+            cell_time_val.font = Font(bold=True)
+
+            # Для классов ставим прочерки (или можно часы, если нужно)
+            for col_idx in range(3, len(sorted_grades) + 3):
                 cell_val = ws.cell(row=current_row, column=col_idx, value="-")
                 cell_val.alignment = center_align
                 cell_val.border = thin_border
