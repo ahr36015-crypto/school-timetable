@@ -63,7 +63,7 @@ async function goToStep(step) {
         }
 
         if (currentResult && currentResult.teachers && currentTimetableId) {
-            console.log(" Рендеринг таблицы редактора...");
+            console.log("🎨 Рендеринг таблицы редактора...");
             updateEditorClassFilter();
             renderGlobalEditor();
         } else {
@@ -104,7 +104,7 @@ function addClass() {
     schoolData.classes.push({name, grade: match?parseInt(match[1]):0, letter: match?match[2]:''});
     renderClasses(); saveSchoolData(); document.getElementById('newClassName').value = '';
 }
-function renderClasses() { document.getElementById('classesTable').innerHTML = schoolData.classes.map((c,i) => `<tr><td>${c.name}</td><td>${c.grade}</td><td><button class="small danger" onclick="removeClass(${i})">🗑️ Удалить</button></td></tr>`).join(''); }
+function renderClasses() { document.getElementById('classesTable').innerHTML = schoolData.classes.map((c,i) => `<tr><td>${c.name}</td><td>${c.grade}</td><td><button class="small danger" onclick="removeClass(${i})">️ Удалить</button></td></tr>`).join(''); }
 function removeClass(i) { schoolData.classes.splice(i,1); renderClasses(); saveSchoolData(); }
 
 function addTeacher() {
@@ -356,7 +356,7 @@ function applyExcludeTemplate() {
     const allSlots = Array.from({length: schoolData.lessonsPerDay}, (_, i) => i+1);
 
     if (schoolData.availability[name] && Object.keys(schoolData.availability[name]).length > 0) {
-        if (!confirm(`️ У учителя "${name}" уже есть настройки. Заменить?`)) return;
+        if (!confirm(`⚠️ У учителя "${name}" уже есть настройки. Заменить?`)) return;
     }
 
     schoolData.availability[name] = {};
@@ -449,7 +449,7 @@ async function generateTimetable() {
     } finally { btn.disabled = false; btn.textContent = '🎯 Сгенерировать расписание'; }
 }
 
-// ✅ ИСПРАВЛЕННАЯ ФУНКЦИЯ ОТРИСОВКИ (СТРОГО ПО ШАБЛОНУ EXCEL)
+// ✅ ФИНАЛЬНАЯ ВЕРСИЯ ФУНКЦИИ ОТРИСОВКИ (СТРОГО ПО ШАБЛОНУ EXCEL)
 function renderSchedule() {
     if (!currentResult || !currentResult.teachers) {
         document.getElementById('scheduleView').innerHTML = '<p>Нет данных</p>';
@@ -457,8 +457,6 @@ function renderSchedule() {
     }
 
     const container = document.getElementById('scheduleView');
-
-    // 1. Собираем классы
     const allGrades = new Set();
     currentResult.teachers.forEach(t => {
         Object.values(t.schedule || {}).forEach(dayObj => {
@@ -468,34 +466,27 @@ function renderSchedule() {
         });
     });
     const sortedGrades = Array.from(allGrades).sort();
-
-    if (sortedGrades.length === 0) {
-        container.innerHTML = '<p>В расписании нет классов.</p>';
-        return;
-    }
+    if (sortedGrades.length === 0) { container.innerHTML = '<p>Нет классов</p>'; return; }
 
     const days = currentResult.days || ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"];
     const slots = currentResult.slots || [1, 2, 3, 4, 5, 6, 7];
     const times = schoolData.lessonTimes || [];
 
-    let html = '<div style="overflow-x:auto;"><table class="master-table" style="min-width:100%; border-collapse:collapse;">';
+    let html = '<div style="overflow-x:auto;"><table class="master-table" style="min-width:100%; border-collapse:collapse; font-size:13px;">';
 
-    // Заголовок таблицы (Классы начинаются со 2-й колонки)
-    html += '<thead><tr><th style="background:#f8f9fa; width:150px;"></th>'; // Пустая ячейка слева
-    sortedGrades.forEach(g => {
-        html += `<th style="background:#9b59b6; color:white; padding:10px;">${g} класс</th>`;
-    });
+    // Заголовок
+    html += '<thead><tr><th style="background:#f8f9fa; width:120px;"></th><th style="background:#f8f9fa; width:80px;"></th>';
+    sortedGrades.forEach(g => html += `<th style="background:#9b59b6; color:white; padding:8px;">${g} кл</th>`);
     html += '</tr></thead><tbody>';
 
-    // Тело таблицы
     days.forEach(day => {
-        html += `<tr><td colspan="${sortedGrades.length + 1}" style="background:#eee; font-weight:bold; text-align:center; padding:5px;">${day}</td></tr>`;
+        html += `<tr><td colspan="${sortedGrades.length + 2}" style="background:#eee; font-weight:bold; text-align:center;">${day}</td></tr>`;
 
         slots.forEach((slot, sIdx) => {
-            const timeStr = times[sIdx] ? times[sIdx] : `Урок ${slot}`;
-            const lessonLabel = `Урок ${slot}`; // Надпись "Урок 1", "Урок 2" для второй колонки
+            const timeStr = times[sIdx] || `Урок ${slot}`;
+            const lessonLabel = `Урок ${slot}`;
 
-            // Параметры урока (как в Excel)
+            // 4 строки параметров
             const params = [
                 { label: "Предмет", key: "subject" },
                 { label: "Преподаватель", key: "teacher" },
@@ -503,59 +494,42 @@ function renderSchedule() {
                 { label: "Тема", key: "topic" }
             ];
 
-            params.forEach(p => {
+            params.forEach((p, idx) => {
                 html += `<tr>`;
-                // Колонка 1: Название параметра (Предмет, Учитель...)
-                html += `<td style="font-weight:bold; color:#800080; text-align:center; border:1px solid #ddd; padding:5px;">${p.label}</td>`;
+                // Колонка 1: Параметр
+                html += `<td style="font-weight:bold; color:#800080; text-align:center; border:1px solid #ddd;">${p.label}</td>`;
 
-                // Колонка 2: Название урока (Урок 1, Урок 2...) - ОБЪЕДИНЕННАЯ ЯЧЕЙКА ПО ВЕРТИКАЛИ
-                // Чтобы не дублировать "Урок 1" в каждой строке параметров, используем rowspan или просто ставим в первую строку
-                // Но в Excel это выглядит как одна большая ячейка слева от классов.
-                // Для простоты HTML таблицы, поставим "Урок X" только в строку "Предмет", а остальные оставим пустыми или объединим.
-                // Лучший вариант для HTML: поставить в каждую строку, но визуально скрыть границы, либо использовать rowspan.
-                // Сделаем проще: в первой строке (Предмет) пишем "Урок X", в остальных - пусто, но с границей.
-
-                if (p.label === "Предмет") {
-                     html += `<td rowspan="4" style="font-weight:bold; text-align:center; vertical-align:middle; border:1px solid #ddd; background:#fff;">${lessonLabel}</td>`;
+                // Колонка 2: "Урок X" (объединяем 4 строки)
+                if (idx === 0) {
+                     html += `<td rowspan="4" style="font-weight:bold; text-align:center; vertical-align:middle; border:1px solid #ddd; background:#fafafa;">${lessonLabel}</td>`;
                 }
 
-                // Колонки классов (значения)
+                // Колонки классов
                 sortedGrades.forEach(grade => {
                     let val = "-";
-                    // Поиск значения
                     for (const t of currentResult.teachers) {
-                        const daySched = t.schedule?.[day];
-                        if (daySched) {
-                            const slotLessons = daySched[String(slot)];
-                            if (slotLessons) {
-                                const found = slotLessons.find(l => l.grade === grade);
-                                if (found) {
-                                    val = found[p.key] || "-";
-                                    break;
-                                }
-                            }
+                        const s = t.schedule?.[day]?.[String(slot)];
+                        if (s) {
+                            const found = s.find(l => l.grade === grade);
+                            if (found) { val = found[p.key] || "-"; break; }
                         }
                     }
-                    html += `<td style="border:1px solid #ddd; padding:5px; text-align:center;">${val}</td>`;
+                    html += `<td style="border:1px solid #ddd; text-align:center;">${val}</td>`;
                 });
                 html += `</tr>`;
             });
 
-            // Строка времени (Вычитано) - ТЕПЕРЬ В ТОЙ ЖЕ КОЛОНКЕ, ЧТО И УРОК (или рядом, как в шаблоне)
-            // В шаблоне "Вычитано" - это отдельная строка, где во 2-й колонке стоит время.
+            // 5-я строка: Вычитано (Время)
             html += `<tr>`;
             html += `<td style="font-weight:bold; color:#800080; text-align:center; border:1px solid #ddd;">Вычитано</td>`;
-            // Во второй колонке (где был "Урок 1") теперь стоит время
-            html += `<td style="font-weight:bold; text-align:center; border:1px solid #ddd;">${timeStr}</td>`;
+            // Здесь своя ячейка во 2-й колонке (не входит в rowspan выше)
+            html += `<td style="font-weight:bold; text-align:center; border:1px solid #ddd; background:#f0f0f0;">${timeStr}</td>`;
 
-            // Остальные ячейки (для классов) - прочерки или часы (если нужно)
-            sortedGrades.forEach(() => {
-                html += `<td style="border:1px solid #ddd; padding:5px; text-align:center;">-</td>`;
-            });
+            sortedGrades.forEach(() => html += `<td style="border:1px solid #ddd; text-align:center;">-</td>`);
             html += `</tr>`;
 
-            // Пустая строка-разделитель
-            html += `<tr><td colspan="${sortedGrades.length + 2}" style="height:10px; border:none;"></td></tr>`;
+            // Отступ между уроками
+            html += `<tr><td colspan="${sortedGrades.length + 2}" style="height:8px; border:none;"></td></tr>`;
         });
     });
 
@@ -577,7 +551,7 @@ async function loadSavedTimetables() {
                 <div class="saved-timetable-item">
                     <div><h4>${t.name}</h4><p>${new Date(t.created_at).toLocaleString('ru-RU')}</p></div>
                     <div class="saved-timetable-actions">
-                        <button class="small primary" onclick="window.loadSavedTimetable(${t.id})">👁️ Открыть</button>
+                        <button class="small primary" onclick="window.loadSavedTimetable(${t.id})">️ Открыть</button>
                         <button class="small outline" onclick="window.downloadSavedPDF(${t.id}, 'teachers')">PDF (уч.)</button>
                         <button class="small outline" onclick="window.downloadSavedPDF(${t.id}, 'classes')">PDF (кл.)</button>
                         <button class="small danger" onclick="window.deleteSavedTimetable(${t.id})">🗑️</button>
@@ -625,5 +599,39 @@ window.downloadSavedPDF = async function(id, format) {
     } catch(e) { alert('Ошибка скачивания'); }
 };
 
-function downloadPDF(format) { if (!currentTimetableId) { alert('Сначала сгенерируйте'); return; } window.downloadSavedPDF(currentTimetableId, format); }
-function downloadExcel(format) { /* Аналогично PDF, но для excel */ }
+function downloadPDF(format) {
+    if (!currentTimetableId) { alert('Сначала сгенерируйте'); return; }
+    window.downloadSavedPDF(currentTimetableId, format);
+}
+
+// ✅ РАБОЧАЯ ФУНКЦИЯ СКАЧИВАНИЯ EXCEL
+function downloadExcel(format) {
+    if (!currentTimetableId) {
+        alert('Сначала сгенерируйте расписание');
+        return;
+    }
+
+    const url = `/timetables/${currentTimetableId}/export/excel?format=${format}`;
+
+    fetch(url, {
+        headers: { 'Authorization': 'Bearer ' + getToken() }
+    })
+    .then(response => {
+        if (!response.ok) throw new Error('Ошибка сети');
+        return response.blob();
+    })
+    .then(blob => {
+        const link = document.createElement('a');
+        const url = window.URL.createObjectURL(blob);
+        link.href = url;
+        link.setAttribute('download', `raspisanie_${currentTimetableId}_${format}.xlsx`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Не удалось скачать файл. Проверьте консоль.');
+    });
+}

@@ -9,7 +9,7 @@
 <body>
     <!-- Авторизация -->
     <div id="authContainer" class="container auth-container">
-        <h1>🎓 Генератор школьного расписания</h1>
+        <h1> Генератор школьного расписания</h1>
         <p class="subtitle">Войдите или создайте аккаунт</p>
         <div class="tabs">
             <button class="tab active" onclick="showLogin()">Вход</button>
@@ -76,7 +76,7 @@
 
             <div id="ref-teachers" class="reference-content">
                 <h3>Учителя</h3>
-                <div class="form-group"><input type="text" id="newTeacherName" placeholder="Иванов И.И."><input type="email" id="newTeacherEmail" placeholder="email@school.ru" style="margin-top:5px"><button class="add-btn" onclick="addTeacher()">➕ Добавить</button></div>
+                <div class="form-group"><input type="text" id="newTeacherName" placeholder="Иванов И.И."><input type="email" id="newTeacherEmail" placeholder="email@school.ru" style="margin-top:5px"><button class="add-btn" onclick="addTeacher()"> Добавить</button></div>
                 <table class="data-table"><thead><tr><th>ФИО</th><th>Email</th><th></th></tr></thead><tbody id="teachersTable"></tbody></table>
             </div>
 
@@ -169,7 +169,7 @@
                     </div>
                 </div>
             </div>
-            <div class="step-actions"><button class="primary" onclick="completeStep(3)">Далее →</button></div>
+            <div class="step-actions"><button class="primary" onclick="completeStep(3)">💾 Далее →</button></div>
         </div>
 
         <!-- Шаг 4: Генерация -->
@@ -186,11 +186,12 @@
                 </div>
                 <div id="scheduleView"></div>
                 <div id="masterViewContainer" style="display:none"></div>
+
+                <!-- ✅ ДОБАВЛЕНА КНОПКА EXCEL (КЛ.) -->
                 <div class="step-actions">
                     <button class="outline" onclick="downloadPDF('teachers')">PDF (уч.)</button>
                     <button class="outline" onclick="downloadPDF('classes')">PDF (кл.)</button>
-                    <!-- ❌ УБРАН ВЫЗОВ showMasterView(), ТАК КАК ЭНДПОИНТ НЕ СУЩЕСТВУЕТ -->
-                    <!-- <button class="primary" onclick="showMasterView()">📋 Общая таблица</button> -->
+                    <button class="outline" onclick="downloadExcel('classes')">📊 Excel (кл.)</button>
                     <button class="secondary" onclick="completeStep(4)">➡️ К редактору</button>
                 </div>
             </div>
