@@ -1,7 +1,6 @@
 // static/js/main.js
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Загрузка сохраненных данных при старте
     const savedData = localStorage.getItem('schoolData');
     if (savedData) {
         try {
@@ -11,18 +10,14 @@ document.addEventListener('DOMContentLoaded', () => {
             renderSubjects();
             renderClassrooms();
             updateTeacherDatalist();
-        } catch (e) {
-            console.error("Ошибка парсинга schoolData:", e);
-        }
+        } catch (e) { console.error("Ошибка парсинга schoolData:", e); }
     }
 
-    // Если пользователь авторизован, показываем приложение
     if (getToken()) {
         showMainApp();
         loadSavedTimetables();
     }
 
-    // Глобальный обработчик кликов для закрытия автодополнения
     document.addEventListener('click', function(e) {
         if (!e.target.closest('.autocomplete-wrapper')) {
             document.querySelectorAll('.autocomplete-list').forEach(list => { list.style.display = 'none'; });
@@ -30,7 +25,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// ✅ ИСПРАВЛЕННАЯ ФУНКЦИЯ НАВИГАЦИИ С АВТОЗАГРУЗКОЙ ДЛЯ РЕДАКТОРА
 async function goToStep(step) {
     document.querySelectorAll('.wizard-content').forEach(c => c.classList.remove('active'));
     document.querySelectorAll('.wizard-step').forEach((s,i) => {
@@ -45,33 +39,24 @@ async function goToStep(step) {
 
     console.log(`🔄 Переход на шаг ${step}`);
 
-    // Логика инициализации для каждого шага
-    if (step === 2) {
-        renderClasses();
-        renderTeachers();
-        renderSubjects();
-        renderClassrooms();
-    }
+    if (step === 2) { renderClasses(); renderTeachers(); renderSubjects(); renderClassrooms(); }
     if (step === 3) {
         updateTeacherSelect();
         updateTeacherDatalist();
-        const selectedTeacher = document.getElementById('teacherSelect').value;
-        if(selectedTeacher) renderAvailabilityGrid(selectedTeacher);
+        const sel = document.getElementById('teacherSelect').value;
+        if(sel) renderAvailabilityGrid(sel);
     }
-    if (step === 4) {
-        loadSavedTimetables();
-    }
+    if (step === 4) { loadSavedTimetables(); }
 
-    // ✅ ИСПРАВЛЕНИЕ ДЛЯ ШАГА 5 (РЕДАКТОР)
+    // ✅ ИСПРАВЛЕНИЕ ДЛЯ ШАГА 5: Используем только рабочий эндпоинт /timetables/{id}
     if (step === 5) {
-        console.log(" Проверка данных для редактора...");
+        console.log("🔍 Проверка данных для редактора...");
 
-        // Если данных нет, пытаемся загрузить последнее сохраненное расписание
-        if (!currentResult || !currentResult.teachers) {
-            console.warn("⚠️ currentResult пуст. Пытаемся загрузить последнее расписание...");
+        // Если данных нет или потерялся ID, загружаем последнее расписание
+        if (!currentResult || !currentResult.teachers || !currentTimetableId) {
+            console.warn("⚠️ Данные или ID отсутствуют. Загружаю последнее расписание...");
 
             try {
-                // Загружаем список расписаний
                 const res = await fetch('/timetables', {
                     headers: {'Authorization': 'Bearer ' + getToken()}
                 });
@@ -79,12 +64,11 @@ async function goToStep(step) {
                 if (res.ok) {
                     const timetables = await res.json();
                     if (timetables && timetables.length > 0) {
-                        // Берем самое свежее (первое в списке)
-                        const latestId = timetables[0].id;
-                        console.log(` Загружаю расписание ID: ${latestId}`);
+                        const latest = timetables[0]; // Самое свежее
+                        console.log(` Загружаю ID: ${latest.id}`);
 
-                        // Загружаем полные данные
-                        const fullRes = await fetch(`/timetables/${latestId}`, {
+                        // ✅ ИСПОЛЬЗУЕМ ГАРАНТИРОВАННО РАБОЧИЙ ЭНДПОИНТ
+                        const fullRes = await fetch(`/timetables/${latest.id}`, {
                             headers: {'Authorization': 'Bearer ' + getToken()}
                         });
 
@@ -92,33 +76,33 @@ async function goToStep(step) {
                             const data = await fullRes.json();
                             if (data.data) {
                                 currentResult = data.data;
-                                currentTimetableId = latestId;
-                                console.log("✅ Данные успешно загружены!");
+                                currentTimetableId = latest.id; // Жестко фиксируем ID
+                                console.log("✅ Данные и ID успешно восстановлены!");
                             }
+                        } else {
+                            throw new Error(`Server returned ${fullRes.status}`);
                         }
                     } else {
-                        console.error("❌ Нет сохраненных расписаний");
                         alert('Сначала сгенерируйте расписание на Шаге 4!');
-                        goToStep(4); // Возвращаем пользователя назад
+                        goToStep(4);
                         return;
                     }
                 }
             } catch (e) {
-                console.error("❌ Ошибка загрузки данных:", e);
+                console.error("❌ Ошибка загрузки:", e);
                 alert('Не удалось загрузить расписание. Попробуйте обновить страницу.');
                 return;
             }
         }
 
-        // Теперь, когда данные точно есть (или мы вышли выше), рендерим таблицу
-        if (currentResult && currentResult.teachers) {
-            console.log(" Рендеринг таблицы редактора...");
+        // Рендерим таблицу
+        if (currentResult && currentResult.teachers && currentTimetableId) {
+            console.log("🎨 Рендеринг таблицы редактора...");
             updateEditorClassFilter();
             renderGlobalEditor();
         } else {
-            console.error("❌ Данные все еще отсутствуют после попытки загрузки");
             document.getElementById('globalEditorContainer').innerHTML =
-                '<p style="padding:20px;text-align:center;color:#c33">Ошибка: Не удалось загрузить данные расписания.</p>';
+                '<p style="padding:20px;text-align:center;color:#c33">Ошибка: Нет данных или ID расписания.</p>';
         }
     }
 }
@@ -133,7 +117,7 @@ function completeStep(step) {
     saveSchoolData(); goToStep(step + 1);
 }
 
-// Экспорт функций в глобальную область для onclick в HTML
+// Глобальные обработчики
 window.showLogin = showLogin;
 window.showRegister = showRegister;
 window.login = login;
@@ -167,10 +151,10 @@ window.downloadPDF = downloadPDF;
 window.downloadExcel = downloadExcel;
 window.publishTimetable = function() { if(confirm('Опубликовать?')) alert('✅ Опубликовано'); };
 window.exportToJournal = function() { alert('🔗 Экспорт API'); };
-window.sendToTeachers = function() { alert(' Отправлено в Telegram'); };
+window.sendToTeachers = function() { alert('📱 Отправлено в Telegram'); };
 window.sendToEmail = function() { alert(' Отправлено на почту'); };
 
-// Функции редактора
+// Редактор
 window.renderGlobalEditor = renderGlobalEditor;
 window.handleGlobalDragStart = handleGlobalDragStart;
 window.handleGlobalDragOver = handleGlobalDragOver;
