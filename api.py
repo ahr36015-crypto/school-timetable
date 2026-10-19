@@ -1,6 +1,7 @@
 import os
 import io
 import re
+import copy  # <-- ДОБАВЛЕНО для глубокого копирования JSON
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 from fastapi import FastAPI, HTTPException, Depends, Query
@@ -390,7 +391,7 @@ def update_timetable(timetable_id: int, update_data: TimetableUpdate, current_us
     if update_data.name is not None:
         timetable.name = update_data.name
     if update_data.data is not None:
-        timetable.data = update_data.data
+        timetable.data = copy.deepcopy(update_data.data)
     db.commit()
     db.refresh(timetable)
     return {"message": "Расписание обновлено", "id": timetable.id, "name": timetable.name}
@@ -410,7 +411,7 @@ def delete_timetable(timetable_id: int, current_user: User = Depends(get_current
 
 
 # ============================================================
-# ПЕРЕМЕЩЕНИЕ УРОКА (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+# ПЕРЕМЕЩЕНИЕ УРОКА (ИСПРАВЛЕННАЯ ВЕРСИЯ С deepcopy)
 # ============================================================
 @app.post("/timetables/{timetable_id}/move-lesson")
 def move_lesson(
@@ -575,9 +576,8 @@ def move_lesson(
                         print(f"🧹 УДАЛЕН ДУБЛИКАТ: {key} в {d_key} {s_key}")
                 schedule[d_key][s_key] = unique_lessons
 
-        timetable.data = data
-        db.add(timetable)
-        db.flush()
+        # ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: используем deepcopy, чтобы SQLAlchemy увидел изменение JSON
+        timetable.data = copy.deepcopy(data)
         db.commit()
 
         print(f"✅ ДАННЫЕ СОХРАНЕНЫ В БД")
@@ -603,7 +603,6 @@ def move_lesson(
                 for day, slots in t_schedule.items():
                     for slot, lessons in slots.items():
                         if lessons:
-                            # ✅ ИСПРАВЛЕНИЕ: выносим формирование строки из f-string выражения
                             lesson_info = [f"{l.get('subject')} {l.get('grade')}" for l in lessons]
                             print(f"   {day} {slot}: {lesson_info}")
                 break
@@ -676,9 +675,8 @@ def update_lesson_topics(
                     updated_count += 1
                     break
 
-        timetable.data = data
-        db.add(timetable)
-        db.flush()
+        # ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: deepcopy для JSON
+        timetable.data = copy.deepcopy(data)
         db.commit()
         db.expire_all()
 
