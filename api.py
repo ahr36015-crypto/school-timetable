@@ -430,6 +430,7 @@ def move_lesson(
         if not timetable:
             raise HTTPException(status_code=404, detail="Расписание не найдено")
 
+        # ✅ ВАЖНО: Получаем свежую копию данных
         data = timetable.data
         teachers = data.get('teachers', [])
 
@@ -456,7 +457,7 @@ def move_lesson(
 
         schedule = target_teacher.get('schedule', {})
 
-        # ✅ КРИТИЧЕСКИ ВАЖНО: Находим ОБА дня ДО удаления
+        # ✅ КРИТИЧЕСКИ ВАЖНО: Находим ОБА дня ДО любых модификаций
         actual_from_day = None
         actual_to_day = None
 
@@ -494,8 +495,8 @@ def move_lesson(
         lessons_list = day_schedule[actual_from_slot]
         removed = False
 
-        print(f" Ищем урок для удаления: subject={req_subject}, grade={req_grade}")
-        print(f" Уроков в слоте: {len(lessons_list)}")
+        print(f"🔍 Ищем урок для удаления: subject={req_subject}, grade={req_grade}")
+        print(f"📚 Уроков в слоте: {len(lessons_list)}")
 
         new_lessons_list = []
         for l in lessons_list:
@@ -513,7 +514,7 @@ def move_lesson(
                 new_lessons_list.append(l)
 
         if not removed:
-            print(f"⚠️ Урок НЕ НАЙДЕН для удаления! Продолжаем добавление.")
+            print(f"️ Урок НЕ НАЙДЕН для удаления! Продолжаем добавление.")
 
         # Обновляем старый слот
         if new_lessons_list:
@@ -521,7 +522,7 @@ def move_lesson(
         else:
             del day_schedule[actual_from_slot]
             print(f"🗑 Слот {actual_from_slot} удален (пустой)")
-            # ✅ НЕ удаляем день из расписания! Это ломает логику поиска to_day
+            # ✅ НЕ удаляем день из расписания! Это ломает логику
             print(f"ℹ️ День {actual_from_day} оставлен (может быть пустым)")
 
         # ✅ ПРОВЕРКА КОНФЛИКТОВ перед добавлением
@@ -581,14 +582,14 @@ def move_lesson(
                         print(f"🧹 УДАЛЕН ДУБЛИКАТ: {key} в {d_key} {s_key}")
                 schedule[d_key][s_key] = unique_lessons
 
-        # ✅ СОХРАНЯЕМ И ОБНОВЛЯЕМ
+        # ✅ СОХРАНЯЕМ В БД
         timetable.data = data
         db.commit()
-        db.refresh(timetable)
 
-        print(f"✅ Перемещение завершено. Возвращаем данные.")
+        print(f"✅ Перемещение завершено. Данные сохранены в БД.")
 
-        return {"message": "Урок успешно перемещен", "data": timetable.data}
+        # ✅ ВАЖНО: Возвращаем data напрямую, а не timetable.data
+        return {"message": "Урок успешно перемещен", "data": data}
 
     except HTTPException:
         raise
@@ -659,12 +660,11 @@ def update_lesson_topics(
 
         timetable.data = data
         db.commit()
-        db.refresh(timetable)
 
         return {
             "message": "Темы обновлены",
             "updated_count": updated_count,
-            "data": timetable.data
+            "data": data
         }
 
     except HTTPException:
