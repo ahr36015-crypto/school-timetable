@@ -1,17 +1,18 @@
 // static/js/editor.js
-function updateEditorClassFilter(){
-    if(!currentResult) return;
+
+function updateEditorClassFilter() {
+    if (!currentResult) return;
     const select = document.getElementById('editorClassFilter');
     const grades = new Set();
 
-    if(currentResult.teachers) {
+    if (currentResult.teachers) {
         currentResult.teachers.forEach(t => {
-            if(t.schedule) {
+            if (t.schedule) {
                 Object.values(t.schedule).forEach(dayObj => {
                     Object.values(dayObj).forEach(slotLessons => {
-                        if(Array.isArray(slotLessons)){
+                        if (Array.isArray(slotLessons)) {
                             slotLessons.forEach(l => {
-                                if(l && l.grade) grades.add(l.grade);
+                                if (l && l.grade) grades.add(l.grade);
                             });
                         }
                     });
@@ -26,17 +27,17 @@ function updateEditorClassFilter(){
     select.value = currentVal;
 }
 
-function renderGlobalEditor(){
+function renderGlobalEditor() {
     const container = document.getElementById('globalEditorContainer');
-    if(!currentResult || !currentResult.teachers){
+    if (!currentResult || !currentResult.teachers) {
         container.innerHTML = '<p style="padding:20px;text-align:center;color:#999">Нет данных. Сгенерируйте расписание.</p>';
         return;
     }
 
     const filterGrade = document.getElementById('editorClassFilter') ?
         document.getElementById('editorClassFilter').value : "";
-    const days = currentResult.days || ["Понедельник","Вторник","Среда","Четверг","Пятница"];
-    const slots = currentResult.slots || [1,2,3,4,5,6,7];
+    const days = currentResult.days || ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"];
+    const slots = currentResult.slots || [1, 2, 3, 4, 5, 6, 7];
     const times = schoolData.lessonTimes || [];
 
     let html = '<table class="global-table"><thead><tr>';
@@ -58,7 +59,7 @@ function renderGlobalEditor(){
             slots.forEach(slot => {
                 const slotKey = String(slot);
                 let lessons = [];
-                if(teacher.schedule && teacher.schedule[day] && teacher.schedule[day][slotKey]){
+                if (teacher.schedule && teacher.schedule[day] && teacher.schedule[day][slotKey]) {
                     lessons = teacher.schedule[day][slotKey];
                 }
 
@@ -68,7 +69,7 @@ function renderGlobalEditor(){
 
                 let cellContent = '';
                 visibleLessons.forEach(l => {
-                    if(!l) return;
+                    if (!l) return;
                     const classroom = l.classroom ? `<br><small>${l.classroom}</small>` : '';
                     const chipId = `chip-${day}-${teacher.teacher}-${slot}-${l.subject}-${l.grade}`.replace(/\s+/g, '-');
 
@@ -112,8 +113,8 @@ function renderGlobalEditor(){
 let _isDragging = false;
 let _draggedChipId = null;
 
-function handleGlobalDragStart(e, chipId){
-    if(_isDragging) {
+function handleGlobalDragStart(e, chipId) {
+    if (_isDragging) {
         e.preventDefault();
         return;
     }
@@ -121,7 +122,6 @@ function handleGlobalDragStart(e, chipId){
     _draggedChipId = chipId;
     const chip = document.getElementById(chipId);
 
-    // Используем глобальную переменную draggedLessonData из state.js
     draggedLessonData = {
         teacher: chip.dataset.teacher,
         subject: chip.dataset.subject,
@@ -143,8 +143,8 @@ function handleGlobalDragStart(e, chipId){
     });
 }
 
-function checkDropZoneValidity(zone){
-    if(!zone || !draggedLessonData) return;
+function checkDropZoneValidity(zone) {
+    if (!zone || !draggedLessonData) return;
 
     zone.classList.remove('drag-over-valid', 'drag-over-invalid', 'conflict-reason');
     zone.removeAttribute('title');
@@ -154,7 +154,7 @@ function checkDropZoneValidity(zone){
     const toSlot = parseInt(zone.dataset.slot);
 
     // Проверка 1: Нельзя перемещать к другому учителю
-    if(toTeacher !== draggedLessonData.teacher){
+    if (toTeacher !== draggedLessonData.teacher) {
         zone.classList.add('drag-over-invalid');
         zone.setAttribute('title', '❌ Нельзя переместить к другому учителю');
         zone.classList.add('conflict-reason');
@@ -162,7 +162,7 @@ function checkDropZoneValidity(zone){
     }
 
     // Проверка 2: Нельзя на то же самое место
-    if(toDay === draggedLessonData.fromDay && toSlot === draggedLessonData.fromSlot){
+    if (toDay === draggedLessonData.fromDay && toSlot === draggedLessonData.fromSlot) {
         zone.classList.add('drag-over-invalid');
         zone.setAttribute('title', '❌ Это текущее место урока');
         return;
@@ -173,9 +173,9 @@ function checkDropZoneValidity(zone){
         const existingLessons = JSON.parse(zone.dataset.lessons || '[]');
         let conflictReason = null;
 
-        for(const l of existingLessons){
+        for (const l of existingLessons) {
             // Проверка конфликта по классу
-            if(l.grade === draggedLessonData.grade){
+            if (l.grade === draggedLessonData.grade) {
                 conflictReason = `Класс ${l.grade} уже имеет урок (${l.subject})`;
                 break;
             }
@@ -183,15 +183,15 @@ function checkDropZoneValidity(zone){
 
         // Проверка доступности учителя
         const teacherData = schoolData.teachers.find(t => t.full_name === toTeacher);
-        if(teacherData){
+        if (teacherData) {
             const availability = schoolData.availability[toTeacher] || {};
             const dayAvailability = availability[toDay] || [];
-            if(dayAvailability.length > 0 && !dayAvailability.includes(toSlot)){
+            if (dayAvailability.length > 0 && !dayAvailability.includes(toSlot)) {
                 conflictReason = `Учитель недоступен в это время`;
             }
         }
 
-        if(conflictReason){
+        if (conflictReason) {
             zone.classList.add('drag-over-invalid');
             zone.setAttribute('title', `❌ ${conflictReason}`);
             zone.classList.add('conflict-reason');
@@ -199,33 +199,33 @@ function checkDropZoneValidity(zone){
             zone.classList.add('drag-over-valid');
             zone.setAttribute('title', '✅ Можно переместить');
         }
-    } catch(err){
+    } catch (err) {
         zone.classList.add('drag-over-valid');
     }
 }
 
-function handleGlobalDragOver(e){
+function handleGlobalDragOver(e) {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
 
     const zone = e.target.closest('.drop-zone');
-    if(!zone || !draggedLessonData) return;
+    if (!zone || !draggedLessonData) return;
 
     checkDropZoneValidity(zone);
 }
 
-function handleGlobalDragLeave(e){
+function handleGlobalDragLeave(e) {
     const zone = e.target.closest('.drop-zone');
-    if(zone) {
+    if (zone) {
         zone.classList.remove('drag-over-valid', 'drag-over-invalid', 'conflict-reason');
         zone.removeAttribute('title');
     }
 }
 
-async function handleGlobalDrop(e){
+async function handleGlobalDrop(e) {
     e.preventDefault();
 
-    if(!_isDragging || !draggedLessonData) return;
+    if (!_isDragging || !draggedLessonData) return;
 
     // Убираем подсветку
     document.querySelectorAll('.drop-zone').forEach(el => {
@@ -234,13 +234,13 @@ async function handleGlobalDrop(e){
     });
 
     // Восстанавливаем прозрачность
-    if(_draggedChipId){
+    if (_draggedChipId) {
         const srcEl = document.getElementById(_draggedChipId);
-        if(srcEl) srcEl.style.opacity = '1';
+        if (srcEl) srcEl.style.opacity = '1';
     }
 
     const targetCell = e.target.closest('.drop-zone');
-    if(!targetCell || !targetCell.dataset.teacher || _isDragging === 'processing'){
+    if (!targetCell || !targetCell.dataset.teacher || _isDragging === 'processing') {
         _isDragging = false;
         _draggedChipId = null;
         draggedLessonData = null;
@@ -254,7 +254,7 @@ async function handleGlobalDrop(e){
     const toSlot = parseInt(targetCell.dataset.slot);
 
     // Финальная проверка перед отправкой
-    if(toTeacher !== draggedLessonData.teacher){
+    if (toTeacher !== draggedLessonData.teacher) {
         alert('⚠️ Нельзя переместить урок к другому учителю');
         _isDragging = false;
         _draggedChipId = null;
@@ -263,7 +263,7 @@ async function handleGlobalDrop(e){
         return;
     }
 
-    if(toDay === draggedLessonData.fromDay && toSlot === draggedLessonData.fromSlot){
+    if (toDay === draggedLessonData.fromDay && toSlot === draggedLessonData.fromSlot) {
         _isDragging = false;
         _draggedChipId = null;
         draggedLessonData = null;
@@ -273,9 +273,9 @@ async function handleGlobalDrop(e){
     // Проверка конфликтов на клиенте
     try {
         const existingLessons = JSON.parse(targetCell.dataset.lessons || '[]');
-        for(const l of existingLessons){
-            if(l.grade === draggedLessonData.grade){
-                alert(`⚠️ Конфликт: Класс ${l.grade} уже имеет урок "${l.subject}" в это время`);
+        for (const l of existingLessons) {
+            if (l.grade === draggedLessonData.grade) {
+                alert(`️ Конфликт: Класс ${l.grade} уже имеет урок "${l.subject}" в это время`);
                 _isDragging = false;
                 _draggedChipId = null;
                 draggedLessonData = null;
@@ -283,13 +283,13 @@ async function handleGlobalDrop(e){
                 return;
             }
         }
-    } catch(err){
+    } catch (err) {
         console.error('Ошибка проверки конфликтов:', err);
     }
 
     // ✅ ЗАЩИТА: Проверяем наличие ID перед запросом
-    if(!currentTimetableId) {
-        alert(' Ошибка: Потерян ID расписания. Пожалуйста, обновите страницу.');
+    if (!currentTimetableId) {
+        alert('️ Ошибка: Потерян ID расписания. Пожалуйста, обновите страницу.');
         _isDragging = false;
         _draggedChipId = null;
         draggedLessonData = null;
@@ -319,31 +319,35 @@ async function handleGlobalDrop(e){
 
         const result = await response.json();
 
-        if(response.ok){
-            console.log("✅ Успех");
+        if (response.ok) {
+            console.log("✅ Успех перемещения");
+            console.log("📦 Полученные данные:", result);
 
-            // ⚠ ВАЖНО: Данные лежат в поле data
-            if(result && result.data){
+            // ✅ КРИТИЧЕСКИ ВАЖНО: Обновляем currentResult из ответа сервера
+            if (result && result.data) {
                 currentResult = result.data;
+                console.log("✅ currentResult обновлён из result.data");
+                console.log("📊 Новое состояние teachers:", currentResult.teachers.length);
             } else {
-                // Если сервер не вернул data, пробуем перезагрузить
-                try {
-                    const reloadRes = await fetch(`/timetables/${currentTimetableId}`, {
-                        headers: { 'Authorization': 'Bearer ' + getToken() }
-                    });
-                    if(reloadRes.ok){
-                        const reloadData = await reloadRes.json();
-                        if(reloadData && reloadData.data)
-                            currentResult = reloadData.data;
+                console.warn("⚠️ Сервер не вернул data, перезагружаем...");
+                // Если сервер не вернул data, перезагружаем с сервера
+                const reloadRes = await fetch(`/timetables/${currentTimetableId}`, {
+                    headers: { 'Authorization': 'Bearer ' + getToken() }
+                });
+                if (reloadRes.ok) {
+                    const reloadData = await reloadRes.json();
+                    if (reloadData && reloadData.data) {
+                        currentResult = reloadData.data;
+                        console.log("✅ currentResult перезагружен с сервера");
                     }
-                } catch(reloadErr){
-                    console.error("Не удалось перезагрузить:", reloadErr);
                 }
             }
 
+            // Перерисовываем редактор
             updateEditorClassFilter();
             renderGlobalEditor();
 
+            // Показываем уведомление
             const msg = document.createElement('div');
             msg.textContent = '✅ Перемещено!';
             msg.style.cssText = 'position:fixed;top:20px;right:20px;background:#27ae60;color:white;padding:15px 25px;border-radius:8px;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.15);';
@@ -356,7 +360,7 @@ async function handleGlobalDrop(e){
             alert(`⚠️ ${errorMsg}`);
             renderGlobalEditor();
         }
-    } catch(error){
+    } catch (error) {
         console.error("❌ Ошибка сети:", error);
         alert('❌ Ошибка соединения');
         renderGlobalEditor();
@@ -367,7 +371,7 @@ async function handleGlobalDrop(e){
     }
 }
 
-function validateTimetable(){
-    if(!currentResult) { alert('Нет данных'); return; }
+function validateTimetable() {
+    if (!currentResult) { alert('Нет данных'); return; }
     alert('✅ Проверка завершена');
 }
