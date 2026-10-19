@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from pydantic import BaseModel
 from database import init_db, get_db, User, SavedTimetable
 from auth import get_password_hash, verify_password, create_access_token, get_current_user
@@ -358,12 +359,19 @@ def get_timetables(current_user: User = Depends(get_current_user), db: Session =
 @app.get("/timetables/{timetable_id}")
 def get_timetable(timetable_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
+        # ✅ ПРИНУДИТЕЛЬНО СБРАСЫВАЕМ КЭШ СЕССИИ
+        db.expire_all()
+
         timetable = db.query(SavedTimetable).filter(
             SavedTimetable.id == timetable_id,
             SavedTimetable.user_id == current_user.id
         ).first()
+
         if not timetable:
             raise HTTPException(status_code=404, detail="Расписание не найдено")
+
+        print(f"📥 GET /timetables/{timetable_id} - возвращаем данные")
+
         return {
             "id": timetable.id,
             "name": timetable.name,
@@ -409,7 +417,7 @@ def delete_timetable(timetable_id: int, current_user: User = Depends(get_current
 
 
 # ============================================================
-# ПЕРЕМЕЩЕНИЕ УРОКА (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+# ПЕРЕМЕЩЕНИЕ УРОКА (МАКСИМАЛЬНО НАДЕЖНАЯ ВЕРСИЯ)
 # ============================================================
 @app.post("/timetables/{timetable_id}/move-lesson")
 def move_lesson(
@@ -418,9 +426,13 @@ def move_lesson(
         current_user: User = Depends(get_current_user),
         db: Session = Depends(get_db)
 ):
-    """Перемещает урок в новое время и проверяет конфликты"""
+    """Перемещает урок в новое время с гарантированным сохранением в БД"""
     try:
         print(f"🔄 MOVE LESSON REQUEST: {move_data}")
+        print(f" Timetable ID: {timetable_id}, User ID: {current_user.id}")
+
+        # ✅ ШАГ 1: Загружаем расписание из БД
+        db.expire_all()  # Сбрасываем кэш сессии
 
         timetable = db.query(SavedTimetable).filter(
             SavedTimetable.id == timetable_id,
@@ -428,9 +440,12 @@ def move_lesson(
         ).first()
 
         if not timetable:
+            print(f"❌ Расписание {timetable_id} не найдено для пользователя {current_user.id}")
             raise HTTPException(status_code=404, detail="Расписание не найдено")
 
-        # ✅ ВАЖНО: Получаем свежую копию данных
+        print(f"✅ Расписание загружено из БД")
+
+        # ✅ ШАГ 2: Получаем данные и находим учителя
         data = timetable.data
         teachers = data.get('teachers', [])
 
@@ -453,11 +468,13 @@ def move_lesson(
                 break
 
         if not target_teacher:
+            print(f" Учитель '{req_teacher}' не найден")
             raise HTTPException(status_code=404, detail="Учитель не найден в расписании")
 
         schedule = target_teacher.get('schedule', {})
+        print(f"📅 Текущее расписание учителя: {list(schedule.keys())}")
 
-        # ✅ КРИТИЧЕСКИ ВАЖНО: Находим ОБА дня ДО любых модификаций
+        # ✅ ШАГ 3: Находим ОБА дня ДО любых модификаций
         actual_from_day = None
         actual_to_day = None
 
@@ -468,42 +485,32 @@ def move_lesson(
             if day_lower == to_day.lower():
                 actual_to_day = day_key
 
-        # Если целевого дня нет в расписании — используем to_day как есть
+        # Если целевого дня нет - создаем его
         if actual_to_day is None:
             actual_to_day = to_day
-            print(f"ℹ️ Целевой день '{to_day}' не найден в расписании, будет создан")
+            print(f"ℹ️ Целевой день '{to_day}' не найден, будет создан")
 
         if actual_from_day is None:
-            print(f"⚠️ Исходный день '{from_day}' не найден в расписании")
+            print(f"❌ Исходный день '{from_day}' не найден")
             raise HTTPException(status_code=404, detail=f"День {from_day} не найден")
 
         print(f"📅 actual_from_day={actual_from_day}, actual_to_day={actual_to_day}")
 
-        # Находим слоты
-        actual_from_slot = None
+        # ✅ ШАГ 4: Удаляем урок со старого места
         day_schedule = schedule.get(actual_from_day, {})
-        for slot_key in day_schedule.keys():
-            if str(slot_key).strip() == from_slot:
-                actual_from_slot = slot_key
-                break
+        lessons_list = day_schedule.get(from_slot, [])
 
-        if actual_from_slot is None:
-            print(f"⚠️ Слот {from_slot} не найден в дне {actual_from_day}")
-            raise HTTPException(status_code=404, detail=f"Слот {from_slot} не найден")
-
-        # ✅ УДАЛЯЕМ урок со старого места
-        lessons_list = day_schedule[actual_from_slot]
-        removed = False
-
-        print(f"🔍 Ищем урок для удаления: subject={req_subject}, grade={req_grade}")
+        print(f"🔍 Ищем урок для удаления в {actual_from_day} {from_slot}")
         print(f"📚 Уроков в слоте: {len(lessons_list)}")
 
         new_lessons_list = []
+        removed = False
+
         for l in lessons_list:
             l_subject = str(l.get('subject', '')).strip().lower()
             l_grade = str(l.get('grade', '')).strip()
 
-            print(f"  Проверяем урок: subject={l_subject}, grade={l_grade}")
+            print(f"  Проверяем: subject={l_subject}, grade={l_grade}")
 
             is_same = (l_subject == req_subject and l_grade == req_grade)
 
@@ -514,27 +521,29 @@ def move_lesson(
                 new_lessons_list.append(l)
 
         if not removed:
-            print(f"️ Урок НЕ НАЙДЕН для удаления! Продолжаем добавление.")
+            print(f"⚠️ Урок НЕ НАЙДЕН для удаления!")
 
         # Обновляем старый слот
         if new_lessons_list:
-            day_schedule[actual_from_slot] = new_lessons_list
+            day_schedule[from_slot] = new_lessons_list
+            print(f"✅ Слот {from_slot} обновлен (осталось {len(new_lessons_list)} уроков)")
         else:
-            del day_schedule[actual_from_slot]
-            print(f"🗑 Слот {actual_from_slot} удален (пустой)")
-            # ✅ НЕ удаляем день из расписания! Это ломает логику
-            print(f"ℹ️ День {actual_from_day} оставлен (может быть пустым)")
+            if from_slot in day_schedule:
+                del day_schedule[from_slot]
+                print(f"🗑 Слот {from_slot} удален (пустой)")
+            # ✅ НЕ удаляем день из расписания!
 
-        # ✅ ПРОВЕРКА КОНФЛИКТОВ перед добавлением
+        # ✅ ШАГ 5: Проверяем конфликты перед добавлением
         to_day_schedule = schedule.get(actual_to_day, {})
 
         if to_slot in to_day_schedule and to_day_schedule[to_slot]:
+            print(f"❌ Конфликт: учитель уже занят в {actual_to_day} {to_slot}")
             raise HTTPException(
                 status_code=409,
                 detail=f"Конфликт: {move_data['teacher']} уже занят в {to_day} на {to_slot} уроке"
             )
 
-        # Проверяем, занят ли класс в новом слоте у ДРУГИХ учителей
+        # Проверяем класс у других учителей
         for t in teachers:
             if t['teacher'].strip().lower() == req_teacher:
                 continue
@@ -546,17 +555,20 @@ def move_lesson(
                         if str(slot_key).strip() == to_slot:
                             for lesson in lessons:
                                 if str(lesson.get('grade', '')).strip() == req_grade:
+                                    print(f"❌ Конфликт: класс {req_grade} уже имеет урок у {t['teacher']}")
                                     raise HTTPException(
                                         status_code=409,
                                         detail=f"Конфликт: Класс {req_grade} уже имеет урок в это время у учителя {t['teacher']}"
                                     )
 
-        # ✅ ДОБАВЛЯЕМ урок в новое место
+        # ✅ ШАГ 6: Добавляем урок на новое место
         if actual_to_day not in schedule:
             schedule[actual_to_day] = {}
+            print(f"✅ Создан день {actual_to_day}")
 
         if to_slot not in schedule[actual_to_day]:
             schedule[actual_to_day][to_slot] = []
+            print(f"✅ Создан слот {to_slot} в {actual_to_day}")
 
         new_lesson = {
             'subject': move_data['subject'],
@@ -568,7 +580,7 @@ def move_lesson(
         schedule[actual_to_day][to_slot].append(new_lesson)
         print(f"➕ ДОБАВЛЕН: {new_lesson['subject']} {new_lesson['grade']} в {actual_to_day} {to_slot}")
 
-        # Удаляем дубликаты
+        # ✅ ШАГ 7: Удаляем дубликаты
         for d_key, d_val in schedule.items():
             for s_key, s_val in d_val.items():
                 seen = set()
@@ -582,14 +594,41 @@ def move_lesson(
                         print(f"🧹 УДАЛЕН ДУБЛИКАТ: {key} в {d_key} {s_key}")
                 schedule[d_key][s_key] = unique_lessons
 
-        # ✅ СОХРАНЯЕМ В БД
+        # ✅ ШАГ 8: СОХРАНЯЕМ В БД
         timetable.data = data
-        db.commit()
+        db.add(timetable)  # Явно добавляем объект
+        db.flush()  # Сбрасываем изменения в БД
+        db.commit()  # Коммитим транзакцию
 
-        print(f"✅ Перемещение завершено. Данные сохранены в БД.")
+        print(f"✅ ДАННЫЕ СОХРАНЕНЫ В БД")
 
-        # ✅ ВАЖНО: Возвращаем data напрямую, а не timetable.data
-        return {"message": "Урок успешно перемещен", "data": data}
+        # ✅ ШАГ 9: ЗАГРУЖАЕМ СНОВА ИЗ БД (гарантируем актуальность)
+        db.expire_all()  # Сбрасываем кэш
+
+        fresh_timetable = db.query(SavedTimetable).filter(
+            SavedTimetable.id == timetable_id
+        ).first()
+
+        if not fresh_timetable:
+            print(f"❌ КРИТИЧЕСКАЯ ОШИБКА: не удалось загрузить расписание после сохранения")
+            raise HTTPException(status_code=500, detail="Ошибка сохранения")
+
+        fresh_data = fresh_timetable.data
+        print(f"✅ Загружены актуальные данные из БД")
+        print(f"📊 Количество учителей: {len(fresh_data.get('teachers', []))}")
+
+        # Проверяем что изменения действительно сохранились
+        for t in fresh_data.get('teachers', []):
+            if t['teacher'].strip().lower() == req_teacher:
+                t_schedule = t.get('schedule', {})
+                print(f"📅 Расписание учителя после перемещения:")
+                for day, slots in t_schedule.items():
+                    for slot, lessons in slots.items():
+                        if lessons:
+                            print(f"   {day} {slot}: {[f'{l.get(\"subject\")} {l.get(\"grade\")}' for l in lessons]}")
+                break
+
+        return {"message": "Урок успешно перемещен", "data": fresh_data}
 
     except HTTPException:
         raise
@@ -597,6 +636,7 @@ def move_lesson(
         print(f"❌ CRITICAL ERROR in move_lesson: {e}")
         import traceback
         traceback.print_exc()
+        db.rollback()  # Откатываем транзакцию при ошибке
         raise HTTPException(status_code=500, detail=f"Внутренняя ошибка сервера: {str(e)}")
 
 
@@ -612,6 +652,8 @@ def update_lesson_topics(
 ):
     """Массовое обновление тем уроков"""
     try:
+        db.expire_all()
+
         timetable = db.query(SavedTimetable).filter(
             SavedTimetable.id == timetable_id,
             SavedTimetable.user_id == current_user.id
@@ -631,7 +673,6 @@ def update_lesson_topics(
             target_day = update.day
             target_slot = str(update.slot)
 
-            # Находим учителя
             target_teacher = None
             for t in teachers:
                 if t['teacher'].strip().lower() == req_teacher:
@@ -647,7 +688,6 @@ def update_lesson_topics(
             if target_slot not in schedule[target_day]:
                 continue
 
-            # Обновляем тему у нужного урока
             for lesson in schedule[target_day][target_slot]:
                 is_match = (
                         lesson.get('subject', '').strip().lower() == req_subject and
@@ -659,12 +699,19 @@ def update_lesson_topics(
                     break
 
         timetable.data = data
+        db.add(timetable)
+        db.flush()
         db.commit()
+        db.expire_all()
+
+        fresh_timetable = db.query(SavedTimetable).filter(
+            SavedTimetable.id == timetable_id
+        ).first()
 
         return {
             "message": "Темы обновлены",
             "updated_count": updated_count,
-            "data": data
+            "data": fresh_timetable.data if fresh_timetable else data
         }
 
     except HTTPException:
@@ -673,6 +720,7 @@ def update_lesson_topics(
         print(f"❌ Ошибка обновления тем: {e}")
         import traceback
         traceback.print_exc()
+        db.rollback()
         raise HTTPException(status_code=500, detail=f"Внутренняя ошибка: {str(e)}")
 
 
@@ -688,6 +736,8 @@ def export_topics_excel(
 ):
     """Экспорт тем уроков для конкретного класса в Excel"""
     try:
+        db.expire_all()
+
         timetable = db.query(SavedTimetable).filter(
             SavedTimetable.id == timetable_id,
             SavedTimetable.user_id == current_user.id
@@ -815,10 +865,13 @@ def export_excel(
         current_user: User = Depends(get_current_user),
         db: Session = Depends(get_db)
 ):
+    db.expire_all()
+
     timetable = db.query(SavedTimetable).filter(
         SavedTimetable.id == timetable_id,
         SavedTimetable.user_id == current_user.id
     ).first()
+
     if not timetable:
         raise HTTPException(status_code=404, detail="Расписание не найдено")
 
@@ -852,10 +905,13 @@ def export_pdf(
         current_user: User = Depends(get_current_user),
         db: Session = Depends(get_db)
 ):
+    db.expire_all()
+
     timetable = db.query(SavedTimetable).filter(
         SavedTimetable.id == timetable_id,
         SavedTimetable.user_id == current_user.id
     ).first()
+
     if not timetable:
         raise HTTPException(status_code=404, detail="Расписание не найдено")
 
