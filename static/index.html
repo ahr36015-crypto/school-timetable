@@ -125,7 +125,7 @@
                 <div class="form-group">
                     <input type="text" id="newClassroomNumber" placeholder="101">
                     <input type="number" id="newClassroomCapacity" placeholder="Мест" style="margin-top:5px">
-                    <button class="add-btn" onclick="addClassroom()">➕ Добавить</button>
+                    <button class="add-btn" onclick="addClassroom()"> Добавить</button>
                 </div>
                 <div id="classroomDuplicateWarning" class="duplicate-warning">Такой кабинет уже существует!</div>
                 <table class="data-table">
@@ -141,7 +141,7 @@
 
         <!-- Шаг 3: Нагрузки -->
         <div id="step3" class="wizard-content">
-            <h2>⚙ Шаг 3: Нагрузки</h2>
+            <h2> Шаг 3: Нагрузки</h2>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
                 <div>
                     <h3>📋 Классический ввод</h3>
@@ -153,7 +153,7 @@
                         <div class="teacher-info"><h4>👤 <span id="currentTeacherName"></span></h4></div>
                         <h4>Нагрузки</h4>
                         <div id="workloadList"></div>
-                        <button class="small primary" onclick="addWorkload()">➕ Предмет</button>
+                        <button class="small primary" onclick="addWorkload()"> Предмет</button>
                         <h4 style="margin-top:20px">Доступность</h4>
                         <div id="availabilityGrid" class="availability-grid"></div>
                     </div>
@@ -204,7 +204,7 @@
                             </div>
                         </div>
                         <div class="template-card" onclick="selectTemplate(this, 'exclude_days')">
-                            <h4>🚫 Кроме дней</h4>
+                            <h4> Кроме дней</h4>
                             <div class="template-fields">
                                 <input type="text" id="tmpl_name3" list="teacherDatalist" placeholder="ФИО учителя">
                                 <div class="checkbox-group" style="margin:10px 0">
@@ -221,7 +221,7 @@
                     </div>
                 </div>
             </div>
-            <div class="step-actions"><button class="primary" onclick="completeStep(3)">💾 Далее →</button></div>
+            <div class="step-actions"><button class="primary" onclick="completeStep(3)"> Далее →</button></div>
         </div>
 
         <!-- Шаг 4: Генерация -->
@@ -254,18 +254,46 @@
             </div>
         </div>
 
-        <!-- Шаг 5: Редактор -->
+        <!-- Шаг 5: Редактор (ОБНОВЛЁННЫЙ С ПЕРЕКЛЮЧАТЕЛЕМ РЕЖИМОВ) -->
         <div id="step5" class="wizard-content">
             <h2>✏ Шаг 5: Редактор</h2>
+
+            <!-- Переключатель режимов -->
+            <div class="editor-mode-switcher">
+                <button class="mode-btn active" data-mode="editor" onclick="switchEditorMode('editor')">
+                    ✏️ Drag-and-Drop редактор
+                </button>
+                <button class="mode-btn" data-mode="topics" onclick="switchEditorMode('topics')">
+                     Редактор тем
+                </button>
+            </div>
+
+            <!-- Панель управления -->
             <div style="display:flex;gap:15px;margin-bottom:20px;align-items:center">
                 <div class="form-group" style="margin:0;flex:1">
                     <label>Фильтр по классу:</label>
-                    <select id="editorClassFilter" onchange="renderGlobalEditor()"><option value="">-- Все --</option></select>
+                    <select id="editorClassFilter" onchange="onEditorFilterChange()">
+                        <option value="">-- Все --</option>
+                    </select>
                 </div>
                 <button class="secondary small" onclick="validateTimetable()">Проверить</button>
+                <button id="exportTopicsBtn" class="outline small" style="display:none" onclick="exportTopicsToExcel()">
+                     Экспорт тем
+                </button>
             </div>
+
+            <!-- Контейнер Drag-and-Drop редактора -->
             <div id="globalEditorContainer" class="global-editor-container"></div>
-            <div class="step-actions"><button class="primary" onclick="completeStep(5)">➡ К публикации</button></div>
+
+            <!-- Контейнер редактора тем -->
+            <div id="topicsEditorContainer" class="topics-editor-container" style="display:none">
+                <div id="topicsEditorContent"></div>
+                <div id="topicsSaveIndicator" class="save-indicator"></div>
+            </div>
+
+            <div class="step-actions">
+                <button class="primary" onclick="completeStep(5)">➡ К публикации</button>
+            </div>
         </div>
 
         <!-- Шаг 6: Публикация -->
