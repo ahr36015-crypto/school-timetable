@@ -254,7 +254,7 @@ def generate_timetable(request: TimetableRequest, current_user: User = Depends(g
         return {"message": "Расписание сгенерировано", "id": saved.id, "status": result.status,
                 "solution_time": result.solution_time, "validation_errors": result.validation_errors}
     except Exception as e:
-        print(f"❌ КРИТИЧЕСКАЯ ОШИБКА ГЕНЕРАЦИИ: {e}")
+        print(f" КРИТИЧЕСКАЯ ОШИБКА ГЕНЕРАЦИИ: {e}")
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Ошибка генерации: {str(e)}")
@@ -374,7 +374,7 @@ def move_lesson(
                 if not old_schedule[from_day]:
                     del old_schedule[from_day]
 
-        print(f"🗑️ Total removed: {removed_count}")
+        print(f"️ Total removed: {removed_count}")
 
         to_day = move_data['to_day']
         to_slot = str(move_data['to_slot'])
