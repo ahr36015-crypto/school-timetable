@@ -26,13 +26,16 @@ class UserRegister(BaseModel):
     full_name: str
     school_name: Optional[str] = None
 
+
 class UserLogin(BaseModel):
     email: str
     password: str
 
+
 class TimetableUpdate(BaseModel):
     name: Optional[str] = None
     data: Optional[Dict[str, Any]] = None
+
 
 class TopicUpdate(BaseModel):
     teacher: str
@@ -41,6 +44,7 @@ class TopicUpdate(BaseModel):
     day: str
     slot: int
     topic: str
+
 
 class TopicsUpdateRequest(BaseModel):
     updates: List[TopicUpdate]
@@ -278,7 +282,8 @@ def response_to_dict(result: TimetableResponse, request: TimetableRequest) -> Di
 # ГЕНЕРАЦИЯ
 # ============================================================
 @app.post("/generate")
-def generate_timetable(request: TimetableRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def generate_timetable(request: TimetableRequest, current_user: User = Depends(get_current_user),
+                       db: Session = Depends(get_db)):
     try:
         print(f" НАЧАЛО ГЕНЕРАЦИИ для пользователя {current_user.id}")
         is_valid, teacher_stats, errors = validate_teachers(request)
@@ -373,7 +378,8 @@ def get_timetable(timetable_id: int, current_user: User = Depends(get_current_us
 
 
 @app.put("/timetables/{timetable_id}")
-def update_timetable(timetable_id: int, update_data: TimetableUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def update_timetable(timetable_id: int, update_data: TimetableUpdate, current_user: User = Depends(get_current_user),
+                     db: Session = Depends(get_db)):
     timetable = db.query(SavedTimetable).filter(
         SavedTimetable.id == timetable_id,
         SavedTimetable.user_id == current_user.id
@@ -407,10 +413,10 @@ def delete_timetable(timetable_id: int, current_user: User = Depends(get_current
 # ============================================================
 @app.post("/timetables/{timetable_id}/move-lesson")
 def move_lesson(
-    timetable_id: int,
-    move_data: dict,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+        timetable_id: int,
+        move_data: dict,
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)
 ):
     """Перемещает урок в новое время и проверяет конфликты"""
     try:
@@ -450,27 +456,37 @@ def move_lesson(
 
         schedule = target_teacher.get('schedule', {})
 
-        # ✅ ИСПРАВЛЕНИЕ: Нормализуем ключи для поиска (регистр дней)
+        # ✅ КРИТИЧЕСКИ ВАЖНО: Находим ОБА дня ДО удаления
         actual_from_day = None
-        for day_key in schedule.keys():
-            if day_key.strip().lower() == from_day.lower():
-                actual_from_day = day_key
-                break
+        actual_to_day = None
 
-        if not actual_from_day:
-            print(f"⚠️ День {from_day} не найден в расписании")
+        for day_key in schedule.keys():
+            day_lower = day_key.strip().lower()
+            if day_lower == from_day.lower():
+                actual_from_day = day_key
+            if day_lower == to_day.lower():
+                actual_to_day = day_key
+
+        # Если целевого дня нет в расписании — используем to_day как есть
+        if actual_to_day is None:
+            actual_to_day = to_day
+            print(f"ℹ️ Целевой день '{to_day}' не найден в расписании, будет создан")
+
+        if actual_from_day is None:
+            print(f"⚠️ Исходный день '{from_day}' не найден в расписании")
             raise HTTPException(status_code=404, detail=f"День {from_day} не найден")
 
-        day_schedule = schedule[actual_from_day]
+        print(f"📅 actual_from_day={actual_from_day}, actual_to_day={actual_to_day}")
 
-        # Ищем слот с учетом типа (строка/число)
+        # Находим слоты
         actual_from_slot = None
+        day_schedule = schedule.get(actual_from_day, {})
         for slot_key in day_schedule.keys():
             if str(slot_key).strip() == from_slot:
                 actual_from_slot = slot_key
                 break
 
-        if not actual_from_slot:
+        if actual_from_slot is None:
             print(f"⚠️ Слот {from_slot} не найден в дне {actual_from_day}")
             raise HTTPException(status_code=404, detail=f"Слот {from_slot} не найден")
 
@@ -478,15 +494,15 @@ def move_lesson(
         lessons_list = day_schedule[actual_from_slot]
         removed = False
 
-        print(f"🔍 Ищем урок для удаления: subject={req_subject}, grade={req_grade}")
-        print(f"📚 Уроков в слоте: {len(lessons_list)}")
+        print(f" Ищем урок для удаления: subject={req_subject}, grade={req_grade}")
+        print(f" Уроков в слоте: {len(lessons_list)}")
 
         new_lessons_list = []
         for l in lessons_list:
             l_subject = str(l.get('subject', '')).strip().lower()
             l_grade = str(l.get('grade', '')).strip()
 
-            print(f" Проверяем урок: subject={l_subject}, grade={l_grade}")
+            print(f"  Проверяем урок: subject={l_subject}, grade={l_grade}")
 
             is_same = (l_subject == req_subject and l_grade == req_grade)
 
@@ -505,31 +521,17 @@ def move_lesson(
         else:
             del day_schedule[actual_from_slot]
             print(f"🗑 Слот {actual_from_slot} удален (пустой)")
-            if not day_schedule:
-                del schedule[actual_from_day]
-                print(f"🗑 День {actual_from_day} удален (пустой)")
+            # ✅ НЕ удаляем день из расписания! Это ломает логику поиска to_day
+            print(f"ℹ️ День {actual_from_day} оставлен (может быть пустым)")
 
         # ✅ ПРОВЕРКА КОНФЛИКТОВ перед добавлением
-        # Проверяем, занят ли учитель в новом слоте
-        actual_to_day = None
-        for day_key in schedule.keys():
-            if day_key.strip().lower() == to_day.lower():
-                actual_to_day = day_key
-                break
+        to_day_schedule = schedule.get(actual_to_day, {})
 
-        if actual_to_day and actual_to_day in schedule:
-            to_day_schedule = schedule[actual_to_day]
-            actual_to_slot = None
-            for slot_key in to_day_schedule.keys():
-                if str(slot_key).strip() == to_slot:
-                    actual_to_slot = slot_key
-                    break
-
-            if actual_to_slot and actual_to_slot in to_day_schedule:
-                raise HTTPException(
-                    status_code=409,
-                    detail=f"Конфликт: {move_data['teacher']} уже занят в {to_day} на {to_slot} уроке"
-                )
+        if to_slot in to_day_schedule and to_day_schedule[to_slot]:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Конфликт: {move_data['teacher']} уже занят в {to_day} на {to_slot} уроке"
+            )
 
         # Проверяем, занят ли класс в новом слоте у ДРУГИХ учителей
         for t in teachers:
@@ -582,7 +584,7 @@ def move_lesson(
         # ✅ СОХРАНЯЕМ И ОБНОВЛЯЕМ
         timetable.data = data
         db.commit()
-        db.refresh(timetable)  # ✅ ВАЖНО: получаем актуальные данные из БД
+        db.refresh(timetable)
 
         print(f"✅ Перемещение завершено. Возвращаем данные.")
 
@@ -602,10 +604,10 @@ def move_lesson(
 # ============================================================
 @app.post("/timetables/{timetable_id}/update-topics")
 def update_lesson_topics(
-    timetable_id: int,
-    request: TopicsUpdateRequest,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+        timetable_id: int,
+        request: TopicsUpdateRequest,
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)
 ):
     """Массовое обновление тем уроков"""
     try:
@@ -647,8 +649,8 @@ def update_lesson_topics(
             # Обновляем тему у нужного урока
             for lesson in schedule[target_day][target_slot]:
                 is_match = (
-                    lesson.get('subject', '').strip().lower() == req_subject and
-                    str(lesson.get('grade', '')).strip() == req_grade
+                        lesson.get('subject', '').strip().lower() == req_subject and
+                        str(lesson.get('grade', '')).strip() == req_grade
                 )
                 if is_match:
                     lesson['topic'] = update.topic
@@ -679,10 +681,10 @@ def update_lesson_topics(
 # ============================================================
 @app.get("/timetables/{timetable_id}/export/topics-excel")
 def export_topics_excel(
-    timetable_id: int,
-    grade: str = Query(..., description="Класс для экспорта"),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+        timetable_id: int,
+        grade: str = Query(..., description="Класс для экспорта"),
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)
 ):
     """Экспорт тем уроков для конкретного класса в Excel"""
     try:
@@ -808,10 +810,10 @@ def export_topics_excel(
 # ============================================================
 @app.get("/timetables/{timetable_id}/export/excel")
 def export_excel(
-    timetable_id: int,
-    format: str = Query("classes", regex="^(teachers|classes)$"),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+        timetable_id: int,
+        format: str = Query("classes", regex="^(teachers|classes)$"),
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)
 ):
     timetable = db.query(SavedTimetable).filter(
         SavedTimetable.id == timetable_id,
@@ -845,10 +847,10 @@ def export_excel(
 # ============================================================
 @app.get("/timetables/{timetable_id}/export/pdf")
 def export_pdf(
-    timetable_id: int,
-    format: str = Query("teachers", regex="^(teachers|classes)$"),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+        timetable_id: int,
+        format: str = Query("teachers", regex="^(teachers|classes)$"),
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)
 ):
     timetable = db.query(SavedTimetable).filter(
         SavedTimetable.id == timetable_id,
