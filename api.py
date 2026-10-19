@@ -284,7 +284,7 @@ def get_timetable(timetable_id: int, current_user: User = Depends(get_current_us
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Ошибка получения расписания {timetable_id}: {e}")
+        print(f" Ошибка получения расписания {timetable_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Ошибка: {str(e)}")
 
 
