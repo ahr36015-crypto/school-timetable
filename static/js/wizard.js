@@ -13,7 +13,7 @@ async function goToStep(step) {
     document.querySelectorAll('.wizard-step')[step-1].classList.add('active');
     currentStep = step;
 
-    console.log(`🔄 Переход на шаг ${step}`);
+    console.log(` Переход на шаг ${step}`);
 
     // Инициализация шагов
     if (step === 2) {
@@ -156,7 +156,7 @@ function renderTeachers() {
             </div>
             <div id="subjects-dropdown-${i}" class="subjects-dropdown-list" style="display:none; position:absolute; top:100%; left:0; right:0; background:white; border:1px solid #ddd; border-radius:4px; max-height:200px; overflow-y:auto; z-index:100; box-shadow:0 4px 6px rgba(0,0,0,0.1); margin-top:2px;">
                 ${schoolData.subjects.map(s => `
-                    <label style="display:block; padding:5px 10px; cursor:pointer; hover:bg-gray-50;" onmouseover="this.style.background='#f0f4ff'" onmouseout="this.style.background='transparent'">
+                    <label style="display:block; padding:5px 10px; cursor:pointer;" onmouseover="this.style.background='#f0f4ff'" onmouseout="this.style.background='transparent'">
                         <input type="checkbox" value="${s.name}" ${t.subjects.includes(s.name) ? 'checked' : ''} onchange="updateTeacherSubjects(${i}, this)">
                         ${s.name} <small style="color:#666">(${s.category})</small>
                     </label>
@@ -173,7 +173,12 @@ function renderTeachers() {
                        style="width:100%; padding:4px; border:1px solid #ddd; border-radius:4px;">
             </td>
             <td>${subjectsDropdownHtml}</td>
-            <td><button class="small danger" onclick="removeTeacher(${i})">️</button></td>
+            <td>
+                <!-- ✅ ИСПРАВЛЕННАЯ КНОПКА УДАЛЕНИЯ С ИКОНКОЙ -->
+                <button class="small danger" onclick="removeTeacher(${i})" title="Удалить учителя">
+                    🗑️
+                </button>
+            </td>
         </tr>`;
     }).join('');
 }
@@ -456,7 +461,7 @@ function applyTimeTemplate() {
     if (slots.length === 0) { alert(`❌ В диапазоне ${startTime} - ${endTime} не найдено уроков.`); return; }
 
     if (schoolData.availability[name] && Object.keys(schoolData.availability[name]).length > 0) {
-        if (!confirm(`️ У учителя "${name}" уже есть настройки. Новые значения ПОЛНОСТЬЮ ЗАМЕНЯТ старые. Продолжить?`)) return;
+        if (!confirm(`⚠️ У учителя "${name}" уже есть настройки. Новые значения ПОЛНОСТЬЮ ЗАМЕНЯТ старые. Продолжить?`)) return;
     }
 
     schoolData.availability[name] = {};
@@ -590,7 +595,7 @@ async function generateTimetable() {
     } catch(e) {
         document.getElementById('progressOverlay').classList.remove('active');
         err.textContent = 'Ошибка: ' + e.message; err.classList.add('show');
-    } finally { btn.disabled = false; btn.textContent = '🎯 Сгенерировать расписание'; }
+    } finally { btn.disabled = false; btn.textContent = ' Сгенерировать расписание'; }
 }
 
 // ✅ ФИНАЛЬНАЯ ВЕРСИЯ ФУНКЦИИ ОТРИСОВКИ (СТРОГО ПО ШАБЛОНУ EXCEL)
@@ -698,7 +703,7 @@ async function loadSavedTimetables() {
                         <button class="small primary" onclick="window.loadSavedTimetable(${t.id})">👁️ Открыть</button>
                         <button class="small outline" onclick="window.downloadSavedPDF(${t.id}, 'teachers')">PDF (уч.)</button>
                         <button class="small outline" onclick="window.downloadSavedPDF(${t.id}, 'classes')">PDF (кл.)</button>
-                        <button class="small danger" onclick="window.deleteSavedTimetable(${t.id})">🗑️</button>
+                        <button class="small danger" onclick="window.deleteSavedTimetable(${t.id})">️</button>
                     </div>
                 </div>
             `).join('');
