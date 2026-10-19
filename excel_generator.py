@@ -1,213 +1,139 @@
+# excel_generator.py
+import io
 from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from openpyxl.utils import get_column_letter
-from datetime import datetime
+from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 
 
-def generate_teachers_excel(result_dict, days, slots):
-    """Генерация Excel по учителям"""
+def generate_class_view_excel(data):
+    """
+    Генерирует Excel в формате "Сводная таблица по классам" (как на скриншоте).
+    """
     wb = Workbook()
-    wb.remove(wb.active)  # Удаляем пустой лист по умолчанию
+    ws = wb.active
+    ws.title = "Расписание занятий"
 
     # Стили
-    header_font = Font(name='Arial', size=11, bold=True, color='FFFFFF')
-    header_fill = PatternFill(start_color='667eea', end_color='667eea', fill_type='solid')
-    day_font = Font(name='Arial', size=10, bold=True)
-    cell_font = Font(name='Arial', size=9)
-    title_font = Font(name='Arial', size=14, bold=True)
+    header_font = Font(bold=True, size=11, color="FFFFFF")
+    param_font = Font(bold=True, size=10, color="800080")  # Фиолетовый для параметров
+    center_align = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    left_align = Alignment(horizontal='left', vertical='center')
+
+    purple_fill = PatternFill(start_color="9B59B6", end_color="9B59B6", fill_type="solid")
+    white_fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
 
     thin_border = Border(
-        left=Side(style='thin'),
-        right=Side(style='thin'),
-        top=Side(style='thin'),
-        bottom=Side(style='thin')
+        left=Side(style='thin'), right=Side(style='thin'),
+        top=Side(style='thin'), bottom=Side(style='thin')
     )
 
-    center_alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
-    left_alignment = Alignment(horizontal='left', vertical='center', wrap_text=True)
+    # 1. Собираем все уникальные классы
+    all_grades = set()
+    for teacher in data.get('teachers', []):
+        for day_schedule in teacher.get('schedule', {}).values():
+            for slot_lessons in day_schedule.values():
+                for lesson in slot_lessons:
+                    if 'grade' in lesson:
+                        all_grades.add(str(lesson['grade']))
 
-    for teacher in result_dict['teachers']:
-        ws = wb.create_sheet(title=teacher['teacher'][:31])  # Excel ограничивает имя листа 31 символом
+    sorted_grades = sorted(list(all_grades))
+    if not sorted_grades:
+        ws.append(["Нет данных о классах"])
+        return wb
 
-        # Заголовок
-        ws.merge_cells('A1:H1')
-        title_cell = ws['A1']
-        title_cell.value = f'Учитель: {teacher["teacher"]} ({teacher["total_lessons"]} уроков)'
-        title_cell.font = title_font
-        ws.row_dimensions[1].height = 25
+    days = data.get('days', ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница'])
+    slots = data.get('slots', [1, 2, 3, 4, 5, 6, 7])
+    times = data.get('lessonTimes', [])
 
-        # Подзаголовок с датой
-        ws.merge_cells('A2:H2')
-        date_cell = ws['A2']
-        date_cell.value = f'Сгенерировано: {datetime.now().strftime("%d.%m.%Y %H:%M")}'
-        date_cell.font = Font(name='Arial', size=9, italic=True)
-        ws.row_dimensions[2].height = 20
+    current_row = 1
 
-        # Пустая строка
-        ws.row_dimensions[3].height = 10
+    # --- ЗАГОЛОВОК ТАБЛИЦЫ ---
+    # Пустая ячейка左上角
+    ws.cell(row=current_row, column=1).value = ""
 
-        # Заголовки таблицы
-        header_row = 4
-        ws.cell(row=header_row, column=1, value='День').font = header_font
-        ws.cell(row=header_row, column=1).fill = header_fill
-        ws.cell(row=header_row, column=1).alignment = center_alignment
-        ws.cell(row=header_row, column=1).border = thin_border
+    # Заголовки классов (1 класс, 2 класс...)
+    for col_idx, grade in enumerate(sorted_grades, start=2):
+        cell = ws.cell(row=current_row, column=col_idx, value=f"{grade} класс")
+        cell.font = header_font
+        cell.fill = purple_fill
+        cell.alignment = center_align
+        cell.border = thin_border
 
-        for col_idx, slot in enumerate(slots, start=2):
-            cell = ws.cell(row=header_row, column=col_idx, value=f'Урок {slot}')
-            cell.font = header_font
-            cell.fill = header_fill
-            cell.alignment = center_alignment
-            cell.border = thin_border
+    current_row += 1
 
-        ws.row_dimensions[header_row].height = 25
+    # --- ЦИКЛ ПО ДНЯМ И УРОКАМ ---
+    for day in days:
+        for slot_idx, slot in enumerate(slots):
+            time_str = times[slot_idx] if slot_idx < len(times) else f"Урок {slot}"
 
-        # Данные
-        for row_idx, day in enumerate(days, start=header_row + 1):
-            # День недели
-            day_cell = ws.cell(row=row_idx, column=1, value=day)
-            day_cell.font = day_font
-            day_cell.alignment = center_alignment
-            day_cell.border = thin_border
+            # Блок параметров (строки)
+            params = [
+                ("Предмет", "subject"),
+                ("Преподаватель", "teacher"),
+                ("Кабинет", "classroom"),
+                ("Тема", "topic"),  # Если темы нет в данных, будет пусто
+            ]
 
-            # Уроки
-            for col_idx, slot in enumerate(slots, start=2):
-                slot_str = str(slot)
-                cell_text = ''
+            for p_idx, (param_name, param_key) in enumerate(params):
+                # Первая колонка: Название параметра (Предмет, Учитель...)
+                cell_param = ws.cell(row=current_row + p_idx, column=1, value=param_name)
+                cell_param.font = param_font
+                cell_param.alignment = center_align
+                cell_param.border = thin_border
 
-                if day in teacher['schedule'] and slot_str in teacher['schedule'][day]:
-                    lessons = teacher['schedule'][day][slot_str]
-                    parts = []
-                    for lesson in lessons:
-                        parts.append(f"{lesson['subject']}\n({lesson['grade']} кл)")
-                    cell_text = '\n'.join(parts)
+                # Остальные колонки: Значения для каждого класса
+                for col_idx, grade in enumerate(sorted_grades, start=2):
+                    val = "-"
+                    # Ищем урок
+                    for t in data.get('teachers', []):
+                        sched = t.get('schedule', {})
+                        if day in sched and str(slot) in sched[day]:
+                            for l in sched[day][str(slot)]:
+                                if str(l.get('grade')) == grade:
+                                    val = l.get(param_key, "-")
+                                    break
+                        if val != "-": break
 
-                cell = ws.cell(row=row_idx, column=col_idx, value=cell_text)
-                cell.font = cell_font
-                cell.alignment = center_alignment
-                cell.border = thin_border
+                    cell_val = ws.cell(row=current_row + p_idx, column=col_idx, value=val)
+                    cell_val.alignment = center_align
+                    cell_val.border = thin_border
 
-        # Настройка ширины столбцов
-        ws.column_dimensions['A'].width = 12
-        for col_idx in range(2, len(slots) + 2):
-            ws.column_dimensions[get_column_letter(col_idx)].width = 20
+            current_row += len(params)
 
-        # Настройка высоты строк
-        for row_idx in range(header_row + 1, header_row + 1 + len(days)):
-            ws.row_dimensions[row_idx].height = 40
+            # Строка "Вычитано" (Время)
+            cell_time_label = ws.cell(row=current_row, column=1, value="Вычитано")
+            cell_time_label.font = param_font
+            cell_time_label.alignment = center_align
+            cell_time_label.border = thin_border
 
-    return wb
+            # Объединяем ячейки времени или ставим в каждую? На скрине время одно на блок.
+            # Но обычно в таких таблицах время пишут в первой ячейке или объединяют.
+            # Сделаем объединение для красоты, как "9:00-9:40" на весь ряд.
+            ws.merge_cells(start_row=current_row, start_column=2, end_row=current_row,
+                           end_column=len(sorted_grades) + 1)
+            cell_time_val = ws.cell(row=current_row, column=2, value=time_str)
+            cell_time_val.alignment = center_align
+            cell_time_val.border = thin_border
 
+            current_row += 1
 
-def generate_classes_excel(result_dict, days, slots):
-    """Генерация Excel по классам"""
-    # Собираем расписание по классам
-    class_schedule = {}
-    for teacher in result_dict['teachers']:
-        for day, day_data in teacher['schedule'].items():
-            for slot_str, lessons in day_data.items():
-                for lesson in lessons:
-                    grade = lesson['grade']
-                    if grade not in class_schedule:
-                        class_schedule[grade] = {}
-                    if day not in class_schedule[grade]:
-                        class_schedule[grade][day] = {}
-                    slot = int(slot_str)
-                    if slot not in class_schedule[grade][day]:
-                        class_schedule[grade][day][slot] = []
-                    class_schedule[grade][day][slot].append({
-                        'subject': lesson['subject'],
-                        'teacher': lesson['teacher']
-                    })
+            # Разделитель (Перемена/Завтрак) - опционально, можно добавить логику
+            # Если это последний урок дня или нужен разрыв
+            # ws.cell(row=current_row, column=1, value="Перемена").font = param_font
+            # current_row += 1
 
-    wb = Workbook()
-    wb.remove(wb.active)
+        # Пустая строка между днями
+        current_row += 1
 
-    # Стили
-    header_font = Font(name='Arial', size=11, bold=True, color='FFFFFF')
-    header_fill = PatternFill(start_color='667eea', end_color='667eea', fill_type='solid')
-    day_font = Font(name='Arial', size=10, bold=True)
-    cell_font = Font(name='Arial', size=9)
-    title_font = Font(name='Arial', size=14, bold=True)
-
-    thin_border = Border(
-        left=Side(style='thin'),
-        right=Side(style='thin'),
-        top=Side(style='thin'),
-        bottom=Side(style='thin')
-    )
-
-    center_alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
-
-    grades = sorted(class_schedule.keys())
-
-    for grade in grades:
-        # Excel ограничивает имя листа 31 символом
-        sheet_name = f'{grade} класс'[:31]
-        ws = wb.create_sheet(title=sheet_name)
-
-        # Заголовок
-        ws.merge_cells('A1:H1')
-        title_cell = ws['A1']
-        title_cell.value = f'Класс: {grade}'
-        title_cell.font = title_font
-        ws.row_dimensions[1].height = 25
-
-        # Подзаголовок
-        ws.merge_cells('A2:H2')
-        date_cell = ws['A2']
-        date_cell.value = f'Сгенерировано: {datetime.now().strftime("%d.%m.%Y %H:%M")}'
-        date_cell.font = Font(name='Arial', size=9, italic=True)
-        ws.row_dimensions[2].height = 20
-
-        # Пустая строка
-        ws.row_dimensions[3].height = 10
-
-        # Заголовки таблицы
-        header_row = 4
-        ws.cell(row=header_row, column=1, value='День').font = header_font
-        ws.cell(row=header_row, column=1).fill = header_fill
-        ws.cell(row=header_row, column=1).alignment = center_alignment
-        ws.cell(row=header_row, column=1).border = thin_border
-
-        for col_idx, slot in enumerate(slots, start=2):
-            cell = ws.cell(row=header_row, column=col_idx, value=f'Урок {slot}')
-            cell.font = header_font
-            cell.fill = header_fill
-            cell.alignment = center_alignment
-            cell.border = thin_border
-
-        ws.row_dimensions[header_row].height = 25
-
-        # Данные
-        for row_idx, day in enumerate(days, start=header_row + 1):
-            day_cell = ws.cell(row=row_idx, column=1, value=day)
-            day_cell.font = day_font
-            day_cell.alignment = center_alignment
-            day_cell.border = thin_border
-
-            for col_idx, slot in enumerate(slots, start=2):
-                cell_text = ''
-
-                if day in class_schedule[grade] and slot in class_schedule[grade][day]:
-                    lessons = class_schedule[grade][day][slot]
-                    parts = []
-                    for lesson in lessons:
-                        parts.append(f"{lesson['subject']}\n({lesson['teacher']})")
-                    cell_text = '\n'.join(parts)
-
-                cell = ws.cell(row=row_idx, column=col_idx, value=cell_text)
-                cell.font = cell_font
-                cell.alignment = center_alignment
-                cell.border = thin_border
-
-        # Настройка ширины столбцов
-        ws.column_dimensions['A'].width = 12
-        for col_idx in range(2, len(slots) + 2):
-            ws.column_dimensions[get_column_letter(col_idx)].width = 25
-
-        # Настройка высоты строк
-        for row_idx in range(header_row + 1, header_row + 1 + len(days)):
-            ws.row_dimensions[row_idx].height = 45
+    # Автоширина
+    for col in ws.columns:
+        max_length = 0
+        col_letter = col[0].column_letter
+        for cell in col:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        ws.column_dimensions[col_letter].width = max(min(max_length + 2, 50), 10)
 
     return wb
