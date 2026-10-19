@@ -1,59 +1,48 @@
-// static/js/wizard.js
-
-// --- Навигация по мастеру ---
-async function goToStep(step) {
-    document.querySelectorAll('.wizard-content').forEach(c => c.classList.remove('active'));
-    document.querySelectorAll('.wizard-step').forEach((s,i) => {
+//--- Навигация по мастеру---
+async function goToStep(step){
+    document.querySelectorAll('.wizard-content').forEach(c=> c.classList.remove('active'));
+    document.querySelectorAll('.wizard-step').forEach((s,i)=>{
         s.classList.remove('active');
-        if (i+1 < step) s.classList.add('completed');
+        if(i+1 < step) s.classList.add('completed');
         else s.classList.remove('completed');
     });
-
-    document.getElementById('step'+step).classList.add('active');
+    document.getElementById('step' + step).classList.add('active');
     document.querySelectorAll('.wizard-step')[step-1].classList.add('active');
     currentStep = step;
+    console.log(`Переход на шаг ${step}`);
 
-    console.log(` Переход на шаг ${step}`);
-
-    // Инициализация шагов
-    if (step === 2) {
+    if(step === 2){
         renderClasses();
         renderTeachers();
         renderSubjects();
         renderClassrooms();
     }
-    if (step === 3) {
+    if(step === 3){
         updateTeacherSelect();
         updateTeacherDatalist();
         renderAvailabilityGrid(document.getElementById('teacherSelect').value);
     }
-    if (step === 4) loadSavedTimetables();
+    if(step === 4) loadSavedTimetables();
 
-    // ✅ ЛОГИКА ДЛЯ ШАГА 5 (РЕДАКТОР)
-    if (step === 5) {
+    if(step === 5){
         console.log("🔍 Проверка данных для редактора...");
-
-        if (!currentResult || !currentResult.teachers || !currentTimetableId) {
-            console.warn("⚠️ Данные или ID отсутствуют. Загружаю последнее расписание...");
-
-            try {
-                const res = await fetch('/timetables', {
-                    headers: {'Authorization': 'Bearer ' + getToken()}
+        if(!currentResult || !currentResult.teachers || !currentTimetableId){
+            console.warn("⚠ Данные или ID отсутствуют. Загружаю последнее расписание...");
+            try{
+                const res = await fetch('/timetables',{
+                    headers:{'Authorization':'Bearer' + getToken()}
                 });
-
-                if (res.ok) {
+                if(res.ok){
                     const timetables = await res.json();
-                    if (timetables && timetables.length > 0) {
+                    if(timetables && timetables.length > 0){
                         const latest = timetables[0];
-                        console.log(` Загружаю ID: ${latest.id}`);
-
-                        const fullRes = await fetch(`/timetables/${latest.id}`, {
-                            headers: {'Authorization': 'Bearer ' + getToken()}
+                        console.log(`Загружаю ID: ${latest.id}`);
+                        const fullRes = await fetch(`/timetables/${latest.id}`,{
+                            headers:{'Authorization':'Bearer' + getToken()}
                         });
-
-                        if (fullRes.ok) {
+                        if(fullRes.ok){
                             const data = await fullRes.json();
-                            if (data && data.data) {
+                            if(data && data.data){
                                 currentResult = data.data;
                                 currentTimetableId = latest.id;
                                 console.log("✅ Данные и ID успешно восстановлены!");
@@ -65,14 +54,13 @@ async function goToStep(step) {
                         return;
                     }
                 }
-            } catch (e) {
+            } catch(e){
                 console.error("❌ Ошибка загрузки:", e);
                 alert('Не удалось загрузить расписание.');
                 return;
             }
         }
-
-        if (currentResult && currentResult.teachers && currentTimetableId) {
+        if(currentResult && currentResult.teachers && currentTimetableId){
             console.log("🎨 Рендеринг таблицы редактора...");
             updateEditorClassFilter();
             renderGlobalEditor();
@@ -83,154 +71,202 @@ async function goToStep(step) {
     }
 }
 
-function completeStep(step) {
-    if (step === 1) {
+function completeStep(step){
+    if(step === 1){
         schoolData.name = document.getElementById('schoolName').value;
         schoolData.days = parseInt(document.getElementById('daysPerWeek').value);
         schoolData.lessonsPerDay = parseInt(document.getElementById('lessonsPerDay').value);
         schoolData.lessonTimes = document.getElementById('lessonTimes').value.split(',').map(t => t.trim());
     }
-    saveSchoolData(); goToStep(step + 1);
+    saveSchoolData();
+    goToStep(step + 1);
 }
 
-// --- Справочники (Шаг 2) ---
-function showRefTab(tab) {
+//--- Справочники (Шаг 2) ---
+function showRefTab(tab){
     document.querySelectorAll('.reference-content').forEach(c => c.classList.remove('active'));
     document.querySelectorAll('.reference-tab').forEach(t => t.classList.remove('active'));
-    document.getElementById('ref-'+tab).classList.add('active');
+    document.getElementById('ref-' + tab).classList.add('active');
     event.target.classList.add('active');
-    if (tab === 'classes') renderClasses();
-    if (tab === 'teachers') renderTeachers();
-    if (tab === 'subjects') renderSubjects();
-    if (tab === 'classrooms') renderClassrooms();
+    if(tab === 'classes') renderClasses();
+    if(tab === 'teachers') renderTeachers();
+    if(tab === 'subjects') renderSubjects();
+    if(tab === 'classrooms') renderClassrooms();
 }
 
-function addClass() {
-    const name = document.getElementById('newClassName').value.trim(); const warning = document.getElementById('classDuplicateWarning');
-    if (!name) { alert('Введите название класса'); return; }
+function addClass(){
+    const name = document.getElementById('newClassName').value.trim();
+    const warning = document.getElementById('classDuplicateWarning');
+    if(!name){ alert('Введите название класса'); return; }
     const exists = schoolData.classes.some(c => c.name.toLowerCase() === name.toLowerCase());
-    if (exists) { warning.classList.add('show'); setTimeout(() => warning.classList.remove('show'), 3000); return; }
-    const match = name.match(/(\d+)([А-Яа-я]?)/);
-    schoolData.classes.push({name, grade: match?parseInt(match[1]):0, letter: match?match[2]:''});
-    renderClasses(); saveSchoolData(); document.getElementById('newClassName').value = '';
-}
-function renderClasses() { document.getElementById('classesTable').innerHTML = schoolData.classes.map((c,i) => `<tr><td>${c.name}</td><td>${c.grade}</td><td><button class="small danger" onclick="removeClass(${i})">🗑️ Удалить</button></td></tr>`).join(''); }
-function removeClass(i) { schoolData.classes.splice(i,1); renderClasses(); saveSchoolData(); }
-
-// ✅ ОБНОВЛЕННЫЕ УЧИТЕЛЯ: ПРОСТАЯ ФОРМА + РЕДАКТИРУЕМАЯ ТАБЛИЦА
-function addTeacher() {
-    const name = document.getElementById('newTeacherName').value.trim();
-    const warning = document.getElementById('teacherDuplicateWarning');
-
-    if (!name) { alert('Введите ФИО учителя'); return; }
-
-    const exists = schoolData.teachers.some(t => t.full_name.toLowerCase() === name.toLowerCase());
-    if (exists) {
-        if(warning) { warning.classList.add('show'); setTimeout(() => warning.classList.remove('show'), 3000); }
-        else alert('Такой учитель уже существует!');
+    if(exists){
+        if(warning){
+            warning.classList.add('show');
+            setTimeout(()=> warning.classList.remove('show'), 3000);
+        }
         return;
     }
+    const match = name.match(/(\d+)([А-Яа-я]?)/);
+    schoolData.classes.push({
+        name,
+        grade: match ? parseInt(match[1]) : 0,
+        letter: match ? match[2] : ''
+    });
+    renderClasses();
+    saveSchoolData();
+    document.getElementById('newClassName').value = '';
+}
 
-    // Добавляем учителя без предметов и email (они добавятся в таблице)
+function renderClasses(){
+    document.getElementById('classesTable').innerHTML = schoolData.classes.map((c,i)=>
+        `<tr><td>${c.name}</td><td>${c.grade}</td><td><button class="small danger" onclick="removeClass(${i})">🗑 Удалить</button></td></tr>`
+    ).join('');
+}
+
+function removeClass(i){
+    schoolData.classes.splice(i,1);
+    renderClasses();
+    saveSchoolData();
+}
+
+// ✅ УЧИТЕЛЯ: простая форма + редактируемая таблица + НОВЫЙ DROPDOWN
+function addTeacher(){
+    const name = document.getElementById('newTeacherName').value.trim();
+    const warning = document.getElementById('teacherDuplicateWarning');
+    if(!name){ alert('Введите ФИО учителя'); return; }
+    const exists = schoolData.teachers.some(t => t.full_name.toLowerCase() === name.toLowerCase());
+    if(exists){
+        if(warning){
+            warning.classList.add('show');
+            setTimeout(()=> warning.classList.remove('show'), 3000);
+        } else {
+            alert('Такой учитель уже существует!');
+        }
+        return;
+    }
     schoolData.teachers.push({
         full_name: name,
         email: '',
         subjects: []
     });
-
     renderTeachers();
     saveSchoolData();
     document.getElementById('newTeacherName').value = '';
     updateTeacherDatalist();
 }
 
-function renderTeachers() {
+/* ---------- Вспомогательные для SubjectsDropdown ---------- */
+
+function sdEscapeAttr(value){
+    return String(value).replace(/[&<>"']/g, c => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[c]));
+}
+
+function sdSubjectName(s){
+    return typeof s === 'string' ? s : (s?.name || s?.title || '');
+}
+
+/** Каталог предметов: справочник + уже назначенные учителям. */
+function getSubjectCatalog(){
+    const names = new Set();
+    const catalog = schoolData.subjects || [];
+    catalog.forEach(s => {
+        const name = sdSubjectName(s);
+        if(name) names.add(name);
+    });
+    (schoolData.teachers || []).forEach(t => {
+        (t.subjects || []).forEach(s => {
+            const name = sdSubjectName(s);
+            if(name) names.add(name);
+        });
+    });
+    return [...names].sort((a,b) => a.localeCompare(b, 'ru'));
+}
+
+/** HTML кнопки в колонке «Предметы». */
+function subjectsButtonHtml(teacher, teacherIndex){
+    const chosen = (teacher.subjects || []).map(sdSubjectName).filter(Boolean);
+    const title = chosen.join(', ') || 'Предметы не выбраны';
+    let inner = 'Не выбраны';
+    if(chosen.length){
+        inner = sdEscapeAttr(chosen[0]);
+        if(chosen.length > 1){
+            inner += ` <span class="subjects-more">+${chosen.length - 1}</span>`;
+        }
+    }
+    return `
+        <button type="button"
+                class="subjects-toggle ${chosen.length ? 'has-subjects' : ''}"
+                data-subjects-toggle
+                data-teacher-id="${sdEscapeAttr(teacherIndex)}"
+                aria-haspopup="true"
+                aria-expanded="false"
+                title="${sdEscapeAttr(title)}">
+            <span class="subjects-toggle-text">${inner}</span>
+            <span class="subjects-caret" aria-hidden="true">▾</span>
+        </button>
+    `;
+}
+
+/* ---------- Рендер таблицы учителей ---------- */
+
+function renderTeachers(){
     const tbody = document.getElementById('teachersTable');
-    if (!tbody) return;
+    if(!tbody) return;
 
     tbody.innerHTML = schoolData.teachers.map((t, i) => {
-        // Генерируем HTML для выпадающего списка предметов с чекбоксами
-        let subjectsDropdownHtml = `<div class="subjects-dropdown-wrapper" style="position:relative;">
-            <div class="subjects-display" onclick="toggleSubjectsDropdown(${i})" style="border:1px solid #ddd; padding:5px; border-radius:4px; cursor:pointer; background:white; min-height:20px;">
-                ${t.subjects && t.subjects.length > 0 ? t.subjects.join(', ') : '<span style="color:#999">Выбрать предметы...</span>'}
-            </div>
-            <div id="subjects-dropdown-${i}" class="subjects-dropdown-list" style="display:none; position:absolute; top:100%; left:0; right:0; background:white; border:1px solid #ddd; border-radius:4px; max-height:200px; overflow-y:auto; z-index:100; box-shadow:0 4px 6px rgba(0,0,0,0.1); margin-top:2px;">
-                ${schoolData.subjects.map(s => `
-                    <label style="display:block; padding:5px 10px; cursor:pointer;" onmouseover="this.style.background='#f0f4ff'" onmouseout="this.style.background='transparent'">
-                        <input type="checkbox" value="${s.name}" ${t.subjects.includes(s.name) ? 'checked' : ''} onchange="updateTeacherSubjects(${i}, this)">
-                        ${s.name} <small style="color:#666">(${s.category})</small>
-                    </label>
-                `).join('')}
-            </div>
-        </div>`;
-
         return `<tr>
             <td style="font-weight:500;">${t.full_name}</td>
             <td>
                 <input type="email" value="${t.email || ''}"
                        onchange="updateTeacherEmail(${i}, this.value)"
                        placeholder="email@school.ru"
-                       style="width:100%; padding:4px; border:1px solid #ddd; border-radius:4px;">
+                       style="width:100%;padding:4px;border:1px solid #ddd;border-radius:4px;">
             </td>
-            <td>${subjectsDropdownHtml}</td>
+            <td class="subjects-cell">${subjectsButtonHtml(t, i)}</td>
             <td>
-                <!-- ✅ ИСПРАВЛЕННАЯ КНОПКА УДАЛЕНИЯ С ИКОНКОЙ -->
-                <button class="small danger" onclick="removeTeacher(${i})" title="Удалить учителя">
-                    🗑️
-                </button>
+                <button class="small danger" onclick="removeTeacher(${i})" title="Удалить учителя">🗑</button>
             </td>
         </tr>`;
     }).join('');
 }
 
-// Функции для работы с таблицей учителей
-function toggleSubjectsDropdown(teacherIndex) {
-    // Закрываем все остальные дропдауны
-    document.querySelectorAll('.subjects-dropdown-list').forEach(el => el.style.display = 'none');
+/* ---------- Обновление предметов учителя (новая версия) ---------- */
 
-    // Открываем/закрываем текущий
-    const dropdown = document.getElementById(`subjects-dropdown-${teacherIndex}`);
-    if (dropdown) {
-        dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
-    }
-}
-
-function updateTeacherSubjects(teacherIndex, checkbox) {
-    const subjectName = checkbox.value;
+function updateTeacherSubjects(teacherIndex, subjectsArray){
     const teacher = schoolData.teachers[teacherIndex];
-
-    if (checkbox.checked) {
-        if (!teacher.subjects.includes(subjectName)) {
-            teacher.subjects.push(subjectName);
-        }
-    } else {
-        teacher.subjects = teacher.subjects.filter(s => s !== subjectName);
-    }
-
+    if(!teacher) return;
+    teacher.subjects = subjectsArray;
     saveSchoolData();
-    renderTeachers(); // Перерисовываем, чтобы обновить отображение выбранных предметов
-
-    // Восстанавливаем фокус на дропдаун (немного хак, но работает)
-    setTimeout(() => {
-        const dropdown = document.getElementById(`subjects-dropdown-${teacherIndex}`);
-        if (dropdown) dropdown.style.display = 'block';
-    }, 10);
+    // Таблица НЕ перерисовывается — SubjectsDropdown сам обновит текст кнопки.
 }
 
-function updateTeacherEmail(teacherIndex, newEmail) {
+function updateTeacherEmail(teacherIndex, newEmail){
     schoolData.teachers[teacherIndex].email = newEmail;
     saveSchoolData();
 }
 
-// Закрытие дропдаунов при клике вне их
-document.addEventListener('click', function(e) {
-    if (!e.target.closest('.subjects-dropdown-wrapper')) {
-        document.querySelectorAll('.subjects-dropdown-list').forEach(el => el.style.display = 'none');
-    }
+/* ---------- Делегированный обработчик клика по кнопке предметов ---------- */
+
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-subjects-toggle]');
+    if(!btn) return;
+
+    const teacherIndex = parseInt(btn.dataset.teacherId, 10);
+    const teacher = (schoolData.teachers || [])[teacherIndex];
+    if(!teacher) return;
+
+    SubjectsDropdown.open(btn, {
+        teacherId: teacherIndex,
+        items: getSubjectCatalog(),
+        selected: (teacher.subjects || []).map(sdSubjectName).filter(Boolean),
+        onChange: (values) => updateTeacherSubjects(teacherIndex, values)
+    });
 });
 
-function removeTeacher(i) {
-    if(confirm('Удалить учителя?')) {
+function removeTeacher(i){
+    if(confirm('Удалить учителя?')){
         schoolData.teachers.splice(i,1);
         renderTeachers();
         saveSchoolData();
@@ -238,158 +274,233 @@ function removeTeacher(i) {
     }
 }
 
-// ✅ ОБНОВЛЕННЫЕ ПРЕДМЕТЫ С КАТЕГОРИЯМИ
-function addSubject() {
+// ✅ ПРЕДМЕТЫ С КАТЕГОРИЯМИ
+function addSubject(){
     const name = document.getElementById('newSubjectName').value.trim();
     const category = document.getElementById('newSubjectCategory').value;
     const warning = document.getElementById('subjectDuplicateWarning');
-
-    if (!name) { alert('Введите название предмета'); return; }
+    if(!name){ alert('Введите название предмета'); return; }
     const exists = schoolData.subjects.some(s => s.name.toLowerCase() === name.toLowerCase());
-    if (exists) { warning.classList.add('show'); setTimeout(() => warning.classList.remove('show'), 3000); return; }
-
-    schoolData.subjects.push({name, category});
+    if(exists){
+        if(warning){
+            warning.classList.add('show');
+            setTimeout(()=> warning.classList.remove('show'), 3000);
+        }
+        return;
+    }
+    schoolData.subjects.push({ name, category });
     renderSubjects();
-    renderTeachers(); // Обновляем таблицу учителей, чтобы появились новые предметы в дропдаунах
+    renderTeachers(); // Обновляем таблицу учителей — кнопка пересоздастся с новым каталогом
     saveSchoolData();
     document.getElementById('newSubjectName').value = '';
 }
 
-function renderSubjects() {
-    document.getElementById('subjectsTable').innerHTML = schoolData.subjects.map((s,i) =>
+function renderSubjects(){
+    document.getElementById('subjectsTable').innerHTML = schoolData.subjects.map((s,i)=>
         `<tr>
             <td>${s.name}</td>
-            <td><span style="background:#eef; padding:2px 6px; border-radius:4px; font-size:12px;">${s.category || 'Основной'}</span></td>
-            <td><button class="small danger" onclick="removeSubject(${i})">🗑️ Удалить</button></td>
+            <td><span style="background:#eef;padding:2px 6px;border-radius:4px;font-size:12px;">${s.category || 'Основной'}</span></td>
+            <td><button class="small danger" onclick="removeSubject(${i})">🗑 Удалить</button></td>
         </tr>`
     ).join('');
 }
 
-function removeSubject(i) {
+function removeSubject(i){
     const subjectName = schoolData.subjects[i].name;
-    // Удаляем этот предмет из всех учителей
     schoolData.teachers.forEach(t => {
         t.subjects = t.subjects.filter(s => s !== subjectName);
     });
-
     schoolData.subjects.splice(i,1);
     renderSubjects();
-    renderTeachers(); // Обновляем таблицу учителей
+    renderTeachers();
     saveSchoolData();
 }
 
-function addClassroom() {
-    const number = document.getElementById('newClassroomNumber').value.trim(); const capacity = document.getElementById('newClassroomCapacity').value; const warning = document.getElementById('classroomDuplicateWarning');
-    if (!number) { alert('Введите номер кабинета'); return; }
+function addClassroom(){
+    const number = document.getElementById('newClassroomNumber').value.trim();
+    const capacity = document.getElementById('newClassroomCapacity').value;
+    const warning = document.getElementById('classroomDuplicateWarning');
+    if(!number){ alert('Введите номер кабинета'); return; }
     const exists = schoolData.classrooms.some(c => c.number.toLowerCase() === number.toLowerCase());
-    if (exists) { warning.classList.add('show'); setTimeout(() => warning.classList.remove('show'), 3000); return; }
-    schoolData.classrooms.push({number, capacity: capacity?parseInt(capacity):null}); renderClassrooms(); saveSchoolData();
-    document.getElementById('newClassroomNumber').value = ''; document.getElementById('newClassroomCapacity').value = '';
-}
-function renderClassrooms() { document.getElementById('classroomsTable').innerHTML = schoolData.classrooms.map((c,i) => `<tr><td>${c.number}</td><td>${c.capacity||'-'}</td><td><button class="small danger" onclick="removeClassroom(${i})">🗑️ Удалить</button></td></tr>`).join(''); }
-function removeClassroom(i) { schoolData.classrooms.splice(i,1); renderClassrooms(); saveSchoolData(); }
-
-function importFromExcel() {
-    alert('📥 Функция импорта из Excel:\n\nВ реальной версии здесь откроется диалог выбора файла.\nСейчас добавлены демонстрационные данные для теста.');
-    if(schoolData.teachers.length === 0) {
-        schoolData.teachers.push({full_name: "Иванова М.П.", email: "", subjects: []});
-        schoolData.teachers.push({full_name: "Петров С.С.", email: "", subjects: []});
-        renderTeachers(); updateTeacherDatalist();
+    if(exists){
+        if(warning){
+            warning.classList.add('show');
+            setTimeout(()=> warning.classList.remove('show'), 3000);
+        }
+        return;
     }
-    if(schoolData.subjects.length === 0) {
-        schoolData.subjects.push({name: "Математика", category: "Основной"});
-        schoolData.subjects.push({name: "Русский язык", category: "Основной"});
+    schoolData.classrooms.push({ number, capacity: capacity ? parseInt(capacity) : null });
+    renderClassrooms();
+    saveSchoolData();
+    document.getElementById('newClassroomNumber').value = '';
+    document.getElementById('newClassroomCapacity').value = '';
+}
+
+function renderClassrooms(){
+    document.getElementById('classroomsTable').innerHTML = schoolData.classrooms.map((c,i)=>
+        `<tr><td>${c.number}</td><td>${c.capacity || '-'}</td><td><button class="small danger" onclick="removeClassroom(${i})">🗑 Удалить</button></td></tr>`
+    ).join('');
+}
+
+function removeClassroom(i){
+    schoolData.classrooms.splice(i,1);
+    renderClassrooms();
+    saveSchoolData();
+}
+
+function importFromExcel(){
+    alert('📥 Функция импорта из Excel:\n\nВ реальной версии здесь откроется диалог выбора файла.\nСейчас добавлены демонстрационные данные для теста.');
+    if(schoolData.teachers.length === 0){
+        schoolData.teachers.push({full_name:"Иванова М.П.", email:"", subjects:[]});
+        schoolData.teachers.push({full_name:"Петров С.С.", email:"", subjects:[]});
+        renderTeachers();
+        updateTeacherDatalist();
+    }
+    if(schoolData.subjects.length === 0){
+        schoolData.subjects.push({name:"Математика", category:"Основной"});
+        schoolData.subjects.push({name:"Русский язык", category:"Основной"});
         renderSubjects();
     }
     saveSchoolData();
 }
 
-// --- Нагрузки и AI Шаблоны (Шаг 3) ---
-function updateTeacherSelect() {
+//--- Нагрузки и AI Шаблоны (Шаг 3) ---
+function updateTeacherSelect(){
     const select = document.getElementById('teacherSelect');
-    select.innerHTML = '<option value="">-- Выберите учителя --</option>' + schoolData.teachers.map(t => `<option value="${t.full_name}">${t.full_name}</option>`).join('');
+    select.innerHTML = '<option value="">-- Выберите учителя --</option>' +
+        schoolData.teachers.map(t => `<option value="${t.full_name}">${t.full_name}</option>`).join('');
 }
 
-function updateTeacherDatalist() {
+function updateTeacherDatalist(){
     const datalist = document.getElementById('teacherDatalist');
-    if (datalist) datalist.innerHTML = schoolData.teachers.map(t => `<option value="${t.full_name}">`).join('');
+    if(datalist) datalist.innerHTML = schoolData.teachers.map(t => `<option value="${t.full_name}">`).join('');
 }
 
-function loadTeacherCard() {
+function loadTeacherCard(){
     const teacher = document.getElementById('teacherSelect').value;
-    if (!teacher) { document.getElementById('teacherCard').style.display = 'none'; return; }
+    if(!teacher){
+        document.getElementById('teacherCard').style.display = 'none';
+        return;
+    }
     document.getElementById('teacherCard').style.display = 'block';
     document.getElementById('currentTeacherName').textContent = teacher;
-    renderWorkloads(teacher); renderAvailabilityGrid(teacher);
+    renderWorkloads(teacher);
+    renderAvailabilityGrid(teacher);
 }
 
-function renderWorkloads(teacher) {
+function renderWorkloads(teacher){
     const workloads = schoolData.workloads.filter(w => w.teacher === teacher);
-    document.getElementById('workloadList').innerHTML = workloads.map((w,i) => `
+    document.getElementById('workloadList').innerHTML = workloads.map((w,i)=>`
         <div class="workload-row">
             <div class="form-group autocomplete-wrapper">
                 <label for="subject-${i}">Предмет</label>
-                <input type="text" id="subject-${i}" class="workload-subject" value="${w.subject}" placeholder="Например: Математика" data-idx="${i}" data-field="subject" oninput="filterAutocomplete(this)" onfocus="showAutocomplete(this, 'subjects')">
+                <input type="text" id="subject-${i}" class="workload-subject" value="${w.subject}"
+                       placeholder="Например: Математика" data-idx="${i}" data-field="subject"
+                       oninput="filterAutocomplete(this)" onfocus="showAutocomplete(this, 'subjects')">
                 <div class="autocomplete-list" style="display:none"></div>
             </div>
             <div class="form-group autocomplete-wrapper">
                 <label for="grade-${i}">Класс</label>
-                <input type="text" id="grade-${i}" class="workload-grade" value="${w.grade}" placeholder="Например: 5А" data-idx="${i}" data-field="grade" oninput="filterAutocomplete(this)" onfocus="showAutocomplete(this, 'classes')">
+                <input type="text" id="grade-${i}" class="workload-grade" value="${w.grade}"
+                       placeholder="Например: 5А" data-idx="${i}" data-field="grade"
+                       oninput="filterAutocomplete(this)" onfocus="showAutocomplete(this, 'classes')">
                 <div class="autocomplete-list" style="display:none"></div>
             </div>
             <div class="form-group hours-group">
                 <label for="hours-${i}">Часы</label>
-                <input type="number" id="hours-${i}" class="workload-hours" value="${w.hours}" data-idx="${i}" data-field="hours" min="1" max="20" onchange="updateWorkloadFromInput(this)">
+                <input type="number" id="hours-${i}" class="workload-hours" value="${w.hours}"
+                       data-idx="${i}" data-field="hours" min="1" max="20"
+                       onchange="updateWorkloadFromInput(this)">
             </div>
-            <button class="small danger" onclick="removeWorkload(${i})">🗑️ Удалить</button>
+            <button class="small danger" onclick="removeWorkload(${i})">🗑 Удалить</button>
         </div>
     `).join('');
 }
 
-function showAutocomplete(input, type) {
+function showAutocomplete(input, type){
     const list = input.nextElementSibling;
-    const items = type === 'subjects' ? schoolData.subjects.map(s => s.name) : schoolData.classes.map(c => c.name);
+    const items = type === 'subjects'
+        ? schoolData.subjects.map(s => s.name)
+        : schoolData.classes.map(c => c.name);
     const value = input.value.toLowerCase();
     list.innerHTML = '';
     items.filter(item => item.toLowerCase().includes(value)).forEach(item => {
-        const div = document.createElement('div'); div.className = 'autocomplete-item'; div.textContent = item;
-        div.onclick = () => { input.value = item; list.style.display = 'none'; updateWorkloadFromInput(input); };
+        const div = document.createElement('div');
+        div.className = 'autocomplete-item';
+        div.textContent = item;
+        div.onclick = () => {
+            input.value = item;
+            list.style.display = 'none';
+            updateWorkloadFromInput(input);
+        };
         list.appendChild(div);
     });
-    if (list.children.length > 0) list.style.display = 'block';
+    if(list.children.length > 0) list.style.display = 'block';
 }
-function filterAutocomplete(input) { const list = input.nextElementSibling; if (list.style.display === 'block') showAutocomplete(input, input.classList.contains('workload-subject') ? 'subjects' : 'classes'); }
-function updateWorkloadFromInput(input) {
-    const idx = parseInt(input.dataset.idx); const field = input.dataset.field; const teacher = document.getElementById('teacherSelect').value;
-    const workloads = schoolData.workloads.filter(w => w.teacher === teacher);
-    if (workloads[idx]) { workloads[idx][field] = field === 'hours' ? parseInt(input.value) : input.value; saveSchoolData(); }
-}
-function addWorkload() { const teacher = document.getElementById('teacherSelect').value; if (!teacher) { alert('Сначала выберите учителя'); return; } schoolData.workloads.push({teacher, subject:'', grade:'', hours:1}); renderWorkloads(teacher); saveSchoolData(); }
-function updateWorkload(idx, field, value) { const teacher = document.getElementById('teacherSelect').value; const workloads = schoolData.workloads.filter(w => w.teacher === teacher); if (workloads[idx]) { workloads[idx][field] = field === 'hours' ? parseInt(value) : value; saveSchoolData(); } }
-function removeWorkload(idx) { const teacher = document.getElementById('teacherSelect').value; const workloads = schoolData.workloads.filter(w => w.teacher === teacher); const globalIdx = schoolData.workloads.indexOf(workloads[idx]); schoolData.workloads.splice(globalIdx, 1); renderWorkloads(teacher); saveSchoolData(); }
 
-function renderAvailabilityGrid(teacher) {
+function filterAutocomplete(input){
+    const list = input.nextElementSibling;
+    if(list.style.display === 'block')
+        showAutocomplete(input, input.classList.contains('workload-subject') ? 'subjects' : 'classes');
+}
+
+function updateWorkloadFromInput(input){
+    const idx = parseInt(input.dataset.idx);
+    const field = input.dataset.field;
+    const teacher = document.getElementById('teacherSelect').value;
+    const workloads = schoolData.workloads.filter(w => w.teacher === teacher);
+    if(workloads[idx]){
+        workloads[idx][field] = field === 'hours' ? parseInt(input.value) : input.value;
+        saveSchoolData();
+    }
+}
+
+function addWorkload(){
+    const teacher = document.getElementById('teacherSelect').value;
+    if(!teacher){ alert('Сначала выберите учителя'); return; }
+    schoolData.workloads.push({ teacher, subject:'', grade:'', hours:1 });
+    renderWorkloads(teacher);
+    saveSchoolData();
+}
+
+function updateWorkload(idx, field, value){
+    const teacher = document.getElementById('teacherSelect').value;
+    const workloads = schoolData.workloads.filter(w => w.teacher === teacher);
+    if(workloads[idx]){
+        workloads[idx][field] = field === 'hours' ? parseInt(value) : value;
+        saveSchoolData();
+    }
+}
+
+function removeWorkload(idx){
+    const teacher = document.getElementById('teacherSelect').value;
+    const workloads = schoolData.workloads.filter(w => w.teacher === teacher);
+    const globalIdx = schoolData.workloads.indexOf(workloads[idx]);
+    schoolData.workloads.splice(globalIdx, 1);
+    renderWorkloads(teacher);
+    saveSchoolData();
+}
+
+function renderAvailabilityGrid(teacher){
     if(!teacher) return;
-    const days = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"];
+    const days = ["Понедельник","Вторник","Среда","Четверг","Пятница"];
     const slots = Array.from({length: schoolData.lessonsPerDay}, (_, i) => i+1);
     const times = schoolData.lessonTimes;
-
-    if (!schoolData.availability[teacher]) {
+    if(!schoolData.availability[teacher]){
         schoolData.availability[teacher] = {};
         days.forEach(d => schoolData.availability[teacher][d] = [...slots]);
     }
-
     let html = '<div class="availability-cell header"></div>';
     slots.forEach((s, index) => {
         const timeStr = times[index] ? `<div class="time-label">${times[index]}</div>` : '';
         html += `<div class="availability-cell header">Урок ${s}${timeStr}</div>`;
     });
-
     days.forEach(day => {
         html += `<div class="availability-cell header">${day}</div>`;
         slots.forEach((slot, index) => {
             const isAvailable = schoolData.availability[teacher][day].includes(slot);
-            html += `<div class="availability-cell ${isAvailable?'available':'unavailable'}" onclick="toggleAvailability('${teacher}','${day}',${slot})">
+            html += `<div class="availability-cell ${isAvailable ? 'available' : 'unavailable'}"
+                          onclick="toggleAvailability('${teacher}', '${day}', ${slot})">
                         <span>${slot}</span>
                      </div>`;
         });
@@ -397,26 +508,30 @@ function renderAvailabilityGrid(teacher) {
     document.getElementById('availabilityGrid').innerHTML = html;
 }
 
-function toggleAvailability(teacher, day, slot) {
+function toggleAvailability(teacher, day, slot){
     const idx = schoolData.availability[teacher][day].indexOf(slot);
-    if (idx > -1) schoolData.availability[teacher][day].splice(idx, 1); else schoolData.availability[teacher][day].push(slot);
-    renderAvailabilityGrid(teacher); saveSchoolData();
+    if(idx > -1) schoolData.availability[teacher][day].splice(idx, 1);
+    else schoolData.availability[teacher][day].push(slot);
+    renderAvailabilityGrid(teacher);
+    saveSchoolData();
 }
 
 // Логика шаблонов
-function selectTemplate(card, type) {
+function selectTemplate(card, type){
     document.querySelectorAll('.template-card').forEach(c => c.classList.remove('selected'));
     card.classList.add('selected');
 }
 
-function getSelectedDays(selector) {
-    return Array.from(document.querySelectorAll(selector)).filter(cb => cb.checked).map(cb => cb.value);
+function getSelectedDays(selector){
+    return Array.from(document.querySelectorAll(selector))
+        .filter(cb => cb.checked)
+        .map(cb => cb.value);
 }
 
-function ensureTeacherExists(name) {
-    if (!name) { alert('Введите ФИО учителя'); return false; }
-    if (!schoolData.teachers.find(t => t.full_name.toLowerCase() === name.toLowerCase())) {
-        schoolData.teachers.push({full_name: name, email: '', subjects: []});
+function ensureTeacherExists(name){
+    if(!name){ alert('Введите ФИО учителя'); return false; }
+    if(!schoolData.teachers.find(t => t.full_name.toLowerCase() === name.toLowerCase())){
+        schoolData.teachers.push({ full_name: name, email:'', subjects:[] });
         renderTeachers();
         updateTeacherSelect();
         updateTeacherDatalist();
@@ -424,101 +539,98 @@ function ensureTeacherExists(name) {
     return true;
 }
 
-function refreshTeacherCard(name) {
+function refreshTeacherCard(name){
     const select = document.getElementById('teacherSelect');
     select.value = name;
     loadTeacherCard();
 }
 
-function applyTimeTemplate() {
+function applyTimeTemplate(){
     const name = document.getElementById('tmpl_name').value.trim();
-    if (!ensureTeacherExists(name)) return;
-
+    if(!ensureTeacherExists(name)) return;
     const days = getSelectedDays('.tmpl-day');
-    if (days.length === 0) { alert('⚠️ Выберите хотя бы один день недели! \nБез выбранных дней учитель будет полностью недоступен.'); return; }
-
+    if(days.length === 0){
+        alert('⚠ Выберите хотя бы один день недели!\nБез выбранных дней учитель будет полностью недоступен.');
+        return;
+    }
     const startTime = document.getElementById('tmpl_start').value;
     const endTime = document.getElementById('tmpl_end').value;
-
     const lessonTimes = schoolData.lessonTimes;
-    if (!lessonTimes || lessonTimes.length === 0) { alert('❗ Сначала заполните сетку времени на Шаге 1!'); return; }
-
+    if(!lessonTimes || lessonTimes.length === 0){
+        alert('❗ Сначала заполните сетку времени на Шаге 1!');
+        return;
+    }
     const startParts = startTime.split(':');
     const endParts = endTime.split(':');
     const startMin = parseInt(startParts[0])*60 + parseInt(startParts[1]);
     const endMin = parseInt(endParts[0])*60 + parseInt(endParts[1]);
-
     const slots = [];
     lessonTimes.forEach((timeRange, i) => {
         const parts = timeRange.split('-');
-        if (parts.length !== 2) return;
-        const ls = parts[0].split(':'); const le = parts[1].split(':');
+        if(parts.length !== 2) return;
+        const ls = parts[0].split(':');
+        const le = parts[1].split(':');
         const lStart = parseInt(ls[0])*60 + parseInt(ls[1]);
         const lEnd = parseInt(le[0])*60 + parseInt(le[1]);
-        if (lStart >= startMin && lEnd <= endMin) slots.push(i+1);
+        if(lStart >= startMin && lEnd <= endMin) slots.push(i+1);
     });
-
-    if (slots.length === 0) { alert(`❌ В диапазоне ${startTime} - ${endTime} не найдено уроков.`); return; }
-
-    if (schoolData.availability[name] && Object.keys(schoolData.availability[name]).length > 0) {
-        if (!confirm(`⚠️ У учителя "${name}" уже есть настройки. Новые значения ПОЛНОСТЬЮ ЗАМЕНЯТ старые. Продолжить?`)) return;
+    if(slots.length === 0){
+        alert(`❌ В диапазоне ${startTime}-${endTime} не найдено уроков.`);
+        return;
     }
-
+    if(schoolData.availability[name] && Object.keys(schoolData.availability[name]).length > 0){
+        if(!confirm(`⚠ У учителя "${name}" уже есть настройки. Новые значения ПОЛНОСТЬЮ ЗАМЕНЯТ старые. Продолжить?`))
+            return;
+    }
     schoolData.availability[name] = {};
-    const allDays = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
+    const allDays = ["Понедельник","Вторник","Среда","Четверг","Пятница","Суббота"];
     days.forEach(day => { schoolData.availability[name][day] = [...slots]; });
-    allDays.forEach(day => { if (!days.includes(day)) schoolData.availability[name][day] = []; });
-
-    saveSchoolData(); refreshTeacherCard(name);
+    allDays.forEach(day => { if(!days.includes(day)) schoolData.availability[name][day] = []; });
+    saveSchoolData();
+    refreshTeacherCard(name);
     alert(`✅ Доступность применена для ${name}: ${days.join(', ')} — уроки ${slots.join(', ')}`);
 }
 
-function applyDaysTemplate() {
+function applyDaysTemplate(){
     const name = document.getElementById('tmpl_name2').value.trim();
-    if (!ensureTeacherExists(name)) return;
+    if(!ensureTeacherExists(name)) return;
     const days = getSelectedDays('.tmpl-day2');
-    if (days.length === 0) { alert('⚠️ Выберите хотя бы один день!'); return; }
-
+    if(days.length === 0){ alert('⚠ Выберите хотя бы один день!'); return; }
     const allSlots = Array.from({length: schoolData.lessonsPerDay}, (_, i) => i+1);
-    const allDays = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
-
-    if (schoolData.availability[name] && Object.keys(schoolData.availability[name]).length > 0) {
-        if (!confirm(`⚠️ У учителя "${name}" уже есть настройки. Заменить?`)) return;
+    const allDays = ["Понедельник","Вторник","Среда","Четверг","Пятница","Суббота"];
+    if(schoolData.availability[name] && Object.keys(schoolData.availability[name]).length > 0){
+        if(!confirm(`⚠ У учителя "${name}" уже есть настройки. Заменить?`)) return;
     }
-
     schoolData.availability[name] = {};
     days.forEach(day => { schoolData.availability[name][day] = [...allSlots]; });
-    allDays.forEach(day => { if (!days.includes(day)) schoolData.availability[name][day] = []; });
-
-    saveSchoolData(); refreshTeacherCard(name);
+    allDays.forEach(day => { if(!days.includes(day)) schoolData.availability[name][day] = []; });
+    saveSchoolData();
+    refreshTeacherCard(name);
     alert(`✅ Дни применены для ${name}`);
 }
 
-function applyExcludeTemplate() {
+function applyExcludeTemplate(){
     const name = document.getElementById('tmpl_name3').value.trim();
-    if (!ensureTeacherExists(name)) return;
+    if(!ensureTeacherExists(name)) return;
     const excludedDays = getSelectedDays('.tmpl-day3');
-    if (excludedDays.length === 0) { alert('⚠️ Выберите дни для исключения!'); return; }
-
-    const allDays = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
+    if(excludedDays.length === 0){ alert('⚠ Выберите дни для исключения!'); return; }
+    const allDays = ["Понедельник","Вторник","Среда","Четверг","Пятница","Суббота"];
     const workingDays = allDays.filter(d => !excludedDays.includes(d));
     const allSlots = Array.from({length: schoolData.lessonsPerDay}, (_, i) => i+1);
-
-    if (schoolData.availability[name] && Object.keys(schoolData.availability[name]).length > 0) {
-        if (!confirm(`⚠️ У учителя "${name}" уже есть настройки. Заменить?`)) return;
+    if(schoolData.availability[name] && Object.keys(schoolData.availability[name]).length > 0){
+        if(!confirm(`⚠ У учителя "${name}" уже есть настройки. Заменить?`)) return;
     }
-
     schoolData.availability[name] = {};
     workingDays.forEach(day => { schoolData.availability[name][day] = [...allSlots]; });
     excludedDays.forEach(day => { schoolData.availability[name][day] = []; });
-
-    saveSchoolData(); refreshTeacherCard(name);
+    saveSchoolData();
+    refreshTeacherCard(name);
     alert(`✅ Исключения применены для ${name}`);
 }
 
-// --- Генерация (Шаг 4) ---
-async function generateTimetable() {
-    if (!checkAuth()) return;
+//--- Генерация (Шаг 4) ---
+async function generateTimetable(){
+    if(!checkAuth()) return;
     const err = document.getElementById('genError');
     const succ = document.getElementById('genSuccess');
     const btn = document.getElementById('generateBtn');
@@ -526,85 +638,114 @@ async function generateTimetable() {
     const teachers = {};
     schoolData.teachers.forEach(t => {
         const workloads = schoolData.workloads.filter(w => w.teacher === t.full_name);
-        if (workloads.length === 0) return;
+        if(workloads.length === 0) return;
         teachers[t.full_name] = {
-            lessons: workloads.map(w => ({subject: w.subject, grade: w.grade, hours: w.hours})),
+            lessons: workloads.map(w => ({ subject: w.subject, grade: w.grade, hours: w.hours })),
             availability: schoolData.availability[t.full_name] || {},
             max_days_per_week: 5
         };
     });
 
-    if (Object.keys(teachers).length === 0) { err.textContent = 'Добавьте учителей с предметами'; err.classList.add('show'); return; }
+    if(Object.keys(teachers).length === 0){
+        err.textContent = 'Добавьте учителей с предметами';
+        err.classList.add('show');
+        return;
+    }
 
-    const days = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"].slice(0, schoolData.days);
+    const days = ["Понедельник","Вторник","Среда","Четверг","Пятница"].slice(0, schoolData.days);
     const slots = Array.from({length: schoolData.lessonsPerDay}, (_, i) => i+1);
     const requestData = { days, slots, teachers };
 
-    err.classList.remove('show'); succ.classList.remove('show');
-    btn.disabled = true; btn.textContent = '⏳ Генерация...';
+    err.classList.remove('show');
+    succ.classList.remove('show');
+    btn.disabled = true;
+    btn.textContent = '⏳ Генерация...';
     document.getElementById('progressOverlay').classList.add('active');
 
     try {
-        let attempts = 0; let success = false; let data;
-        while (attempts < 3 && !success) {
+        let attempts = 0;
+        let success = false;
+        let data;
+        while(attempts < 3 && !success){
             try {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 120000);
-                const res = await fetch('/generate', {
-                    method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken()},
-                    body: JSON.stringify(requestData), signal: controller.signal
+                const res = await fetch('/generate',{
+                    method:'POST',
+                    headers:{
+                        'Content-Type':'application/json',
+                        'Authorization':'Bearer' + getToken()
+                    },
+                    body: JSON.stringify(requestData),
+                    signal: controller.signal
                 });
                 clearTimeout(timeoutId);
-                if (!res.ok) throw new Error(`Ошибка ${res.status}`);
-                data = await res.json(); success = true;
-            } catch (e) {
+                if(!res.ok) throw new Error(`Ошибка ${res.status}`);
+                data = await res.json();
+                success = true;
+            } catch(e){
                 attempts++;
-                if (attempts >= 3) throw e;
+                if(attempts >= 3) throw e;
                 await new Promise(r => setTimeout(r, 2000));
             }
         }
 
         document.getElementById('progressOverlay').classList.remove('active');
-        if (data.status === 'INVALID' || (data.validation_errors && data.validation_errors.length > 0)) {
+
+        if(data.status === 'INVALID' || (data.validation_errors && data.validation_errors.length > 0)){
             err.textContent = data.errors ? data.errors.join('; ') : data.validation_errors.join('; ');
-            err.classList.add('show'); return;
+            err.classList.add('show');
+            return;
         }
 
-        attempts = 0; let fullData;
-        while (attempts < 3) {
+        attempts = 0;
+        let fullData;
+        while(attempts < 3){
             try {
-                const fullRes = await fetch('/timetables/' + data.id, { headers: {'Authorization': 'Bearer ' + getToken()} });
-                if (!fullRes.ok) throw new Error('Ошибка загрузки');
-                fullData = await fullRes.json(); break;
-            } catch (e) { attempts++; if (attempts >= 3) throw e; await new Promise(r => setTimeout(r, 2000)); }
+                const fullRes = await fetch('/timetables/' + data.id,{
+                    headers:{ 'Authorization':'Bearer' + getToken() }
+                });
+                if(!fullRes.ok) throw new Error('Ошибка загрузки');
+                fullData = await fullRes.json();
+                break;
+            } catch(e){
+                attempts++;
+                if(attempts >= 3) throw e;
+                await new Promise(r => setTimeout(r, 2000));
+            }
         }
 
-        if (!fullData || !fullData.data) throw new Error('Нет данных');
+        if(!fullData || !fullData.data) throw new Error('Нет данных');
 
-        currentResult = fullData.data; currentTimetableId = data.id;
+        currentResult = fullData.data;
+        currentTimetableId = data.id;
+
         document.getElementById('statTeachers').textContent = currentResult.teachers.length;
         const totalLessons = currentResult.teachers.reduce((sum, t) => sum + t.total_lessons, 0);
         document.getElementById('statLessons').textContent = totalLessons;
-        document.getElementById('statTime').textContent = currentResult.solution_time.toFixed(2) + 'с';
+        document.getElementById('statTime').textContent = currentResult.solution_time.toFixed(2) + ' с';
         document.getElementById('statStatus').textContent = currentResult.status;
-
         document.getElementById('resultsSection').classList.add('active');
-        succ.textContent = '✅ Расписание составлено!'; succ.classList.add('show');
-        renderSchedule(); loadSavedTimetables();
-
-    } catch(e) {
+        succ.textContent = '✅ Расписание составлено!';
+        succ.classList.add('show');
+        renderSchedule();
+        loadSavedTimetables();
+    } catch(e){
         document.getElementById('progressOverlay').classList.remove('active');
-        err.textContent = 'Ошибка: ' + e.message; err.classList.add('show');
-    } finally { btn.disabled = false; btn.textContent = ' Сгенерировать расписание'; }
+        err.textContent = 'Ошибка: ' + e.message;
+        err.classList.add('show');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Сгенерировать расписание';
+    }
 }
 
-// ✅ ФИНАЛЬНАЯ ВЕРСИЯ ФУНКЦИИ ОТРИСОВКИ (СТРОГО ПО ШАБЛОНУ EXCEL)
-function renderSchedule() {
-    if (!currentResult || !currentResult.teachers) {
+// ✅ ОТРИСОВКА РАСПИСАНИЯ (СТРОГО ПО ШАБЛОНУ EXCEL)
+function renderSchedule(){
+    if(!currentResult || !currentResult.teachers){
         document.getElementById('scheduleView').innerHTML = '<p>Нет данных</p>';
         return;
     }
-
     const container = document.getElementById('scheduleView');
     const allGrades = new Set();
     currentResult.teachers.forEach(t => {
@@ -615,161 +756,158 @@ function renderSchedule() {
         });
     });
     const sortedGrades = Array.from(allGrades).sort();
-    if (sortedGrades.length === 0) { container.innerHTML = '<p>Нет классов</p>'; return; }
+    if(sortedGrades.length === 0){ container.innerHTML = '<p>Нет классов</p>'; return; }
 
-    const days = currentResult.days || ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"];
-    const slots = currentResult.slots || [1, 2, 3, 4, 5, 6, 7];
+    const days = currentResult.days || ["Понедельник","Вторник","Среда","Четверг","Пятница"];
+    const slots = currentResult.slots || [1,2,3,4,5,6,7];
     const times = schoolData.lessonTimes || [];
 
-    let html = '<div style="overflow-x:auto;"><table class="master-table" style="min-width:100%; border-collapse:collapse; font-size:13px;">';
-
-    // Заголовок
-    html += '<thead><tr><th style="background:#f8f9fa; width:120px;"></th><th style="background:#f8f9fa; width:80px;"></th>';
-    sortedGrades.forEach(g => html += `<th style="background:#9b59b6; color:white; padding:8px;">${g} кл</th>`);
+    let html = '<div style="overflow-x:auto;"><table class="master-table" style="min-width:100%;border-collapse:collapse;font-size:13px;">';
+    html += '<thead><tr><th style="background:#f8f9fa;width:120px;"></th><th style="background:#f8f9fa;width:80px;"></th>';
+    sortedGrades.forEach(g => html += `<th style="background:#9b59b6;color:white;padding:8px;">${g} кл</th>`);
     html += '</tr></thead><tbody>';
 
     days.forEach(day => {
-        html += `<tr><td colspan="${sortedGrades.length + 2}" style="background:#eee; font-weight:bold; text-align:center;">${day}</td></tr>`;
-
+        html += `<tr><td colspan="${sortedGrades.length + 2}" style="background:#eee;font-weight:bold;text-align:center;">${day}</td></tr>`;
         slots.forEach((slot, sIdx) => {
             const timeStr = times[sIdx] || `Урок ${slot}`;
             const lessonLabel = `Урок ${slot}`;
-
-            // 4 строки параметров
             const params = [
-                { label: "Предмет", key: "subject" },
-                { label: "Преподаватель", key: "teacher" },
-                { label: "Кабинет", key: "classroom" },
-                { label: "Тема", key: "topic" }
+                { label:"Предмет", key:"subject" },
+                { label:"Преподаватель", key:"teacher" },
+                { label:"Кабинет", key:"classroom" },
+                { label:"Тема", key:"topic" }
             ];
-
             params.forEach((p, idx) => {
                 html += `<tr>`;
-                // Колонка 1: Параметр
-                html += `<td style="font-weight:bold; color:#800080; text-align:center; border:1px solid #ddd;">${p.label}</td>`;
-
-                // Колонка 2: "Урок X" (объединяем 4 строки)
-                if (idx === 0) {
-                     html += `<td rowspan="4" style="font-weight:bold; text-align:center; vertical-align:middle; border:1px solid #ddd; background:#fafafa;">${lessonLabel}</td>`;
+                html += `<td style="font-weight:bold;color:#800080;text-align:center;border:1px solid #ddd;">${p.label}</td>`;
+                if(idx === 0){
+                    html += `<td rowspan="4" style="font-weight:bold;text-align:center;vertical-align:middle;border:1px solid #ddd;background:#fafafa;">${lessonLabel}</td>`;
                 }
-
-                // Колонки классов
                 sortedGrades.forEach(grade => {
                     let val = "-";
-                    for (const t of currentResult.teachers) {
+                    for(const t of currentResult.teachers){
                         const s = t.schedule?.[day]?.[String(slot)];
-                        if (s) {
+                        if(s){
                             const found = s.find(l => l.grade === grade);
-                            if (found) { val = found[p.key] || "-"; break; }
+                            if(found){ val = found[p.key] || "-"; break; }
                         }
                     }
-                    html += `<td style="border:1px solid #ddd; text-align:center;">${val}</td>`;
+                    html += `<td style="border:1px solid #ddd;text-align:center;">${val}</td>`;
                 });
                 html += `</tr>`;
             });
-
-            // 5-я строка: Вычитано (Время)
             html += `<tr>`;
-            html += `<td style="font-weight:bold; color:#800080; text-align:center; border:1px solid #ddd;">Вычитано</td>`;
-            // Здесь своя ячейка во 2-й колонке (не входит в rowspan выше)
-            html += `<td style="font-weight:bold; text-align:center; border:1px solid #ddd; background:#f0f0f0;">${timeStr}</td>`;
-
-            sortedGrades.forEach(() => html += `<td style="border:1px solid #ddd; text-align:center;">-</td>`);
+            html += `<td style="font-weight:bold;color:#800080;text-align:center;border:1px solid #ddd;">Вычитано</td>`;
+            html += `<td style="font-weight:bold;text-align:center;border:1px solid #ddd;background:#f0f0f0;">${timeStr}</td>`;
+            sortedGrades.forEach(() => html += `<td style="border:1px solid #ddd;text-align:center;">-</td>`);
             html += `</tr>`;
-
-            // Отступ между уроками
-            html += `<tr><td colspan="${sortedGrades.length + 2}" style="height:8px; border:none;"></td></tr>`;
+            html += `<tr><td colspan="${sortedGrades.length + 2}" style="height:8px;border:none;"></td></tr>`;
         });
     });
-
     html += '</tbody></table></div>';
     container.innerHTML = html;
 }
 
 // Сохраненные расписания
-async function loadSavedTimetables() {
-    if (!checkAuth()) return;
+async function loadSavedTimetables(){
+    if(!checkAuth()) return;
     const container = document.getElementById('savedTimetablesList');
-    if (!container) return;
+    if(!container) return;
     try {
-        const res = await fetch('/timetables', { headers: {'Authorization': 'Bearer ' + getToken()} });
-        if (!res.ok) throw new Error('Ошибка');
+        const res = await fetch('/timetables',{
+            headers:{ 'Authorization':'Bearer' + getToken() }
+        });
+        if(!res.ok) throw new Error('Ошибка');
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
+        if(Array.isArray(data) && data.length > 0){
             container.innerHTML = data.map(t => `
                 <div class="saved-timetable-item">
                     <div><h4>${t.name}</h4><p>${new Date(t.created_at).toLocaleString('ru-RU')}</p></div>
                     <div class="saved-timetable-actions">
-                        <button class="small primary" onclick="window.loadSavedTimetable(${t.id})">👁️ Открыть</button>
-                        <button class="small outline" onclick="window.downloadSavedPDF(${t.id}, 'teachers')">PDF (уч.)</button>
-                        <button class="small outline" onclick="window.downloadSavedPDF(${t.id}, 'classes')">PDF (кл.)</button>
-                        <button class="small danger" onclick="window.deleteSavedTimetable(${t.id})">️</button>
+                        <button class="small primary" onclick="window.loadSavedTimetable(${t.id})">👁 Открыть</button>
+                        <button class="small outline" onclick="window.downloadSavedPDF(${t.id},'teachers')">PDF (уч.)</button>
+                        <button class="small outline" onclick="window.downloadSavedPDF(${t.id},'classes')">PDF (кл.)</button>
+                        <button class="small danger" onclick="window.deleteSavedTimetable(${t.id})">🗑</button>
                     </div>
                 </div>
             `).join('');
-        } else container.innerHTML = '<p style="color:#999;text-align:center">Нет расписаний</p>';
-    } catch(e) { container.innerHTML = '<p style="color:#c33">Ошибка загрузки</p>'; }
+        } else {
+            container.innerHTML = '<p style="color:#999;text-align:center">Нет расписаний</p>';
+        }
+    } catch(e){
+        container.innerHTML = '<p style="color:#c33">Ошибка загрузки</p>';
+    }
 }
 
-window.loadSavedTimetable = async function(id) {
-    if (!checkAuth()) return;
+window.loadSavedTimetable = async function(id){
+    if(!checkAuth()) return;
     try {
-        const res = await fetch('/timetables/' + id, { headers: {'Authorization': 'Bearer ' + getToken()} });
+        const res = await fetch('/timetables/' + id,{
+            headers:{ 'Authorization':'Bearer' + getToken() }
+        });
         const data = await res.json();
-        if (res.ok && data.data) {
-            currentResult = data.data; currentTimetableId = id;
+        if(res.ok && data.data){
+            currentResult = data.data;
+            currentTimetableId = id;
             document.getElementById('statTeachers').textContent = currentResult.teachers.length;
-            document.getElementById('statLessons').textContent = currentResult.teachers.reduce((s,t)=>s+t.total_lessons,0);
-            document.getElementById('statTime').textContent = currentResult.solution_time.toFixed(2)+'с';
+            document.getElementById('statLessons').textContent =
+                currentResult.teachers.reduce((s,t) => s + t.total_lessons, 0);
+            document.getElementById('statTime').textContent = currentResult.solution_time.toFixed(2) + ' с';
             document.getElementById('statStatus').textContent = currentResult.status;
-            document.getElementById('resultsSection').classList.add('active'); renderSchedule();
+            document.getElementById('resultsSection').classList.add('active');
+            renderSchedule();
             alert('✅ Расписание загружено');
         } else alert('Ошибка');
-    } catch(e) { alert('Ошибка: '+e.message); }
+    } catch(e){ alert('Ошибка: ' + e.message); }
 };
 
-window.deleteSavedTimetable = async function(id) {
-    if (!checkAuth()) return; if (!confirm('Удалить?')) return;
+window.deleteSavedTimetable = async function(id){
+    if(!checkAuth()) return;
+    if(!confirm('Удалить?')) return;
     try {
-        const res = await fetch('/timetables/' + id, { method: 'DELETE', headers: {'Authorization': 'Bearer ' + getToken()} });
-        if (res.ok) { loadSavedTimetables(); alert('✅ Удалено'); }
+        const res = await fetch('/timetables/' + id,{
+            method:'DELETE',
+            headers:{ 'Authorization':'Bearer' + getToken() }
+        });
+        if(res.ok){ loadSavedTimetables(); alert('✅ Удалено'); }
         else alert('Ошибка');
-    } catch(e) { alert('Ошибка'); }
+    } catch(e){ alert('Ошибка'); }
 };
 
-window.downloadSavedPDF = async function(id, format) {
-    if (!checkAuth()) return;
+window.downloadSavedPDF = async function(id, format){
+    if(!checkAuth()) return;
     try {
-        const res = await fetch(`/timetables/${id}/export/pdf?format=${format}`, { headers: {'Authorization': 'Bearer ' + getToken()} });
-        if (!res.ok) throw new Error('Ошибка');
-        const blob = await res.blob(); const url = window.URL.createObjectURL(blob); const a = document.createElement('a');
-        a.href = url; a.download = `timetable_${id}.pdf`; document.body.appendChild(a); a.click();
-        window.URL.revokeObjectURL(url); document.body.removeChild(a);
-    } catch(e) { alert('Ошибка скачивания'); }
+        const res = await fetch(`/timetables/${id}/export/pdf?format=${format}`,{
+            headers:{ 'Authorization':'Bearer' + getToken() }
+        });
+        if(!res.ok) throw new Error('Ошибка');
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `timetable_${id}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+    } catch(e){ alert('Ошибка скачивания'); }
 };
 
-function downloadPDF(format) {
-    if (!currentTimetableId) { alert('Сначала сгенерируйте'); return; }
+function downloadPDF(format){
+    if(!currentTimetableId){ alert('Сначала сгенерируйте'); return; }
     window.downloadSavedPDF(currentTimetableId, format);
 }
 
-// ✅ РАБОЧАЯ ФУНКЦИЯ СКАЧИВАНИЯ EXCEL
-function downloadExcel(format) {
-    if (!currentTimetableId) {
-        alert('Сначала сгенерируйте расписание');
-        return;
-    }
-
+function downloadExcel(format){
+    if(!currentTimetableId){ alert('Сначала сгенерируйте расписание'); return; }
     const url = `/timetables/${currentTimetableId}/export/excel?format=${format}`;
-
-    fetch(url, {
-        headers: { 'Authorization': 'Bearer ' + getToken() }
-    })
-    .then(response => {
-        if (!response.ok) throw new Error('Ошибка сети');
+    fetch(url,{
+        headers:{ 'Authorization':'Bearer' + getToken() }
+    }).then(response => {
+        if(!response.ok) throw new Error('Ошибка сети');
         return response.blob();
-    })
-    .then(blob => {
+    }).then(blob => {
         const link = document.createElement('a');
         const url = window.URL.createObjectURL(blob);
         link.href = url;
@@ -778,8 +916,7 @@ function downloadExcel(format) {
         link.click();
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
-    })
-    .catch(err => {
+    }).catch(err => {
         console.error(err);
         alert('Не удалось скачать файл. Проверьте консоль.');
     });
