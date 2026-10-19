@@ -129,7 +129,7 @@
             <h2>⚙️ Шаг 3: Нагрузки</h2>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
                 <div>
-                    <h3> Классический ввод</h3>
+                    <h3>📋 Классический ввод</h3>
                     <div class="form-group"><label>Учитель</label><select id="teacherSelect" onchange="loadTeacherCard()"><option>-- Выберите --</option></select></div>
                     <div id="teacherCard" style="display:none">
                         <div class="teacher-info"><h4>👨‍🏫 <span id="currentTeacherName"></span></h4></div>
@@ -145,7 +145,7 @@
                     <datalist id="teacherDatalist"></datalist>
                     <div class="template-selector">
                         <div class="template-card" onclick="selectTemplate(this, 'time_range')">
-                            <h4>⏰ По времени</h4>
+                            <h4> По времени</h4>
                             <div class="template-fields">
                                 <input type="text" id="tmpl_name" list="teacherDatalist" placeholder="ФИО учителя">
                                 <div class="checkbox-group" style="margin:10px 0">
@@ -202,7 +202,7 @@
         <!-- Шаг 4: Генерация -->
         <div id="step4" class="wizard-content">
             <h2>🚀 Шаг 4: Генерация</h2>
-            <div style="text-align:center;padding:40px"><button id="generateBtn" onclick="generateTimetable()" style="font-size:20px;padding:20px 40px">🎯 Сгенерировать</button></div>
+            <div style="text-align:center;padding:40px"><button id="generateBtn" onclick="generateTimetable()" style="font-size:20px;padding:20px 40px"> Сгенерировать</button></div>
             <div id="genError" class="error"></div><div id="genSuccess" class="success"></div>
             <div id="resultsSection" class="results-section">
                 <div class="stats-grid">
@@ -240,7 +240,7 @@
 
         <!-- Шаг 6: Публикация -->
         <div id="step6" class="wizard-content">
-            <h2>📢 Шаг 6: Публикация</h2>
+            <h2> Шаг 6: Публикация</h2>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
                 <div class="stat-card"><h3>PDF</h3><button class="primary" onclick="downloadPDF('teachers')">По учителям</button><button class="primary" style="margin-top:10px" onclick="downloadPDF('classes')">По классам</button></div>
                 <div class="stat-card"><h3>Excel</h3><button class="primary" onclick="downloadExcel('teachers')">По учителям</button><button class="primary" style="margin-top:10px" onclick="downloadExcel('classes')">По классам</button></div>
