@@ -1,3 +1,14 @@
+// ============================================================
+// ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
+// ============================================================
+let currentEditorMode = 'editor';
+let topicsSaveTimeout = null;
+let pendingTopicUpdates = [];
+let saveIndicatorTimeout = null; // ← ЭТА СТРОКА БЫЛА ПРОПУЩЕНА!
+
+// ============================================================
+// НАВИГАЦИЯ ПО МАСТЕРУ
+// ============================================================
 async function goToStep(step) {
     document.querySelectorAll('.wizard-content').forEach(c => c.classList.remove('active'));
     document.querySelectorAll('.wizard-step').forEach((s, i) => {
@@ -27,9 +38,9 @@ async function goToStep(step) {
     if (step === 4) loadSavedTimetables();
 
     if (step === 5) {
-        console.log(" Проверка данных для редактора...");
+        console.log("🔍 Проверка данных для редактора...");
         if (!currentResult || !currentResult.teachers || !currentTimetableId) {
-            console.warn(" Данные или ID отсутствуют. Загружаю последнее расписание...");
+            console.warn("⚠ Данные или ID отсутствуют. Загружаю последнее расписание...");
             try {
                 const res = await fetch('/timetables', {
                     headers: { 'Authorization': 'Bearer ' + getToken() }
@@ -57,7 +68,7 @@ async function goToStep(step) {
                     }
                 }
             } catch (e) {
-                console.error(" Ошибка загрузки:", e);
+                console.error("❌ Ошибка загрузки:", e);
                 alert('Не удалось загрузить расписание.');
                 return;
             }
@@ -88,6 +99,24 @@ function completeStep(step) {
     goToStep(step + 1);
 }
 
+function restoreStep1Fields() {
+    if (!schoolData) return;
+    const nameField = document.getElementById('schoolName');
+    const daysField = document.getElementById('daysPerWeek');
+    const lessonsField = document.getElementById('lessonsPerDay');
+    const timesField = document.getElementById('lessonTimes');
+
+    if (nameField && schoolData.name) nameField.value = schoolData.name;
+    if (daysField && schoolData.days) daysField.value = schoolData.days;
+    if (lessonsField && schoolData.lessonsPerDay) lessonsField.value = schoolData.lessonsPerDay;
+    if (timesField && schoolData.lessonTimes && schoolData.lessonTimes.length > 0) {
+        timesField.value = schoolData.lessonTimes.join(', ');
+    }
+}
+
+// ============================================================
+// СПРАВОЧНИКИ (ШАГ 2)
+// ============================================================
 function showRefTab(tab) {
     document.querySelectorAll('.reference-content').forEach(c => c.classList.remove('active'));
     document.querySelectorAll('.reference-tab').forEach(t => t.classList.remove('active'));
@@ -134,6 +163,9 @@ function removeClass(i) {
     saveSchoolData();
 }
 
+// ============================================================
+// УЧИТЕЛЯ
+// ============================================================
 function addTeacher() {
     const name = document.getElementById('newTeacherName').value.trim();
     const warning = document.getElementById('teacherDuplicateWarning');
@@ -223,7 +255,7 @@ function renderTeachers() {
             </td>
             <td class="subjects-cell">${subjectsButtonHtml(t, i)}</td>
             <td>
-                <button class="small danger" onclick="removeTeacher(${i})" title="Удалить учителя"></button>
+                <button class="small danger" onclick="removeTeacher(${i})" title="Удалить учителя">🗑</button>
             </td>
         </tr>`;
     }).join('');
@@ -264,6 +296,9 @@ function removeTeacher(i) {
     }
 }
 
+// ============================================================
+// ПРЕДМЕТЫ
+// ============================================================
 function addSubject() {
     const name = document.getElementById('newSubjectName').value.trim();
     const category = document.getElementById('newSubjectCategory').value;
@@ -305,6 +340,9 @@ function removeSubject(i) {
     saveSchoolData();
 }
 
+// ============================================================
+// КАБИНЕТЫ
+// ============================================================
 function addClassroom() {
     const number = document.getElementById('newClassroomNumber').value.trim();
     const capacity = document.getElementById('newClassroomCapacity').value;
@@ -353,6 +391,9 @@ function importFromExcel() {
     saveSchoolData();
 }
 
+// ============================================================
+// НАГРУЗКИ И ШАБЛОНЫ (ШАГ 3)
+// ============================================================
 function updateTeacherSelect() {
     const select = document.getElementById('teacherSelect');
     select.innerHTML = '<option value="">-- Выберите учителя --</option>' +
@@ -582,11 +623,11 @@ function applyDaysTemplate() {
     const name = document.getElementById('tmpl_name2').value.trim();
     if (!ensureTeacherExists(name)) return;
     const days = getSelectedDays('.tmpl-day2');
-    if (days.length === 0) { alert('⚠ Выберите хотя бы один день!'); return; }
+    if (days.length === 0) { alert(' Выберите хотя бы один день!'); return; }
     const allSlots = Array.from({ length: schoolData.lessonsPerDay }, (_, i) => i + 1);
     const allDays = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
     if (schoolData.availability[name] && Object.keys(schoolData.availability[name]).length > 0) {
-        if (!confirm(` У учителя "${name}" уже есть настройки. Заменить?`)) return;
+        if (!confirm(`⚠ У учителя "${name}" уже есть настройки. Заменить?`)) return;
     }
     schoolData.availability[name] = {};
     days.forEach(day => { schoolData.availability[name][day] = [...allSlots]; });
@@ -615,6 +656,9 @@ function applyExcludeTemplate() {
     alert(`✅ Исключения применены для ${name}`);
 }
 
+// ============================================================
+// ГЕНЕРАЦИЯ (ШАГ 4)
+// ============================================================
 async function generateTimetable() {
     if (!checkAuth()) return;
     const err = document.getElementById('genError');
@@ -794,6 +838,9 @@ function renderSchedule() {
     container.innerHTML = html;
 }
 
+// ============================================================
+// СОХРАНЁННЫЕ РАСПИСАНИЯ
+// ============================================================
 async function loadSavedTimetables() {
     if (!checkAuth()) return;
     const container = document.getElementById('savedTimetablesList');
@@ -809,7 +856,7 @@ async function loadSavedTimetables() {
                 <div class="saved-timetable-item">
                     <div><h4>${t.name}</h4><p>${new Date(t.created_at).toLocaleString('ru-RU')}</p></div>
                     <div class="saved-timetable-actions">
-                        <button class="small primary" onclick="window.loadSavedTimetable(${t.id})"> Открыть</button>
+                        <button class="small primary" onclick="window.loadSavedTimetable(${t.id})">👁 Открыть</button>
                         <button class="small outline" onclick="window.downloadSavedPDF(${t.id},'teachers')">PDF (уч.)</button>
                         <button class="small outline" onclick="window.downloadSavedPDF(${t.id},'classes')">PDF (кл.)</button>
                         <button class="small danger" onclick="window.deleteSavedTimetable(${t.id})">🗑</button>
@@ -906,9 +953,9 @@ function downloadExcel(format) {
     });
 }
 
-let currentEditorMode = 'editor';
-let topicsSaveTimeout = null;
-let pendingTopicUpdates = [];
+// ============================================================
+// РЕДАКТОР ТЕМ (ВАРИАНТ В)
+// ============================================================
 
 function switchEditorMode(mode) {
     currentEditorMode = mode;
@@ -968,7 +1015,7 @@ function renderTopicsEditor() {
     if (!filterGrade) {
         container.innerHTML = `
             <div style="padding:30px;text-align:center;background:#fff3cd;border-radius:8px;color:#856404">
-                <h3>⚠ Выберите класс</h3>
+                <h3> Выберите класс</h3>
                 <p>Для редактирования тем необходимо выбрать конкретный класс в фильтре выше.</p>
             </div>
         `;
@@ -1025,7 +1072,7 @@ function renderTopicsEditor() {
                     <div class="topic-lesson-info">
                         <div class="topic-subject">${escapeHtml(lesson.subject)}</div>
                         <div class="topic-teacher">${escapeHtml(lesson.teacherShort)}</div>
-                        <div class="topic-classroom">${lesson.classroom ? '🚪 ' + escapeHtml(lesson.classroom) : ''}</div>
+                        <div class="topic-classroom">${lesson.classroom ? ' ' + escapeHtml(lesson.classroom) : ''}</div>
                     </div>
                     <input type="text"
                            class="topic-input"
@@ -1060,7 +1107,7 @@ function onTopicBlur(input) {
     pendingTopicUpdates.push({
         teacher, subject, grade, day, slot, topic
     });
-    showTopicsSaveIndicator('⏳ Сохранение...');
+    showTopicsSaveIndicator('⏳ Сохранение...', 'saving');
     clearTimeout(topicsSaveTimeout);
     topicsSaveTimeout = setTimeout(() => {
         flushTopicUpdates();
@@ -1084,7 +1131,7 @@ async function flushTopicUpdates() {
     const updatesToSend = [...pendingTopicUpdates];
     pendingTopicUpdates = [];
     if (!currentTimetableId) {
-        showTopicsSaveIndicator('❌ Ошибка: нет ID расписания');
+        showTopicsSaveIndicator('❌ Ошибка: нет ID расписания', 'error');
         return;
     }
     try {
@@ -1101,47 +1148,41 @@ async function flushTopicUpdates() {
             if (result.data) {
                 currentResult = result.data;
             }
-            showTopicsSaveIndicator(`✅ Сохранено (${result.updated_count} тем)`);
+            showTopicsSaveIndicator(`✅ Сохранено (${result.updated_count} тем)`, 'success');
             setTimeout(() => {
                 const indicator = document.getElementById('topicsSaveIndicator');
-                if (indicator) indicator.textContent = '';
-            }, 2000);
+                if (indicator) indicator.classList.remove('show');
+            }, 2500);
         } else {
             const error = await response.json();
-            showTopicsSaveIndicator('❌ Ошибка: ' + (error.detail || 'неизвестно'));
+            showTopicsSaveIndicator('❌ Ошибка: ' + (error.detail || 'неизвестно'), 'error');
         }
     } catch (error) {
         console.error('Ошибка сохранения тем:', error);
-        showTopicsSaveIndicator('❌ Ошибка сети');
+        showTopicsSaveIndicator('❌ Ошибка сети', 'error');
     }
 }
-
-flet saveIndicatorTimeout = null;
 
 function showTopicsSaveIndicator(text, type = 'success') {
     const indicator = document.getElementById('topicsSaveIndicator');
     if (!indicator) return;
 
-    // Очищаем предыдущий таймер
     if (saveIndicatorTimeout) {
         clearTimeout(saveIndicatorTimeout);
     }
 
-    // Устанавливаем иконку и текст
     const iconEl = indicator.querySelector('.save-indicator-icon');
     const textEl = indicator.querySelector('.save-indicator-text');
 
     if (iconEl) {
-        iconEl.textContent = type === 'success' ? '✓' : type === 'saving' ? '' : '✗';
+        iconEl.textContent = type === 'success' ? '✓' : type === 'saving' ? '⏳' : '✗';
     }
     if (textEl) {
         textEl.textContent = text;
     }
 
-    // Устанавливаем класс состояния
     indicator.className = `save-indicator show ${type}`;
 
-    // Автоматически скрываем через 2.5 секунды (кроме ошибок)
     if (type !== 'error') {
         saveIndicatorTimeout = setTimeout(() => {
             indicator.classList.remove('show');
