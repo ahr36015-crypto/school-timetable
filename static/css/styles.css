@@ -416,3 +416,14 @@ button.add-btn { margin-top: 10px; padding: 12px 24px; background: linear-gradie
 .drop-zone[title] {
     cursor: pointer;
 }
+/* Подсказки к шагам */
+.step-hint {
+    color: #666;
+    font-size: 14px;
+    margin-top: -10px;
+    margin-bottom: 20px;
+    font-style: italic;
+    padding-left: 5px;
+    border-left: 3px solid #667eea;
+    padding-left: 10px;
+}
