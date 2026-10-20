@@ -437,3 +437,114 @@ button.add-btn { margin-top: 10px; padding: 12px 24px; background: linear-gradie
     font-style: italic;
     line-height: 1.4;
 }
+/* Стили таблицы редактора как на Шаге 4 */
+.global-table {
+    border-collapse: collapse;
+    font-size: 12px;
+    width: 100%;
+}
+
+.global-table th {
+    background: #9b59b6;
+    color: white;
+    padding: 8px;
+    font-weight: 600;
+    text-align: center;
+    border: 1px solid #ddd;
+}
+
+.global-table td {
+    border: 1px solid #ddd;
+    padding: 6px;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.global-table .teacher-header {
+    background: #f0f4ff;
+    font-weight: bold;
+    text-align: left;
+    padding-left: 15px;
+    width: 200px;
+    position: sticky;
+    left: 0;
+    z-index: 11;
+    border: 1px solid #ddd;
+}
+
+.global-table .day-subheader {
+    background: #eef2ff;
+    font-size: 11px;
+    color: #666;
+    text-align: center;
+    padding: 6px;
+    border: 1px solid #ddd;
+}
+
+.global-table th[colspan] {
+    background: #9b59b6;
+    color: white;
+    font-size: 13px;
+    padding: 10px;
+}
+
+/* Уроки в редакторе */
+.lesson-chip {
+    background: white;
+    border: 1px solid #667eea;
+    border-radius: 4px;
+    padding: 4px 6px;
+    margin: 2px;
+    font-size: 11px;
+    cursor: grab;
+    transition: all 0.2s;
+    text-align: left;
+    display: inline-block;
+}
+
+.lesson-chip:hover {
+    background: #f0f4ff;
+    transform: scale(1.02);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.lesson-chip:active {
+    cursor: grabbing;
+}
+
+.lesson-chip .subj {
+    font-weight: bold;
+    color: #333;
+    display: block;
+    margin-bottom: 2px;
+}
+
+.lesson-chip .meta {
+    color: #666;
+    font-size: 10px;
+    display: block;
+}
+
+/* Зоны для перетаскивания */
+.drop-zone {
+    min-height: 40px;
+    transition: background 0.2s, border 0.2s;
+    position: relative;
+}
+
+.drop-zone.drag-over-valid {
+    background-color: #d1fae5 !important;
+    border: 2px dashed #10b981 !important;
+    box-shadow: inset 0 0 10px rgba(16, 185, 129, 0.2);
+}
+
+.drop-zone.drag-over-invalid {
+    background-color: #fee2e2 !important;
+    border: 2px dashed #ef4444 !important;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.drop-zone.drag-active {
+    background-color: #f8f9fa;
+}
