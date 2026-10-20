@@ -1,6 +1,3 @@
-// ============================================================
-// НАВИГАЦИЯ ПО МАСТЕРУ
-// ============================================================
 async function goToStep(step) {
     document.querySelectorAll('.wizard-content').forEach(c => c.classList.remove('active'));
     document.querySelectorAll('.wizard-step').forEach((s, i) => {
@@ -13,6 +10,9 @@ async function goToStep(step) {
     currentStep = step;
     console.log(`Переход на шаг ${step}`);
 
+    if (step === 1) {
+        restoreStep1Fields();
+    }
     if (step === 2) {
         renderClasses();
         renderTeachers();
@@ -27,9 +27,9 @@ async function goToStep(step) {
     if (step === 4) loadSavedTimetables();
 
     if (step === 5) {
-        console.log("🔍 Проверка данных для редактора...");
+        console.log(" Проверка данных для редактора...");
         if (!currentResult || !currentResult.teachers || !currentTimetableId) {
-            console.warn("⚠ Данные или ID отсутствуют. Загружаю последнее расписание...");
+            console.warn(" Данные или ID отсутствуют. Загружаю последнее расписание...");
             try {
                 const res = await fetch('/timetables', {
                     headers: { 'Authorization': 'Bearer ' + getToken() }
@@ -57,7 +57,7 @@ async function goToStep(step) {
                     }
                 }
             } catch (e) {
-                console.error("❌ Ошибка загрузки:", e);
+                console.error(" Ошибка загрузки:", e);
                 alert('Не удалось загрузить расписание.');
                 return;
             }
@@ -65,7 +65,6 @@ async function goToStep(step) {
         if (currentResult && currentResult.teachers && currentTimetableId) {
             console.log("🎨 Рендеринг таблицы редактора...");
             updateEditorClassFilter();
-            // По умолчанию показываем режим, который был выбран
             if (currentEditorMode === 'topics') {
                 renderTopicsEditor();
             } else {
@@ -89,9 +88,6 @@ function completeStep(step) {
     goToStep(step + 1);
 }
 
-// ============================================================
-// СПРАВОЧНИКИ (ШАГ 2)
-// ============================================================
 function showRefTab(tab) {
     document.querySelectorAll('.reference-content').forEach(c => c.classList.remove('active'));
     document.querySelectorAll('.reference-tab').forEach(t => t.classList.remove('active'));
@@ -138,9 +134,6 @@ function removeClass(i) {
     saveSchoolData();
 }
 
-// ============================================================
-// УЧИТЕЛЯ
-// ============================================================
 function addTeacher() {
     const name = document.getElementById('newTeacherName').value.trim();
     const warning = document.getElementById('teacherDuplicateWarning');
@@ -166,7 +159,6 @@ function addTeacher() {
     updateTeacherDatalist();
 }
 
-/* ---------- Вспомогательные для SubjectsDropdown ---------- */
 function sdEscapeAttr(value) {
     return String(value).replace(/[&<>"']/g, c => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -212,7 +204,7 @@ function subjectsButtonHtml(teacher, teacherIndex) {
                 aria-expanded="false"
                 title="${sdEscapeAttr(title)}">
             <span class="subjects-toggle-text">${inner}</span>
-            <span class="subjects-caret" aria-hidden="true"></span>
+            <span class="subjects-caret" aria-hidden="true">▾</span>
         </button>
     `;
 }
@@ -231,7 +223,7 @@ function renderTeachers() {
             </td>
             <td class="subjects-cell">${subjectsButtonHtml(t, i)}</td>
             <td>
-                <button class="small danger" onclick="removeTeacher(${i})" title="Удалить учителя">🗑</button>
+                <button class="small danger" onclick="removeTeacher(${i})" title="Удалить учителя"></button>
             </td>
         </tr>`;
     }).join('');
@@ -272,9 +264,6 @@ function removeTeacher(i) {
     }
 }
 
-// ============================================================
-// ПРЕДМЕТЫ
-// ============================================================
 function addSubject() {
     const name = document.getElementById('newSubjectName').value.trim();
     const category = document.getElementById('newSubjectCategory').value;
@@ -316,9 +305,6 @@ function removeSubject(i) {
     saveSchoolData();
 }
 
-// ============================================================
-// КАБИНЕТЫ
-// ============================================================
 function addClassroom() {
     const number = document.getElementById('newClassroomNumber').value.trim();
     const capacity = document.getElementById('newClassroomCapacity').value;
@@ -367,9 +353,6 @@ function importFromExcel() {
     saveSchoolData();
 }
 
-// ============================================================
-// НАГРУЗКИ И ШАБЛОНЫ (ШАГ 3)
-// ============================================================
 function updateTeacherSelect() {
     const select = document.getElementById('teacherSelect');
     select.innerHTML = '<option value="">-- Выберите учителя --</option>' +
@@ -521,7 +504,6 @@ function toggleAvailability(teacher, day, slot) {
     saveSchoolData();
 }
 
-// Логика шаблонов
 function selectTemplate(card, type) {
     document.querySelectorAll('.template-card').forEach(c => c.classList.remove('selected'));
     card.classList.add('selected');
@@ -555,7 +537,7 @@ function applyTimeTemplate() {
     if (!ensureTeacherExists(name)) return;
     const days = getSelectedDays('.tmpl-day');
     if (days.length === 0) {
-        alert(' Выберите хотя бы один день недели!\nБез выбранных дней учитель будет полностью недоступен.');
+        alert('⚠ Выберите хотя бы один день недели!\nБез выбранных дней учитель будет полностью недоступен.');
         return;
     }
     const startTime = document.getElementById('tmpl_start').value;
@@ -604,7 +586,7 @@ function applyDaysTemplate() {
     const allSlots = Array.from({ length: schoolData.lessonsPerDay }, (_, i) => i + 1);
     const allDays = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
     if (schoolData.availability[name] && Object.keys(schoolData.availability[name]).length > 0) {
-        if (!confirm(`⚠ У учителя "${name}" уже есть настройки. Заменить?`)) return;
+        if (!confirm(` У учителя "${name}" уже есть настройки. Заменить?`)) return;
     }
     schoolData.availability[name] = {};
     days.forEach(day => { schoolData.availability[name][day] = [...allSlots]; });
@@ -623,7 +605,7 @@ function applyExcludeTemplate() {
     const workingDays = allDays.filter(d => !excludedDays.includes(d));
     const allSlots = Array.from({ length: schoolData.lessonsPerDay }, (_, i) => i + 1);
     if (schoolData.availability[name] && Object.keys(schoolData.availability[name]).length > 0) {
-        if (!confirm(`⚠ У учителя "${name}" уже есть настройки. Заменить?`)) return;
+        if (!confirm(` У учителя "${name}" уже есть настройки. Заменить?`)) return;
     }
     schoolData.availability[name] = {};
     workingDays.forEach(day => { schoolData.availability[name][day] = [...allSlots]; });
@@ -633,9 +615,6 @@ function applyExcludeTemplate() {
     alert(`✅ Исключения применены для ${name}`);
 }
 
-// ============================================================
-// ГЕНЕРАЦИЯ (ШАГ 4)
-// ============================================================
 async function generateTimetable() {
     if (!checkAuth()) return;
     const err = document.getElementById('genError');
@@ -815,9 +794,6 @@ function renderSchedule() {
     container.innerHTML = html;
 }
 
-// ============================================================
-// СОХРАНЁННЫЕ РАСПИСАНИЯ
-// ============================================================
 async function loadSavedTimetables() {
     if (!checkAuth()) return;
     const container = document.getElementById('savedTimetablesList');
@@ -836,7 +812,7 @@ async function loadSavedTimetables() {
                         <button class="small primary" onclick="window.loadSavedTimetable(${t.id})"> Открыть</button>
                         <button class="small outline" onclick="window.downloadSavedPDF(${t.id},'teachers')">PDF (уч.)</button>
                         <button class="small outline" onclick="window.downloadSavedPDF(${t.id},'classes')">PDF (кл.)</button>
-                        <button class="small danger" onclick="window.deleteSavedTimetable(${t.id})"></button>
+                        <button class="small danger" onclick="window.deleteSavedTimetable(${t.id})">🗑</button>
                     </div>
                 </div>
             `).join('');
@@ -930,28 +906,18 @@ function downloadExcel(format) {
     });
 }
 
-// ============================================================
-// РЕДАКТОР ТЕМ (ВАРИАНТ В) — НОВЫЙ ФУНКЦИОНАЛ
-// ============================================================
-
-let currentEditorMode = 'editor'; // 'editor' или 'topics'
+let currentEditorMode = 'editor';
 let topicsSaveTimeout = null;
 let pendingTopicUpdates = [];
 
-/** Переключение между режимами редактора */
 function switchEditorMode(mode) {
     currentEditorMode = mode;
-
-    // Обновляем кнопки
     document.querySelectorAll('.mode-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.mode === mode);
     });
-
-    // Показываем нужный контейнер
     const editorContainer = document.getElementById('globalEditorContainer');
     const topicsContainer = document.getElementById('topicsEditorContainer');
     const exportBtn = document.getElementById('exportTopicsBtn');
-
     if (mode === 'editor') {
         editorContainer.style.display = 'block';
         topicsContainer.style.display = 'none';
@@ -965,7 +931,6 @@ function switchEditorMode(mode) {
     }
 }
 
-/** Обработчик изменения фильтра (общий для обоих режимов) */
 function onEditorFilterChange() {
     if (currentEditorMode === 'editor') {
         renderGlobalEditor();
@@ -974,7 +939,6 @@ function onEditorFilterChange() {
     }
 }
 
-/** Утилиты для экранирования */
 function escapeHtml(str) {
     if (!str) return '';
     return String(str)
@@ -994,16 +958,13 @@ function escapeAttr(str) {
         .replace(/>/g, '&gt;');
 }
 
-/** Рендер таблицы тем */
 function renderTopicsEditor() {
     const container = document.getElementById('topicsEditorContent');
     const filterGrade = document.getElementById('editorClassFilter')?.value || '';
-
     if (!currentResult || !currentResult.teachers) {
         container.innerHTML = '<p style="padding:20px;text-align:center;color:#999">Нет данных. Сгенерируйте расписание.</p>';
         return;
     }
-
     if (!filterGrade) {
         container.innerHTML = `
             <div style="padding:30px;text-align:center;background:#fff3cd;border-radius:8px;color:#856404">
@@ -1013,12 +974,9 @@ function renderTopicsEditor() {
         `;
         return;
     }
-
     const days = currentResult.days || ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"];
     const slots = currentResult.slots || [1, 2, 3, 4, 5, 6, 7];
     const times = schoolData.lessonTimes || [];
-
-    // Собираем расписание для выбранного класса
     const classSchedule = {};
     days.forEach(day => {
         classSchedule[day] = {};
@@ -1026,7 +984,6 @@ function renderTopicsEditor() {
             classSchedule[day][slot] = null;
         });
     });
-
     currentResult.teachers.forEach(teacher => {
         if (!teacher.schedule) return;
         Object.keys(teacher.schedule).forEach(day => {
@@ -1048,8 +1005,6 @@ function renderTopicsEditor() {
             });
         });
     });
-
-    // Строим HTML таблицы
     let html = '<div style="overflow-x:auto">';
     html += '<table class="topics-table">';
     html += '<thead><tr>';
@@ -1059,15 +1014,12 @@ function renderTopicsEditor() {
         html += `<th class="topics-slot-header">Урок ${slot}<br><small>${timeStr}</small></th>`;
     });
     html += '</tr></thead><tbody>';
-
     days.forEach(day => {
         html += `<tr class="topics-day-row">`;
         html += `<td class="topics-day-cell">${day}</td>`;
-
         slots.forEach(slot => {
             const lesson = classSchedule[day][slot];
             html += `<td class="topics-cell">`;
-
             if (lesson) {
                 html += `
                     <div class="topic-lesson-info">
@@ -1090,18 +1042,14 @@ function renderTopicsEditor() {
             } else {
                 html += `<div class="topic-empty">—</div>`;
             }
-
             html += `</td>`;
         });
-
         html += `</tr>`;
     });
-
     html += '</tbody></table></div>';
     container.innerHTML = html;
 }
 
-/** Обработчик потери фокуса поля темы */
 function onTopicBlur(input) {
     const day = input.dataset.day;
     const slot = parseInt(input.dataset.slot);
@@ -1109,29 +1057,20 @@ function onTopicBlur(input) {
     const subject = input.dataset.subject;
     const grade = input.dataset.grade;
     const topic = input.value.trim();
-
-    // Добавляем в очередь на сохранение
     pendingTopicUpdates.push({
         teacher, subject, grade, day, slot, topic
     });
-
-    // Показываем индикатор
     showTopicsSaveIndicator('⏳ Сохранение...');
-
-    // Debounce: ждём 500мс перед отправкой
     clearTimeout(topicsSaveTimeout);
     topicsSaveTimeout = setTimeout(() => {
         flushTopicUpdates();
     }, 500);
 }
 
-/** Обработчик Enter в поле темы — переход к следующему уроку */
 function onTopicKeydown(event, input) {
     if (event.key === 'Enter') {
         event.preventDefault();
-        input.blur(); // Сохраняем
-
-        // Находим следующее поле
+        input.blur();
         const allInputs = [...document.querySelectorAll('.topic-input')];
         const currentIndex = allInputs.indexOf(input);
         if (currentIndex < allInputs.length - 1) {
@@ -1140,18 +1079,14 @@ function onTopicKeydown(event, input) {
     }
 }
 
-/** Отправка накопленных изменений на сервер */
 async function flushTopicUpdates() {
     if (pendingTopicUpdates.length === 0) return;
-
     const updatesToSend = [...pendingTopicUpdates];
     pendingTopicUpdates = [];
-
     if (!currentTimetableId) {
         showTopicsSaveIndicator('❌ Ошибка: нет ID расписания');
         return;
     }
-
     try {
         const response = await fetch(`/timetables/${currentTimetableId}/update-topics`, {
             method: 'POST',
@@ -1161,18 +1096,12 @@ async function flushTopicUpdates() {
             },
             body: JSON.stringify({ updates: updatesToSend })
         });
-
         if (response.ok) {
             const result = await response.json();
-
-            // Обновляем локальные данные
             if (result.data) {
                 currentResult = result.data;
             }
-
             showTopicsSaveIndicator(`✅ Сохранено (${result.updated_count} тем)`);
-
-            // Через 2 секунды убираем индикатор
             setTimeout(() => {
                 const indicator = document.getElementById('topicsSaveIndicator');
                 if (indicator) indicator.textContent = '';
@@ -1187,7 +1116,6 @@ async function flushTopicUpdates() {
     }
 }
 
-/** Показать индикатор сохранения */
 function showTopicsSaveIndicator(text) {
     const indicator = document.getElementById('topicsSaveIndicator');
     if (indicator) {
@@ -1196,26 +1124,21 @@ function showTopicsSaveIndicator(text) {
     }
 }
 
-/** Экспорт тем в Excel */
 async function exportTopicsToExcel() {
     if (!currentTimetableId) {
         alert('Сначала сгенерируйте расписание');
         return;
     }
-
     const filterGrade = document.getElementById('editorClassFilter')?.value || '';
     if (!filterGrade) {
         alert('Выберите класс для экспорта');
         return;
     }
-
     try {
         const response = await fetch(`/timetables/${currentTimetableId}/export/topics-excel?grade=${encodeURIComponent(filterGrade)}`, {
             headers: { 'Authorization': 'Bearer ' + getToken() }
         });
-
         if (!response.ok) throw new Error('Ошибка сети');
-
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');

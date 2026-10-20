@@ -1,32 +1,30 @@
-// static/js/main.js
-
 document.addEventListener('DOMContentLoaded', () => {
     const savedData = localStorage.getItem('schoolData');
     if (savedData) {
         try {
             schoolData = JSON.parse(savedData);
+            restoreStep1Fields();
             renderClasses();
             renderTeachers();
             renderSubjects();
             renderClassrooms();
             updateTeacherDatalist();
-        } catch (e) { console.error("Ошибка парсинга schoolData:", e); }
+        } catch (e) {
+            console.error("Ошибка парсинга schoolData:", e);
+        }
     }
-
     if (getToken()) {
         showMainApp();
         loadSavedTimetables();
     }
-
-    document.addEventListener('click', function(e) {
+    document.addEventListener('click', function (e) {
         if (!e.target.closest('.autocomplete-wrapper')) {
-            document.querySelectorAll('.autocomplete-list').forEach(list => { list.style.display = 'none'; });
+            document.querySelectorAll('.autocomplete-list').forEach(list => {
+                list.style.display = 'none';
+            });
         }
     });
 });
-
-// ❌ УДАЛЕНА ФУНКЦИЯ goToStep(), ЧТОБЫ НЕ БЫЛО КОНФЛИКТОВ С wizard.js
-// function goToStep(step) { ... }
 
 function completeStep(step) {
     if (step === 1) {
@@ -35,16 +33,31 @@ function completeStep(step) {
         schoolData.lessonsPerDay = parseInt(document.getElementById('lessonsPerDay').value);
         schoolData.lessonTimes = document.getElementById('lessonTimes').value.split(',').map(t => t.trim());
     }
-    saveSchoolData(); goToStep(step + 1);
+    saveSchoolData();
+    goToStep(step + 1);
 }
 
-// Глобальные обработчики
+function restoreStep1Fields() {
+    if (!schoolData) return;
+    const nameField = document.getElementById('schoolName');
+    const daysField = document.getElementById('daysPerWeek');
+    const lessonsField = document.getElementById('lessonsPerDay');
+    const timesField = document.getElementById('lessonTimes');
+
+    if (nameField && schoolData.name) nameField.value = schoolData.name;
+    if (daysField && schoolData.days) daysField.value = schoolData.days;
+    if (lessonsField && schoolData.lessonsPerDay) lessonsField.value = schoolData.lessonsPerDay;
+    if (timesField && schoolData.lessonTimes && schoolData.lessonTimes.length > 0) {
+        timesField.value = schoolData.lessonTimes.join(', ');
+    }
+}
+
 window.showLogin = showLogin;
 window.showRegister = showRegister;
 window.login = login;
 window.register = register;
 window.logout = logout;
-window.goToStep = goToStep; // Теперь ссылается на версию из wizard.js
+window.goToStep = goToStep;
 window.completeStep = completeStep;
 window.showRefTab = showRefTab;
 window.addClass = addClass;
@@ -66,17 +79,14 @@ window.applyTimeTemplate = applyTimeTemplate;
 window.applyDaysTemplate = applyDaysTemplate;
 window.applyExcludeTemplate = applyExcludeTemplate;
 window.generateTimetable = generateTimetable;
-// ❌ УДАЛЕНЫ showMasterView и hideMasterView
-// window.showMasterView = showMasterView;
-// window.hideMasterView = hideMasterView;
 window.downloadPDF = downloadPDF;
 window.downloadExcel = downloadExcel;
-window.publishTimetable = function() { if(confirm('Опубликовать?')) alert('✅ Опубликовано'); };
-window.exportToJournal = function() { alert(' Экспорт API'); };
-window.sendToTeachers = function() { alert('📱 Отправлено в Telegram'); };
-window.sendToEmail = function() { alert('📧 Отправлено на почту'); };
-
-// Редактор
+window.publishTimetable = function () {
+    if (confirm('Опубликовать?')) alert('✅ Опубликовано');
+};
+window.exportToJournal = function () { alert('Экспорт API'); };
+window.sendToTeachers = function () { alert('📱 Отправлено в Telegram'); };
+window.sendToEmail = function () { alert('📧 Отправлено на почту'); };
 window.renderGlobalEditor = renderGlobalEditor;
 window.handleGlobalDragStart = handleGlobalDragStart;
 window.handleGlobalDragOver = handleGlobalDragOver;
