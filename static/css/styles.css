@@ -548,3 +548,55 @@ button.add-btn { margin-top: 10px; padding: 12px 24px; background: linear-gradie
 .drop-zone.drag-active {
     background-color: #f8f9fa;
 }
+/* ===== УЛУЧШЕННЫЙ ИНДИКАТОР СОХРАНЕНИЯ ТЕМ ===== */
+.save-indicator {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+    color: white;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: 0 2px 8px rgba(39, 174, 96, 0.3);
+    margin-bottom: 15px;
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
+    pointer-events: none;
+    max-width: fit-content;
+}
+
+.save-indicator.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.save-indicator-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.save-indicator-text {
+    white-space: nowrap;
+}
+
+/* Стили для разных состояний */
+.save-indicator.saving {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
+}
+
+.save-indicator.error {
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
+}

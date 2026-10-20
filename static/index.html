@@ -291,10 +291,13 @@
             <div id="globalEditorContainer" class="global-editor-container"></div>
 
             <!-- Контейнер редактора тем -->
-            <div id="topicsEditorContainer" class="topics-editor-container" style="display:none">
-                <div id="topicsEditorContent"></div>
-                <div id="topicsSaveIndicator" class="save-indicator"></div>
+        <div id="topicsEditorContainer" class="topics-editor-container" style="display:none">
+            <div id="topicsSaveIndicator" class="save-indicator">
+                <span class="save-indicator-icon">✓</span>
+                <span class="save-indicator-text">Темы сохранены</span>
             </div>
+            <div id="topicsEditorContent"></div>
+        </div>
 
             <div class="step-actions">
                 <button class="primary" onclick="completeStep(5)">➡ К публикации</button>

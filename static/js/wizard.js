@@ -1116,11 +1116,36 @@ async function flushTopicUpdates() {
     }
 }
 
-function showTopicsSaveIndicator(text) {
+flet saveIndicatorTimeout = null;
+
+function showTopicsSaveIndicator(text, type = 'success') {
     const indicator = document.getElementById('topicsSaveIndicator');
-    if (indicator) {
-        indicator.textContent = text;
-        indicator.className = 'save-indicator show';
+    if (!indicator) return;
+
+    // Очищаем предыдущий таймер
+    if (saveIndicatorTimeout) {
+        clearTimeout(saveIndicatorTimeout);
+    }
+
+    // Устанавливаем иконку и текст
+    const iconEl = indicator.querySelector('.save-indicator-icon');
+    const textEl = indicator.querySelector('.save-indicator-text');
+
+    if (iconEl) {
+        iconEl.textContent = type === 'success' ? '✓' : type === 'saving' ? '' : '✗';
+    }
+    if (textEl) {
+        textEl.textContent = text;
+    }
+
+    // Устанавливаем класс состояния
+    indicator.className = `save-indicator show ${type}`;
+
+    // Автоматически скрываем через 2.5 секунды (кроме ошибок)
+    if (type !== 'error') {
+        saveIndicatorTimeout = setTimeout(() => {
+            indicator.classList.remove('show');
+        }, 2500);
     }
 }
 
