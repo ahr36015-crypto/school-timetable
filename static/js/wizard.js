@@ -153,7 +153,7 @@ function addClass() {
 
 function renderClasses() {
     document.getElementById('classesTable').innerHTML = schoolData.classes.map((c, i) =>
-        `<tr><td>${c.name}</td><td>${c.grade}</td><td><button class="small danger" onclick="removeClass(${i})"> Удалить</button></td></tr>`
+        `<tr><td>${c.name}</td><td>${c.grade}</td><td><button class="small danger" onclick="removeClass(${i})">🗑 Удалить</button></td></tr>`
     ).join('');
 }
 
@@ -591,7 +591,7 @@ function applyTimeTemplate() {
         if (lStart >= startMin && lEnd <= endMin) slots.push(i + 1);
     });
     if (slots.length === 0) {
-        alert(`❌ В диапазоне ${startTime}-${endTime} не найдено уроков.`);
+        alert(` В диапазоне ${startTime}-${endTime} не найдено уроков.`);
         return;
     }
     if (schoolData.availability[name] && Object.keys(schoolData.availability[name]).length > 0) {
@@ -674,7 +674,7 @@ async function generateTimetable() {
     err.classList.remove('show');
     succ.classList.remove('show');
     btn.disabled = true;
-    btn.textContent = '⏳ Генерация...';
+    btn.textContent = ' Генерация...';
     document.getElementById('progressOverlay').classList.add('active');
 
     try {
@@ -936,7 +936,7 @@ function downloadExcel(format) {
 }
 
 // ============================================================
-// РЕДАКТОР ТЕМ (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+// РЕДАКТОР ТЕМ (ИСПРАВЛЕННАЯ ВЕРСИЯ С ЭКСПОРТОМ В WINDOW)
 // ============================================================
 
 function switchEditorMode(mode) {
@@ -988,6 +988,7 @@ function escapeAttr(str) {
 }
 
 function renderTopicsEditor() {
+    console.log('🎨 renderTopicsEditor вызван');
     const container = document.getElementById('topicsEditorContent');
     const filterGrade = document.getElementById('editorClassFilter')?.value || '';
     if (!currentResult || !currentResult.teachers) {
@@ -1065,8 +1066,8 @@ function renderTopicsEditor() {
                            data-teacher="${escapeAttr(lesson.teacher)}"
                            data-subject="${escapeAttr(lesson.subject)}"
                            data-grade="${escapeAttr(filterGrade)}"
-                           onblur="onTopicBlur(this)"
-                           onkeydown="onTopicKeydown(event, this)">
+                           onblur="window.onTopicBlur(this)"
+                           onkeydown="window.onTopicKeydown(event, this)">
                 `;
             } else {
                 html += `<div class="topic-empty">—</div>`;
@@ -1080,6 +1081,7 @@ function renderTopicsEditor() {
 }
 
 function onTopicBlur(input) {
+    console.log('💾 onTopicBlur вызван:', input.dataset);
     const day = input.dataset.day;
     const slot = parseInt(input.dataset.slot);
     const teacher = input.dataset.teacher;
@@ -1089,6 +1091,7 @@ function onTopicBlur(input) {
     pendingTopicUpdates.push({
         teacher, subject, grade, day, slot, topic
     });
+    console.log('📝 Добавлено в очередь:', pendingTopicUpdates);
     showTopicsSaveIndicator('⏳ Сохранение...', 'saving');
     clearTimeout(topicsSaveTimeout);
     topicsSaveTimeout = setTimeout(() => {
@@ -1109,6 +1112,7 @@ function onTopicKeydown(event, input) {
 }
 
 async function flushTopicUpdates() {
+    console.log('📤 flushTopicUpdates вызван, очередь:', pendingTopicUpdates);
     if (pendingTopicUpdates.length === 0) return;
     const updatesToSend = [...pendingTopicUpdates];
     pendingTopicUpdates = [];
@@ -1117,6 +1121,7 @@ async function flushTopicUpdates() {
         return;
     }
     try {
+        console.log(' Отправка запроса на сервер...');
         const response = await fetch(`/timetables/${currentTimetableId}/update-topics`, {
             method: 'POST',
             headers: {
@@ -1125,8 +1130,10 @@ async function flushTopicUpdates() {
             },
             body: JSON.stringify({ updates: updatesToSend })
         });
+        console.log('📥 Ответ сервера:', response.status);
         if (response.ok) {
             const result = await response.json();
+            console.log('✅ Результат:', result);
             if (result.data) {
                 currentResult = result.data;
             }
@@ -1137,10 +1144,11 @@ async function flushTopicUpdates() {
             }, 2500);
         } else {
             const error = await response.json();
+            console.error('❌ Ошибка сервера:', error);
             showTopicsSaveIndicator('❌ Ошибка: ' + (error.detail || 'неизвестно'), 'error');
         }
     } catch (error) {
-        console.error('Ошибка сохранения тем:', error);
+        console.error('❌ Ошибка сети:', error);
         showTopicsSaveIndicator('❌ Ошибка сети', 'error');
     }
 }
@@ -1201,3 +1209,15 @@ async function exportTopicsToExcel() {
         alert('Не удалось экспортировать темы');
     }
 }
+
+// ============================================================
+// ЭКСПОРТ ФУНКЦИЙ В WINDOW
+// ============================================================
+window.switchEditorMode = switchEditorMode;
+window.onEditorFilterChange = onEditorFilterChange;
+window.renderTopicsEditor = renderTopicsEditor;
+window.onTopicBlur = onTopicBlur;
+window.onTopicKeydown = onTopicKeydown;
+window.flushTopicUpdates = flushTopicUpdates;
+window.showTopicsSaveIndicator = showTopicsSaveIndicator;
+window.exportTopicsToExcel = exportTopicsToExcel;
