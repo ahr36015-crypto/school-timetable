@@ -153,7 +153,7 @@ function addClass() {
 
 function renderClasses() {
     document.getElementById('classesTable').innerHTML = schoolData.classes.map((c, i) =>
-        `<tr><td>${c.name}</td><td>${c.grade}</td><td><button class="small danger" onclick="removeClass(${i})">🗑 Удалить</button></td></tr>`
+        `<tr><td>${c.name}</td><td>${c.grade}</td><td><button class="small danger" onclick="removeClass(${i})"> Удалить</button></td></tr>`
     ).join('');
 }
 
@@ -233,7 +233,7 @@ function subjectsButtonHtml(teacher, teacherIndex) {
                 aria-expanded="false"
                 title="${sdEscapeAttr(title)}">
             <span class="subjects-toggle-text">${inner}</span>
-            <span class="subjects-caret" aria-hidden="true">▾</span>
+            <span class="subjects-caret" aria-hidden="true"></span>
         </button>
     `;
 }
@@ -252,7 +252,7 @@ function renderTeachers() {
             </td>
             <td class="subjects-cell">${subjectsButtonHtml(t, i)}</td>
             <td>
-                <button class="small danger" onclick="removeTeacher(${i})" title="Удалить учителя"></button>
+                <button class="small danger" onclick="removeTeacher(${i})" title="Удалить учителя">🗑</button>
             </td>
         </tr>`;
     }).join('');
@@ -429,7 +429,7 @@ function renderWorkloads(teacher) {
                        data-idx="${i}" data-field="hours" min="1" max="20"
                        onchange="updateWorkloadFromInput(this)">
             </div>
-            <button class="small danger" onclick="removeWorkload(${i})">🗑 Удалить</button>
+            <button class="small danger" onclick="removeWorkload(${i})"> Удалить</button>
         </div>
     `).join('');
 }
@@ -615,7 +615,7 @@ function applyDaysTemplate() {
     const allSlots = Array.from({ length: schoolData.lessonsPerDay }, (_, i) => i + 1);
     const allDays = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
     if (schoolData.availability[name] && Object.keys(schoolData.availability[name]).length > 0) {
-        if (!confirm(`⚠ У учителя "${name}" уже есть настройки. Заменить?`)) return;
+        if (!confirm(` У учителя "${name}" уже есть настройки. Заменить?`)) return;
     }
     schoolData.availability[name] = {};
     days.forEach(day => { schoolData.availability[name][day] = [...allSlots]; });
@@ -629,7 +629,7 @@ function applyExcludeTemplate() {
     const name = document.getElementById('tmpl_name3').value.trim();
     if (!ensureTeacherExists(name)) return;
     const excludedDays = getSelectedDays('.tmpl-day3');
-    if (excludedDays.length === 0) { alert('⚠ Выберите дни для исключения!'); return; }
+    if (excludedDays.length === 0) { alert(' Выберите дни для исключения!'); return; }
     const allDays = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
     const workingDays = allDays.filter(d => !excludedDays.includes(d));
     const allSlots = Array.from({ length: schoolData.lessonsPerDay }, (_, i) => i + 1);
@@ -841,7 +841,7 @@ async function loadSavedTimetables() {
                         <button class="small primary" onclick="window.loadSavedTimetable(${t.id})">👁 Открыть</button>
                         <button class="small outline" onclick="window.downloadSavedPDF(${t.id},'teachers')">PDF (уч.)</button>
                         <button class="small outline" onclick="window.downloadSavedPDF(${t.id},'classes')">PDF (кл.)</button>
-                        <button class="small danger" onclick="window.deleteSavedTimetable(${t.id})"></button>
+                        <button class="small danger" onclick="window.deleteSavedTimetable(${t.id})">🗑</button>
                     </div>
                 </div>
             `).join('');
@@ -1055,7 +1055,7 @@ function renderTopicsEditor() {
                     <div class="topic-lesson-info">
                         <div class="topic-subject">${escapeHtml(lesson.subject)}</div>
                         <div class="topic-teacher">${escapeHtml(lesson.teacherShort)}</div>
-                        <div class="topic-classroom">${lesson.classroom ? ' ' + escapeHtml(lesson.classroom) : ''}</div>
+                        <div class="topic-classroom">${lesson.classroom ? '🚪 ' + escapeHtml(lesson.classroom) : ''}</div>
                     </div>
                     <input type="text"
                            class="topic-input"
@@ -1092,7 +1092,7 @@ function onTopicBlur(input) {
         teacher, subject, grade, day, slot, topic
     });
     console.log('📝 Добавлено в очередь:', pendingTopicUpdates);
-    showTopicsSaveIndicator('⏳ Сохранение...', 'saving');
+    showTopicsSaveIndicator(' Сохранение...', 'saving');
     clearTimeout(topicsSaveTimeout);
     topicsSaveTimeout = setTimeout(() => {
         flushTopicUpdates();
@@ -1102,17 +1102,33 @@ function onTopicBlur(input) {
 function onTopicKeydown(event, input) {
     if (event.key === 'Enter') {
         event.preventDefault();
-        input.blur();
-        const allInputs = [...document.querySelectorAll('.topic-input')];
-        const currentIndex = allInputs.indexOf(input);
-        if (currentIndex < allInputs.length - 1) {
-            allInputs[currentIndex + 1].focus();
-        }
+        // Сначала сохраняем текущее значение
+        const topic = input.value.trim();
+        const day = input.dataset.day;
+        const slot = parseInt(input.dataset.slot);
+        const teacher = input.dataset.teacher;
+        const subject = input.dataset.subject;
+        const grade = input.dataset.grade;
+
+        // Добавляем в очередь и сразу сохраняем
+        pendingTopicUpdates.push({
+            teacher, subject, grade, day, slot, topic
+        });
+
+        // Ждём сохранения, затем переходим к следующему полю
+        flushTopicUpdates().then(() => {
+            // После сохранения переходим к следующему полю
+            const allInputs = [...document.querySelectorAll('.topic-input')];
+            const currentIndex = allInputs.indexOf(input);
+            if (currentIndex < allInputs.length - 1) {
+                allInputs[currentIndex + 1].focus();
+            }
+        });
     }
 }
 
 async function flushTopicUpdates() {
-    console.log('📤 flushTopicUpdates вызван, очередь:', pendingTopicUpdates);
+    console.log(' flushTopicUpdates вызван, очередь:', pendingTopicUpdates);
     if (pendingTopicUpdates.length === 0) return;
     const updatesToSend = [...pendingTopicUpdates];
     pendingTopicUpdates = [];
@@ -1136,12 +1152,11 @@ async function flushTopicUpdates() {
             console.log('✅ Результат:', result);
             if (result.data) {
                 currentResult = result.data;
+                console.log('📊 currentResult обновлён, количество учителей:', currentResult.teachers?.length);
             }
             showTopicsSaveIndicator(`✅ Сохранено (${result.updated_count} тем)`, 'success');
-            // ✅ КРИТИЧЕСКИ ВАЖНО: Перерисовываем таблицу тем после сохранения
-            setTimeout(() => {
-                renderTopicsEditor();
-            }, 300);
+            // Перерисовываем таблицу после обновления данных
+            renderTopicsEditor();
         } else {
             const error = await response.json();
             console.error('❌ Ошибка сервера:', error);
@@ -1165,7 +1180,7 @@ function showTopicsSaveIndicator(text, type = 'success') {
     const textEl = indicator.querySelector('.save-indicator-text');
 
     if (iconEl) {
-        iconEl.textContent = type === 'success' ? '✓' : type === 'saving' ? '⏳' : '✗';
+        iconEl.textContent = type === 'success' ? '✓' : type === 'saving' ? '' : '✗';
     }
     if (textEl) {
         textEl.textContent = text;
