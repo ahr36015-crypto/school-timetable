@@ -1,7 +1,7 @@
 import os
 import io
 import re
-import copy  # <-- ДОБАВЛЕНО для глубокого копирования JSON
+import copy
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 from fastapi import FastAPI, HTTPException, Depends, Query
@@ -49,6 +49,56 @@ class TopicUpdate(BaseModel):
 
 class TopicsUpdateRequest(BaseModel):
     updates: List[TopicUpdate]
+
+
+# ============================================================
+# ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+# ============================================================
+def ensure_topic_field(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Гарантирует наличие поля topic во всех уроках"""
+    if not data or 'teachers' not in data:
+        return data
+
+    for teacher in data['teachers']:
+        if 'schedule' not in teacher:
+            continue
+        for day, day_data in teacher['schedule'].items():
+            for slot, lessons in day_data.items():
+                if isinstance(lessons, list):
+                    for lesson in lessons:
+                        if 'topic' not in lesson:
+                            lesson['topic'] = ''
+    return data
+
+
+def response_to_dict(result: TimetableResponse, request: TimetableRequest) -> Dict[str, Any]:
+    return {
+        "status": result.status,
+        "solution_time": result.solution_time,
+        "days": request.days,
+        "slots": request.slots,
+        "teachers": [{
+            "teacher": t.teacher,
+            "total_lessons": t.total_lessons,
+            "schedule": {
+                day: {
+                    str(slot): [
+                        {
+                            "subject": a.subject,
+                            "grade": a.grade,
+                            "teacher": a.teacher,
+                            "classroom": a.classroom,
+                            "topic": ""  # ✅ ДОБАВЛЕНО: поле topic при генерации
+                        }
+                        for a in assignments
+                    ]
+                    for slot, assignments in slots.items()
+                }
+                for day, slots in t.schedule.items()
+            }
+        } for t in result.teachers],
+        "validation_errors": result.validation_errors
+    }
 
 
 # ============================================================
@@ -248,38 +298,6 @@ def ai_parse_text(request: AIInputRequest, current_user: User = Depends(get_curr
 
 
 # ============================================================
-# ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-# ============================================================
-def response_to_dict(result: TimetableResponse, request: TimetableRequest) -> Dict[str, Any]:
-    return {
-        "status": result.status,
-        "solution_time": result.solution_time,
-        "days": request.days,
-        "slots": request.slots,
-        "teachers": [{
-            "teacher": t.teacher,
-            "total_lessons": t.total_lessons,
-            "schedule": {
-                day: {
-                    str(slot): [
-                        {
-                            "subject": a.subject,
-                            "grade": a.grade,
-                            "teacher": a.teacher,
-                            "classroom": a.classroom
-                        }
-                        for a in assignments
-                    ]
-                    for slot, assignments in slots.items()
-                }
-                for day, slots in t.schedule.items()
-            }
-        } for t in result.teachers],
-        "validation_errors": result.validation_errors
-    }
-
-
-# ============================================================
 # ГЕНЕРАЦИЯ
 # ============================================================
 @app.post("/generate")
@@ -339,6 +357,7 @@ def generate_timetable(request: TimetableRequest, current_user: User = Depends(g
 @app.get("/timetables")
 def get_timetables(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
+        db.expire_all()
         timetables = db.query(SavedTimetable).filter(
             SavedTimetable.user_id == current_user.id
         ).order_by(SavedTimetable.created_at.desc()).all()
@@ -347,7 +366,7 @@ def get_timetables(current_user: User = Depends(get_current_user), db: Session =
                 "id": t.id,
                 "name": t.name,
                 "created_at": t.created_at.isoformat() if t.created_at else None,
-                "data": t.data if t.data else {}
+                "data": ensure_topic_field(t.data) if t.data else {}
             }
             for t in timetables
         ]
@@ -366,11 +385,15 @@ def get_timetable(timetable_id: int, current_user: User = Depends(get_current_us
         ).first()
         if not timetable:
             raise HTTPException(status_code=404, detail="Расписание не найдено")
+
+        # ✅ ВАЖНО: гарантируем наличие поля topic во всех уроках
+        data = ensure_topic_field(timetable.data) if timetable.data else {}
+
         return {
             "id": timetable.id,
             "name": timetable.name,
             "created_at": timetable.created_at.isoformat() if timetable.created_at else None,
-            "data": timetable.data if timetable.data else {}
+            "data": data
         }
     except HTTPException:
         raise
@@ -411,7 +434,7 @@ def delete_timetable(timetable_id: int, current_user: User = Depends(get_current
 
 
 # ============================================================
-# ПЕРЕМЕЩЕНИЕ УРОКА (ИСПРАВЛЕННАЯ ВЕРСИЯ С deepcopy)
+# ПЕРЕМЕЩЕНИЕ УРОКА
 # ============================================================
 @app.post("/timetables/{timetable_id}/move-lesson")
 def move_lesson(
@@ -423,7 +446,7 @@ def move_lesson(
     """Перемещает урок в новое время с гарантированным сохранением в БД"""
     try:
         print(f"🔄 MOVE LESSON REQUEST: {move_data}")
-        print(f" Timetable ID: {timetable_id}, User ID: {current_user.id}")
+        print(f"📋 Timetable ID: {timetable_id}, User ID: {current_user.id}")
 
         db.expire_all()
 
@@ -433,7 +456,7 @@ def move_lesson(
         ).first()
 
         if not timetable:
-            print(f"❌ Расписание {timetable_id} не найдено для пользователя {current_user.id}")
+            print(f" Расписание {timetable_id} не найдено для пользователя {current_user.id}")
             raise HTTPException(status_code=404, detail="Расписание не найдено")
 
         print(f"✅ Расписание загружено из БД")
@@ -459,7 +482,7 @@ def move_lesson(
                 break
 
         if not target_teacher:
-            print(f" Учитель '{req_teacher}' не найден")
+            print(f"⚠️ Учитель '{req_teacher}' не найден")
             raise HTTPException(status_code=404, detail="Учитель не найден в расписании")
 
         schedule = target_teacher.get('schedule', {})
@@ -509,7 +532,7 @@ def move_lesson(
                 new_lessons_list.append(l)
 
         if not removed:
-            print(f"⚠️ Урок НЕ НАЙДЕН для удаления!")
+            print(f"️ Урок НЕ НАЙДЕН для удаления!")
 
         if new_lessons_list:
             day_schedule[from_slot] = new_lessons_list
@@ -557,7 +580,8 @@ def move_lesson(
             'subject': move_data['subject'],
             'grade': move_data['grade'],
             'teacher': move_data['teacher'],
-            'classroom': move_data.get('classroom', '')
+            'classroom': move_data.get('classroom', ''),
+            'topic': ''  # ✅ ДОБАВЛЕНО: поле topic для нового урока
         }
 
         schedule[actual_to_day][to_slot].append(new_lesson)
@@ -576,7 +600,6 @@ def move_lesson(
                         print(f"🧹 УДАЛЕН ДУБЛИКАТ: {key} в {d_key} {s_key}")
                 schedule[d_key][s_key] = unique_lessons
 
-        # ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: используем deepcopy, чтобы SQLAlchemy увидел изменение JSON
         timetable.data = copy.deepcopy(data)
         db.commit()
 
@@ -592,9 +615,9 @@ def move_lesson(
             print(f"❌ КРИТИЧЕСКАЯ ОШИБКА: не удалось загрузить расписание после сохранения")
             raise HTTPException(status_code=500, detail="Ошибка сохранения")
 
-        fresh_data = fresh_timetable.data
+        fresh_data = ensure_topic_field(fresh_timetable.data)
         print(f"✅ Загружены актуальные данные из БД")
-        print(f"📊 Количество учителей: {len(fresh_data.get('teachers', []))}")
+        print(f" Количество учителей: {len(fresh_data.get('teachers', []))}")
 
         for t in fresh_data.get('teachers', []):
             if t['teacher'].strip().lower() == req_teacher:
@@ -629,8 +652,10 @@ def update_lesson_topics(
         current_user: User = Depends(get_current_user),
         db: Session = Depends(get_db)
 ):
+    """Массовое обновление тем уроков"""
     try:
         db.expire_all()
+
         timetable = db.query(SavedTimetable).filter(
             SavedTimetable.id == timetable_id,
             SavedTimetable.user_id == current_user.id
@@ -643,12 +668,17 @@ def update_lesson_topics(
         teachers = data.get('teachers', [])
         updated_count = 0
 
+        print(f"📝 Обновление тем: получено {len(request.updates)} обновлений")
+
         for update in request.updates:
             req_teacher = update.teacher.strip().lower()
             req_subject = update.subject.strip().lower()
             req_grade = str(update.grade).strip()
             target_day = update.day
             target_slot = str(update.slot)
+
+            print(
+                f"  Обработка: teacher={req_teacher}, subject={req_subject}, grade={req_grade}, day={target_day}, slot={target_slot}")
 
             target_teacher = None
             for t in teachers:
@@ -657,25 +687,38 @@ def update_lesson_topics(
                     break
 
             if not target_teacher:
+                print(f"  ⚠️ Учитель '{req_teacher}' не найден")
                 continue
 
             schedule = target_teacher.get('schedule', {})
             if target_day not in schedule:
+                print(f"  ⚠️ День '{target_day}' не найден в расписании")
                 continue
             if target_slot not in schedule[target_day]:
+                print(f"  ️ Слот '{target_slot}' не найден в день '{target_day}'")
                 continue
 
-            for lesson in schedule[target_day][target_slot]:
-                is_match = (
-                        lesson.get('subject', '').strip().lower() == req_subject and
-                        str(lesson.get('grade', '')).strip() == req_grade
-                )
+            lessons = schedule[target_day][target_slot]
+            print(f"   Уроков в слоте: {len(lessons)}")
+
+            for lesson in lessons:
+                l_subject = str(lesson.get('subject', '')).strip().lower()
+                l_grade = str(lesson.get('grade', '')).strip()
+
+                print(f"    Проверяем урок: subject={l_subject}, grade={l_grade}")
+
+                is_match = (l_subject == req_subject and l_grade == req_grade)
+
                 if is_match:
+                    print(f"    ✅ НАЙДЕН: обновляем тему на '{update.topic}'")
                     lesson['topic'] = update.topic
                     updated_count += 1
                     break
+            else:
+                print(f"    ⚠️ Урок не найден для обновления темы")
 
-        # ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: deepcopy для JSON
+        print(f"✅ Обновлено тем: {updated_count}")
+
         timetable.data = copy.deepcopy(data)
         db.commit()
         db.expire_all()
@@ -684,10 +727,14 @@ def update_lesson_topics(
             SavedTimetable.id == timetable_id
         ).first()
 
+        fresh_data = ensure_topic_field(fresh_timetable.data) if fresh_timetable else data
+
+        print(f"✅ Темы сохранены в БД")
+
         return {
             "message": "Темы обновлены",
             "updated_count": updated_count,
-            "data": fresh_timetable.data if fresh_timetable else data
+            "data": fresh_data
         }
 
     except HTTPException:
@@ -710,8 +757,10 @@ def export_topics_excel(
         current_user: User = Depends(get_current_user),
         db: Session = Depends(get_db)
 ):
+    """Экспорт тем уроков для конкретного класса в Excel"""
     try:
         db.expire_all()
+
         timetable = db.query(SavedTimetable).filter(
             SavedTimetable.id == timetable_id,
             SavedTimetable.user_id == current_user.id
@@ -720,7 +769,7 @@ def export_topics_excel(
         if not timetable:
             raise HTTPException(status_code=404, detail="Расписание не найдено")
 
-        data = timetable.data
+        data = ensure_topic_field(timetable.data) if timetable.data else {}
         days = data.get('days', ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница'])
         slots = data.get('slots', [1, 2, 3, 4, 5, 6, 7])
         times = data.get('lessonTimes', [])
@@ -825,7 +874,7 @@ def export_topics_excel(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Ошибка экспорта тем: {e}")
+        print(f" Ошибка экспорта тем: {e}")
         raise HTTPException(status_code=500, detail=f"Ошибка: {str(e)}")
 
 
@@ -849,7 +898,7 @@ def export_excel(
     if not timetable:
         raise HTTPException(status_code=404, detail="Расписание не найдено")
 
-    data = timetable.data
+    data = ensure_topic_field(timetable.data) if timetable.data else {}
     if 'lessonTimes' not in data:
         data['lessonTimes'] = [
             "08:30-09:15", "09:25-10:10", "10:20-11:05",
@@ -889,7 +938,7 @@ def export_pdf(
     if not timetable:
         raise HTTPException(status_code=404, detail="Расписание не найдено")
 
-    data = timetable.data
+    data = ensure_topic_field(timetable.data) if timetable.data else {}
     days = data.get("days", ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"])
     slots = data.get("slots", [1, 2, 3, 4, 5, 6, 7])
 
