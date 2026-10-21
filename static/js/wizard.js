@@ -74,7 +74,7 @@ async function goToStep(step) {
             }
         }
         if (currentResult && currentResult.teachers && currentTimetableId) {
-            console.log(" Рендеринг таблицы редактора...");
+            console.log("🎨 Рендеринг таблицы редактора...");
             updateEditorClassFilter();
             if (currentEditorMode === 'topics') {
                 renderTopicsEditor();
@@ -153,7 +153,7 @@ function addClass() {
 
 function renderClasses() {
     document.getElementById('classesTable').innerHTML = schoolData.classes.map((c, i) =>
-        `<tr><td>${c.name}</td><td>${c.grade}</td><td><button class="small danger" onclick="removeClass(${i})"> Удалить</button></td></tr>`
+        `<tr><td>${c.name}</td><td>${c.grade}</td><td><button class="small danger" onclick="removeClass(${i})">🗑 Удалить</button></td></tr>`
     ).join('');
 }
 
@@ -233,7 +233,7 @@ function subjectsButtonHtml(teacher, teacherIndex) {
                 aria-expanded="false"
                 title="${sdEscapeAttr(title)}">
             <span class="subjects-toggle-text">${inner}</span>
-            <span class="subjects-caret" aria-hidden="true"></span>
+            <span class="subjects-caret" aria-hidden="true">▾</span>
         </button>
     `;
 }
@@ -252,7 +252,7 @@ function renderTeachers() {
             </td>
             <td class="subjects-cell">${subjectsButtonHtml(t, i)}</td>
             <td>
-                <button class="small danger" onclick="removeTeacher(${i})" title="Удалить учителя">🗑</button>
+                <button class="small danger" onclick="removeTeacher(${i})" title="Удалить учителя"></button>
             </td>
         </tr>`;
     }).join('');
@@ -615,7 +615,7 @@ function applyDaysTemplate() {
     const allSlots = Array.from({ length: schoolData.lessonsPerDay }, (_, i) => i + 1);
     const allDays = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
     if (schoolData.availability[name] && Object.keys(schoolData.availability[name]).length > 0) {
-        if (!confirm(` У учителя "${name}" уже есть настройки. Заменить?`)) return;
+        if (!confirm(`⚠ У учителя "${name}" уже есть настройки. Заменить?`)) return;
     }
     schoolData.availability[name] = {};
     days.forEach(day => { schoolData.availability[name][day] = [...allSlots]; });
@@ -629,7 +629,7 @@ function applyExcludeTemplate() {
     const name = document.getElementById('tmpl_name3').value.trim();
     if (!ensureTeacherExists(name)) return;
     const excludedDays = getSelectedDays('.tmpl-day3');
-    if (excludedDays.length === 0) { alert(' Выберите дни для исключения!'); return; }
+    if (excludedDays.length === 0) { alert('⚠ Выберите дни для исключения!'); return; }
     const allDays = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
     const workingDays = allDays.filter(d => !excludedDays.includes(d));
     const allSlots = Array.from({ length: schoolData.lessonsPerDay }, (_, i) => i + 1);
@@ -841,7 +841,7 @@ async function loadSavedTimetables() {
                         <button class="small primary" onclick="window.loadSavedTimetable(${t.id})">👁 Открыть</button>
                         <button class="small outline" onclick="window.downloadSavedPDF(${t.id},'teachers')">PDF (уч.)</button>
                         <button class="small outline" onclick="window.downloadSavedPDF(${t.id},'classes')">PDF (кл.)</button>
-                        <button class="small danger" onclick="window.deleteSavedTimetable(${t.id})">🗑</button>
+                        <button class="small danger" onclick="window.deleteSavedTimetable(${t.id})"></button>
                     </div>
                 </div>
             `).join('');
@@ -936,7 +936,7 @@ function downloadExcel(format) {
 }
 
 // ============================================================
-// РЕДАКТОР ТЕМ (ИСПРАВЛЕННАЯ ВЕРСИЯ С ЭКСПОРТОМ В WINDOW)
+// РЕДАКТОР ТЕМ (ИСПРАВЛЕННАЯ ВЕРСИЯ)
 // ============================================================
 
 function switchEditorMode(mode) {
@@ -1117,7 +1117,7 @@ async function flushTopicUpdates() {
     const updatesToSend = [...pendingTopicUpdates];
     pendingTopicUpdates = [];
     if (!currentTimetableId) {
-        showTopicsSaveIndicator(' Ошибка: нет ID расписания', 'error');
+        showTopicsSaveIndicator('❌ Ошибка: нет ID расписания', 'error');
         return;
     }
     try {
@@ -1130,7 +1130,7 @@ async function flushTopicUpdates() {
             },
             body: JSON.stringify({ updates: updatesToSend })
         });
-        console.log(' Ответ сервера:', response.status);
+        console.log('📥 Ответ сервера:', response.status);
         if (response.ok) {
             const result = await response.json();
             console.log('✅ Результат:', result);
@@ -1138,10 +1138,10 @@ async function flushTopicUpdates() {
                 currentResult = result.data;
             }
             showTopicsSaveIndicator(`✅ Сохранено (${result.updated_count} тем)`, 'success');
+            // ✅ КРИТИЧЕСКИ ВАЖНО: Перерисовываем таблицу тем после сохранения
             setTimeout(() => {
-                const indicator = document.getElementById('topicsSaveIndicator');
-                if (indicator) indicator.classList.remove('show');
-            }, 2500);
+                renderTopicsEditor();
+            }, 300);
         } else {
             const error = await response.json();
             console.error('❌ Ошибка сервера:', error);
@@ -1211,7 +1211,7 @@ async function exportTopicsToExcel() {
 }
 
 // ============================================================
-// ЭКСПОРТ ФУНКЦИЙ В WINDOW (КРИТИЧЕСКИ ВАЖНО!)
+// ЭКСПОРТ ФУНКЦИЙ В WINDOW
 // ============================================================
 window.switchEditorMode = switchEditorMode;
 window.onEditorFilterChange = onEditorFilterChange;
