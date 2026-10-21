@@ -88,7 +88,7 @@ def response_to_dict(result: TimetableResponse, request: TimetableRequest) -> Di
                             "grade": a.grade,
                             "teacher": a.teacher,
                             "classroom": a.classroom,
-                            "topic": ""  # ✅ ДОБАВЛЕНО: поле topic при генерации
+                            "topic": ""
                         }
                         for a in assignments
                     ]
@@ -304,7 +304,7 @@ def ai_parse_text(request: AIInputRequest, current_user: User = Depends(get_curr
 def generate_timetable(request: TimetableRequest, current_user: User = Depends(get_current_user),
                        db: Session = Depends(get_db)):
     try:
-        print(f" НАЧАЛО ГЕНЕРАЦИИ для пользователя {current_user.id}")
+        print(f"🚀 НАЧАЛО ГЕНЕРАЦИИ для пользователя {current_user.id}")
         is_valid, teacher_stats, errors = validate_teachers(request)
         if not is_valid:
             return {
@@ -335,7 +335,7 @@ def generate_timetable(request: TimetableRequest, current_user: User = Depends(g
         db.add(saved)
         db.commit()
         db.refresh(saved)
-        print(f"💾 Расписание сохранено с ID: {saved.id}")
+        print(f" Расписание сохранено с ID: {saved.id}")
 
         return {
             "message": "Расписание сгенерировано",
@@ -366,7 +366,7 @@ def get_timetables(current_user: User = Depends(get_current_user), db: Session =
                 "id": t.id,
                 "name": t.name,
                 "created_at": t.created_at.isoformat() if t.created_at else None,
-                "data": ensure_topic_field(t.data) if t.data else {}
+                "data": ensure_topic_field(copy.deepcopy(t.data)) if t.data else {}
             }
             for t in timetables
         ]
@@ -387,7 +387,9 @@ def get_timetable(timetable_id: int, current_user: User = Depends(get_current_us
             raise HTTPException(status_code=404, detail="Расписание не найдено")
 
         # ✅ ВАЖНО: гарантируем наличие поля topic во всех уроках
-        data = ensure_topic_field(timetable.data) if timetable.data else {}
+        data = ensure_topic_field(copy.deepcopy(timetable.data)) if timetable.data else {}
+
+        print(f"📥 GET /timetables/{timetable_id} - возвращаем данные с {len(data.get('teachers', []))} учителями")
 
         return {
             "id": timetable.id,
@@ -456,7 +458,7 @@ def move_lesson(
         ).first()
 
         if not timetable:
-            print(f" Расписание {timetable_id} не найдено для пользователя {current_user.id}")
+            print(f"⚠️ Расписание {timetable_id} не найдено для пользователя {current_user.id}")
             raise HTTPException(status_code=404, detail="Расписание не найдено")
 
         print(f"✅ Расписание загружено из БД")
@@ -532,7 +534,7 @@ def move_lesson(
                 new_lessons_list.append(l)
 
         if not removed:
-            print(f"️ Урок НЕ НАЙДЕН для удаления!")
+            print(f"⚠️ Урок НЕ НАЙДЕН для удаления!")
 
         if new_lessons_list:
             day_schedule[from_slot] = new_lessons_list
@@ -540,7 +542,7 @@ def move_lesson(
         else:
             if from_slot in day_schedule:
                 del day_schedule[from_slot]
-                print(f"🗑 Слот {from_slot} удален (пустой)")
+                print(f" Слот {from_slot} удален (пустой)")
 
         to_day_schedule = schedule.get(actual_to_day, {})
 
@@ -581,7 +583,7 @@ def move_lesson(
             'grade': move_data['grade'],
             'teacher': move_data['teacher'],
             'classroom': move_data.get('classroom', ''),
-            'topic': ''  # ✅ ДОБАВЛЕНО: поле topic для нового урока
+            'topic': ''
         }
 
         schedule[actual_to_day][to_slot].append(new_lesson)
@@ -615,9 +617,9 @@ def move_lesson(
             print(f"❌ КРИТИЧЕСКАЯ ОШИБКА: не удалось загрузить расписание после сохранения")
             raise HTTPException(status_code=500, detail="Ошибка сохранения")
 
-        fresh_data = ensure_topic_field(fresh_timetable.data)
+        fresh_data = ensure_topic_field(copy.deepcopy(fresh_timetable.data))
         print(f"✅ Загружены актуальные данные из БД")
-        print(f" Количество учителей: {len(fresh_data.get('teachers', []))}")
+        print(f"📊 Количество учителей: {len(fresh_data.get('teachers', []))}")
 
         for t in fresh_data.get('teachers', []):
             if t['teacher'].strip().lower() == req_teacher:
@@ -695,7 +697,7 @@ def update_lesson_topics(
                 print(f"  ⚠️ День '{target_day}' не найден в расписании")
                 continue
             if target_slot not in schedule[target_day]:
-                print(f"  ️ Слот '{target_slot}' не найден в день '{target_day}'")
+                print(f"  ⚠️ Слот '{target_slot}' не найден в день '{target_day}'")
                 continue
 
             lessons = schedule[target_day][target_slot]
@@ -727,7 +729,7 @@ def update_lesson_topics(
             SavedTimetable.id == timetable_id
         ).first()
 
-        fresh_data = ensure_topic_field(fresh_timetable.data) if fresh_timetable else data
+        fresh_data = ensure_topic_field(copy.deepcopy(fresh_timetable.data)) if fresh_timetable else data
 
         print(f"✅ Темы сохранены в БД")
 
@@ -769,7 +771,7 @@ def export_topics_excel(
         if not timetable:
             raise HTTPException(status_code=404, detail="Расписание не найдено")
 
-        data = ensure_topic_field(timetable.data) if timetable.data else {}
+        data = ensure_topic_field(copy.deepcopy(timetable.data)) if timetable.data else {}
         days = data.get('days', ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница'])
         slots = data.get('slots', [1, 2, 3, 4, 5, 6, 7])
         times = data.get('lessonTimes', [])
@@ -874,7 +876,7 @@ def export_topics_excel(
     except HTTPException:
         raise
     except Exception as e:
-        print(f" Ошибка экспорта тем: {e}")
+        print(f"❌ Ошибка экспорта тем: {e}")
         raise HTTPException(status_code=500, detail=f"Ошибка: {str(e)}")
 
 
@@ -898,7 +900,7 @@ def export_excel(
     if not timetable:
         raise HTTPException(status_code=404, detail="Расписание не найдено")
 
-    data = ensure_topic_field(timetable.data) if timetable.data else {}
+    data = ensure_topic_field(copy.deepcopy(timetable.data)) if timetable.data else {}
     if 'lessonTimes' not in data:
         data['lessonTimes'] = [
             "08:30-09:15", "09:25-10:10", "10:20-11:05",
@@ -938,7 +940,7 @@ def export_pdf(
     if not timetable:
         raise HTTPException(status_code=404, detail="Расписание не найдено")
 
-    data = ensure_topic_field(timetable.data) if timetable.data else {}
+    data = ensure_topic_field(copy.deepcopy(timetable.data)) if timetable.data else {}
     days = data.get("days", ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"])
     slots = data.get("slots", [1, 2, 3, 4, 5, 6, 7])
 
