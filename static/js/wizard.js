@@ -153,7 +153,7 @@ function addClass() {
 
 function renderClasses() {
     document.getElementById('classesTable').innerHTML = schoolData.classes.map((c, i) =>
-        `<tr><td>${c.name}</td><td>${c.grade}</td><td><button class="small danger" onclick="removeClass(${i})"> Удалить</button></td></tr>`
+        `<tr><td>${c.name}</td><td>${c.grade}</td><td><button class="small danger" onclick="removeClass(${i})">🗑 Удалить</button></td></tr>`
     ).join('');
 }
 
@@ -233,7 +233,7 @@ function subjectsButtonHtml(teacher, teacherIndex) {
                 aria-expanded="false"
                 title="${sdEscapeAttr(title)}">
             <span class="subjects-toggle-text">${inner}</span>
-            <span class="subjects-caret" aria-hidden="true"></span>
+            <span class="subjects-caret" aria-hidden="true">▾</span>
         </button>
     `;
 }
@@ -318,7 +318,7 @@ function renderSubjects() {
         `<tr>
             <td>${s.name}</td>
             <td><span style="background:#eef;padding:2px 6px;border-radius:4px;font-size:12px;">${s.category || 'Основной'}</span></td>
-            <td><button class="small danger" onclick="removeSubject(${i})"> Удалить</button></td>
+            <td><button class="small danger" onclick="removeSubject(${i})">🗑 Удалить</button></td>
         </tr>`
     ).join('');
 }
@@ -429,7 +429,7 @@ function renderWorkloads(teacher) {
                        data-idx="${i}" data-field="hours" min="1" max="20"
                        onchange="updateWorkloadFromInput(this)">
             </div>
-            <button class="small danger" onclick="removeWorkload(${i})"> Удалить</button>
+            <button class="small danger" onclick="removeWorkload(${i})">🗑 Удалить</button>
         </div>
     `).join('');
 }
@@ -595,7 +595,7 @@ function applyTimeTemplate() {
         return;
     }
     if (schoolData.availability[name] && Object.keys(schoolData.availability[name]).length > 0) {
-        if (!confirm(`⚠ У учителя "${name}" уже есть настройки. Новые значения ПОЛНОСТЬЮ ЗАМЕНЯТ старые. Продолжить?`))
+        if (!confirm(` У учителя "${name}" уже есть настройки. Новые значения ПОЛНОСТЬЮ ЗАМЕНЯТ старые. Продолжить?`))
             return;
     }
     schoolData.availability[name] = {};
@@ -629,7 +629,7 @@ function applyExcludeTemplate() {
     const name = document.getElementById('tmpl_name3').value.trim();
     if (!ensureTeacherExists(name)) return;
     const excludedDays = getSelectedDays('.tmpl-day3');
-    if (excludedDays.length === 0) { alert(' Выберите дни для исключения!'); return; }
+    if (excludedDays.length === 0) { alert('⚠ Выберите дни для исключения!'); return; }
     const allDays = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
     const workingDays = allDays.filter(d => !excludedDays.includes(d));
     const allSlots = Array.from({ length: schoolData.lessonsPerDay }, (_, i) => i + 1);
@@ -936,7 +936,7 @@ function downloadExcel(format) {
 }
 
 // ============================================================
-// РЕДАКТОР ТЕМ (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+// РЕДАКТОР ТЕМ (ИСПРАВЛЕННАЯ ВЕРСИЯ - БЕЗ ПЕРЕРИСОВКИ)
 // ============================================================
 
 function switchEditorMode(mode) {
@@ -1155,8 +1155,7 @@ async function flushTopicUpdates() {
                 console.log('📊 currentResult обновлён, количество учителей:', currentResult.teachers?.length);
             }
             showTopicsSaveIndicator(`✅ Сохранено (${result.updated_count} тем)`, 'success');
-            // Перерисовываем таблицу после обновления данных
-            renderTopicsEditor();
+            // ✅ НЕ ПЕРЕРИСОВЫВАЕМ ТАБЛИЦУ - оставляем введённые значения
         } else {
             const error = await response.json();
             console.error('❌ Ошибка сервера:', error);
@@ -1180,7 +1179,7 @@ function showTopicsSaveIndicator(text, type = 'success') {
     const textEl = indicator.querySelector('.save-indicator-text');
 
     if (iconEl) {
-        iconEl.textContent = type === 'success' ? '✓' : type === 'saving' ? '' : '✗';
+        iconEl.textContent = type === 'success' ? '✓' : type === 'saving' ? '⏳' : '✗';
     }
     if (textEl) {
         textEl.textContent = text;
