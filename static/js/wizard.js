@@ -74,7 +74,7 @@ async function goToStep(step) {
             }
         }
         if (currentResult && currentResult.teachers && currentTimetableId) {
-            console.log("🎨 Рендеринг таблицы редактора...");
+            console.log(" Рендеринг таблицы редактора...");
             updateEditorClassFilter();
             if (currentEditorMode === 'topics') {
                 renderTopicsEditor();
@@ -153,7 +153,7 @@ function addClass() {
 
 function renderClasses() {
     document.getElementById('classesTable').innerHTML = schoolData.classes.map((c, i) =>
-        `<tr><td>${c.name}</td><td>${c.grade}</td><td><button class="small danger" onclick="removeClass(${i})">🗑 Удалить</button></td></tr>`
+        `<tr><td>${c.name}</td><td>${c.grade}</td><td><button class="small danger" onclick="removeClass(${i})"> Удалить</button></td></tr>`
     ).join('');
 }
 
@@ -233,7 +233,7 @@ function subjectsButtonHtml(teacher, teacherIndex) {
                 aria-expanded="false"
                 title="${sdEscapeAttr(title)}">
             <span class="subjects-toggle-text">${inner}</span>
-            <span class="subjects-caret" aria-hidden="true">▾</span>
+            <span class="subjects-caret" aria-hidden="true"></span>
         </button>
     `;
 }
@@ -318,7 +318,7 @@ function renderSubjects() {
         `<tr>
             <td>${s.name}</td>
             <td><span style="background:#eef;padding:2px 6px;border-radius:4px;font-size:12px;">${s.category || 'Основной'}</span></td>
-            <td><button class="small danger" onclick="removeSubject(${i})">🗑 Удалить</button></td>
+            <td><button class="small danger" onclick="removeSubject(${i})"> Удалить</button></td>
         </tr>`
     ).join('');
 }
@@ -591,7 +591,7 @@ function applyTimeTemplate() {
         if (lStart >= startMin && lEnd <= endMin) slots.push(i + 1);
     });
     if (slots.length === 0) {
-        alert(` В диапазоне ${startTime}-${endTime} не найдено уроков.`);
+        alert(`❌ В диапазоне ${startTime}-${endTime} не найдено уроков.`);
         return;
     }
     if (schoolData.availability[name] && Object.keys(schoolData.availability[name]).length > 0) {
@@ -615,7 +615,7 @@ function applyDaysTemplate() {
     const allSlots = Array.from({ length: schoolData.lessonsPerDay }, (_, i) => i + 1);
     const allDays = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
     if (schoolData.availability[name] && Object.keys(schoolData.availability[name]).length > 0) {
-        if (!confirm(`⚠ У учителя "${name}" уже есть настройки. Заменить?`)) return;
+        if (!confirm(` У учителя "${name}" уже есть настройки. Заменить?`)) return;
     }
     schoolData.availability[name] = {};
     days.forEach(day => { schoolData.availability[name][day] = [...allSlots]; });
@@ -629,7 +629,7 @@ function applyExcludeTemplate() {
     const name = document.getElementById('tmpl_name3').value.trim();
     if (!ensureTeacherExists(name)) return;
     const excludedDays = getSelectedDays('.tmpl-day3');
-    if (excludedDays.length === 0) { alert('⚠ Выберите дни для исключения!'); return; }
+    if (excludedDays.length === 0) { alert(' Выберите дни для исключения!'); return; }
     const allDays = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
     const workingDays = allDays.filter(d => !excludedDays.includes(d));
     const allSlots = Array.from({ length: schoolData.lessonsPerDay }, (_, i) => i + 1);
@@ -674,7 +674,7 @@ async function generateTimetable() {
     err.classList.remove('show');
     succ.classList.remove('show');
     btn.disabled = true;
-    btn.textContent = ' Генерация...';
+    btn.textContent = '⏳ Генерация...';
     document.getElementById('progressOverlay').classList.add('active');
 
     try {
@@ -1055,7 +1055,7 @@ function renderTopicsEditor() {
                     <div class="topic-lesson-info">
                         <div class="topic-subject">${escapeHtml(lesson.subject)}</div>
                         <div class="topic-teacher">${escapeHtml(lesson.teacherShort)}</div>
-                        <div class="topic-classroom">${lesson.classroom ? '🚪 ' + escapeHtml(lesson.classroom) : ''}</div>
+                        <div class="topic-classroom">${lesson.classroom ? ' ' + escapeHtml(lesson.classroom) : ''}</div>
                     </div>
                     <input type="text"
                            class="topic-input"
@@ -1117,11 +1117,11 @@ async function flushTopicUpdates() {
     const updatesToSend = [...pendingTopicUpdates];
     pendingTopicUpdates = [];
     if (!currentTimetableId) {
-        showTopicsSaveIndicator('❌ Ошибка: нет ID расписания', 'error');
+        showTopicsSaveIndicator(' Ошибка: нет ID расписания', 'error');
         return;
     }
     try {
-        console.log(' Отправка запроса на сервер...');
+        console.log('📡 Отправка запроса на сервер...');
         const response = await fetch(`/timetables/${currentTimetableId}/update-topics`, {
             method: 'POST',
             headers: {
@@ -1130,7 +1130,7 @@ async function flushTopicUpdates() {
             },
             body: JSON.stringify({ updates: updatesToSend })
         });
-        console.log('📥 Ответ сервера:', response.status);
+        console.log(' Ответ сервера:', response.status);
         if (response.ok) {
             const result = await response.json();
             console.log('✅ Результат:', result);
@@ -1211,7 +1211,7 @@ async function exportTopicsToExcel() {
 }
 
 // ============================================================
-// ЭКСПОРТ ФУНКЦИЙ В WINDOW
+// ЭКСПОРТ ФУНКЦИЙ В WINDOW (КРИТИЧЕСКИ ВАЖНО!)
 // ============================================================
 window.switchEditorMode = switchEditorMode;
 window.onEditorFilterChange = onEditorFilterChange;
