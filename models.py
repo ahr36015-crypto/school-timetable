@@ -7,6 +7,7 @@ class Lesson(BaseModel):
     subject: str
     grade: str
     hours: int
+    classroom: Optional[str] = None  # <-- ДОБАВЛЕНО: кабинет для этой нагрузки
 
 
 class Teacher(BaseModel):
@@ -78,6 +79,7 @@ class WorkloadItem(BaseModel):
     teacher: str
     subject: str
     grade: str
+    classroom: Optional[str] = None
     hours: int
 
 

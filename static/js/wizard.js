@@ -407,29 +407,37 @@ function loadTeacherCard() {
 
 function renderWorkloads(teacher) {
     const workloads = schoolData.workloads.filter(w => w.teacher === teacher);
+
     document.getElementById('workloadList').innerHTML = workloads.map((w, i) => `
         <div class="workload-row">
             <div class="form-group autocomplete-wrapper">
-                <label for="subject-${i}">Предмет</label>
-                <input type="text" id="subject-${i}" class="workload-subject" value="${w.subject}"
+                <label>Предмет</label>
+                <input type="text" class="workload-subject" value="${w.subject}"
                        placeholder="Например: Математика" data-idx="${i}" data-field="subject"
                        oninput="filterAutocomplete(this)" onfocus="showAutocomplete(this, 'subjects')">
                 <div class="autocomplete-list" style="display:none"></div>
             </div>
             <div class="form-group autocomplete-wrapper">
-                <label for="grade-${i}">Класс</label>
-                <input type="text" id="grade-${i}" class="workload-grade" value="${w.grade}"
+                <label>Класс</label>
+                <input type="text" class="workload-grade" value="${w.grade}"
                        placeholder="Например: 5А" data-idx="${i}" data-field="grade"
                        oninput="filterAutocomplete(this)" onfocus="showAutocomplete(this, 'classes')">
                 <div class="autocomplete-list" style="display:none"></div>
             </div>
+            <div class="form-group">
+                <label>Кабинет</label>
+                <select class="workload-classroom" data-idx="${i}" data-field="classroom" onchange="updateWorkloadFromInput(this)">
+                    <option value="">-- Не указан --</option>
+                    ${schoolData.classrooms.map(c => `<option value="${c.number}" ${w.classroom === c.number ? 'selected' : ''}>${c.number} (вм. ${c.capacity || '?'})</option>`).join('')}
+                </select>
+            </div>
             <div class="form-group hours-group">
-                <label for="hours-${i}">Часы</label>
-                <input type="number" id="hours-${i}" class="workload-hours" value="${w.hours}"
-                       data-idx="${i}" data-field="hours" min="1" max="20"
+                <label>Часы</label>
+                <input type="number" class="workload-hours" value="${w.hours}"
+                       data-idx="${i}" data-field="hours" min="1" max="40"
                        onchange="updateWorkloadFromInput(this)">
             </div>
-            <button class="small danger" onclick="removeWorkload(${i})">🗑 Удалить</button>
+            <button class="small danger" onclick="removeWorkload(${i})" style="margin-top: 24px;">🗑</button>
         </div>
     `).join('');
 }
@@ -475,7 +483,7 @@ function updateWorkloadFromInput(input) {
 function addWorkload() {
     const teacher = document.getElementById('teacherSelect').value;
     if (!teacher) { alert('Сначала выберите учителя'); return; }
-    schoolData.workloads.push({ teacher, subject: '', grade: '', hours: 1 });
+    schoolData.workloads.push({ teacher, subject: '', grade: '', classroom: '', hours: 1 });
     renderWorkloads(teacher);
     saveSchoolData();
 }
@@ -615,7 +623,7 @@ function applyDaysTemplate() {
     const allSlots = Array.from({ length: schoolData.lessonsPerDay }, (_, i) => i + 1);
     const allDays = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
     if (schoolData.availability[name] && Object.keys(schoolData.availability[name]).length > 0) {
-        if (!confirm(` У учителя "${name}" уже есть настройки. Заменить?`)) return;
+        if (!confirm(`⚠ У учителя "${name}" уже есть настройки. Заменить?`)) return;
     }
     schoolData.availability[name] = {};
     days.forEach(day => { schoolData.availability[name][day] = [...allSlots]; });
@@ -655,7 +663,7 @@ async function generateTimetable() {
         const workloads = schoolData.workloads.filter(w => w.teacher === t.full_name);
         if (workloads.length === 0) return;
         teachers[t.full_name] = {
-            lessons: workloads.map(w => ({ subject: w.subject, grade: w.grade, hours: w.hours })),
+            lessons: workloads.map(w => ({ subject: w.subject, grade: w.grade, hours: w.hours, classroom: w.classroom })),
             availability: schoolData.availability[t.full_name] || {},
             max_days_per_week: 5
         };
@@ -841,7 +849,7 @@ async function loadSavedTimetables() {
                         <button class="small primary" onclick="window.loadSavedTimetable(${t.id})">👁 Открыть</button>
                         <button class="small outline" onclick="window.downloadSavedPDF(${t.id},'teachers')">PDF (уч.)</button>
                         <button class="small outline" onclick="window.downloadSavedPDF(${t.id},'classes')">PDF (кл.)</button>
-                        <button class="small danger" onclick="window.deleteSavedTimetable(${t.id})"></button>
+                        <button class="small danger" onclick="window.deleteSavedTimetable(${t.id})">🗑</button>
                     </div>
                 </div>
             `).join('');
@@ -936,7 +944,7 @@ function downloadExcel(format) {
 }
 
 // ============================================================
-// РЕДАКТОР ТЕМ (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+// РЕДАКТОР ТЕМ
 // ============================================================
 
 function switchEditorMode(mode) {
@@ -1120,7 +1128,6 @@ function renderTopicsEditor() {
             const lesson = classSchedule[day][slot];
             html += `<td class="topics-cell">`;
             if (lesson) {
-                // ТЕМА ОТОБРАЖАЕТСЯ КАК ТЕКСТ (как предмет, учитель, кабинет)
                 const topicDisplay = lesson.topic ? `<div class="topic-display">${escapeHtml(lesson.topic)}</div>` : '';
                 html += `
                     <div class="topic-lesson-info">

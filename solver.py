@@ -1,200 +1,179 @@
 from ortools.sat.python import cp_model
 from models import TimetableRequest, TimetableResponse, TeacherSchedule, LessonAssignment
+from typing import List, Dict, Tuple
+from collections import defaultdict
 
 
-def get_classroom(subject: str, grade: str) -> str:
-    """Автоматически назначает кабинет на основе предмета"""
-    subj_lower = subject.lower()
-
-    # Специализированные кабинеты
-    if any(word in subj_lower for word in ['физик', 'астроном']): return '301 (Физика)'
-    if any(word in subj_lower for word in ['хим', 'опыт', 'pro опыт']): return '302 (Химия)'
-    if any(word in subj_lower for word in ['информатик', 'ит', 'it', 'ai', 'искусственный интеллект', 'старт it']):
-        return '205 (Компьютерный класс)'
-    if any(word in subj_lower for word in ['спорт', 'физкульт', 'физо']): return 'Спортзал'
-    if any(word in subj_lower for word in ['изо', 'технолог', 'труд']): return '104 (Мастерская)'
-    if any(word in subj_lower for word in ['музык', 'пение']): return 'Актовый зал'
-    if any(word in subj_lower for word in ['биолог', 'эколог']): return '303 (Биология)'
-
-    # Для остальных предметов генерируем кабинет на основе номера класса
-    try:
-        g_num = int(''.join(filter(str.isdigit, grade.split('-')[0])))
-        floor = 1 if g_num <= 4 else 2
-        room_num = (g_num * 10) + 1
-        return f'{floor}{room_num}'
-    except:
-        return '101'
-
-
-def validate_teachers(request: TimetableRequest):
+def validate_teachers(request: TimetableRequest) -> Tuple[bool, Dict, List[str]]:
+    """Валидация данных учителей перед генерацией"""
     errors = []
-    teacher_stats = []
+    teacher_stats = {}
 
-    for teacher_id, teacher in request.teachers.items():
-        total_hours = sum(lesson.hours for lesson in teacher.lessons)
-        available_slots = sum(len(slots) for slots in teacher.availability.values())
+    for teacher_name, teacher_data in request.teachers.items():
+        lessons = teacher_data.lessons
+        availability = teacher_data.availability
 
-        teacher_stats.append({
-            'teacher': teacher_id,
-            'hours': total_hours,
-            'slots': available_slots,
-            'valid': total_hours <= available_slots
-        })
+        if not lessons:
+            errors.append(f"Учитель {teacher_name} не имеет предметов")
+            continue
+
+        total_hours = sum(lesson.hours for lesson in lessons)
+        available_slots = sum(len(slots) for slots in availability.values())
+
+        teacher_stats[teacher_name] = {
+            'total_hours': total_hours,
+            'available_slots': available_slots,
+            'lessons_count': len(lessons)
+        }
 
         if total_hours > available_slots:
-            deficit = total_hours - available_slots
             errors.append(
-                f"{teacher_id}: нагрузка {total_hours}ч превышает доступность {available_slots} слотов (не хватает {deficit})")
+                f"Учитель {teacher_name}: часов ({total_hours}) больше, чем доступных слотов ({available_slots})"
+            )
 
     return len(errors) == 0, teacher_stats, errors
 
 
-def solve_timetable(request: TimetableRequest):
+def solve_timetable(request: TimetableRequest) -> TimetableResponse:
+    """Генерация расписания с жесткой проверкой кабинетов"""
     model = cp_model.CpModel()
+
+    days = request.days
+    slots = request.slots
+    teachers = request.teachers
+
+    # Собираем все уроки
+    all_lessons = []
+    for teacher_name, teacher_data in teachers.items():
+        for lesson in teacher_data.lessons:
+            for hour_idx in range(lesson.hours):
+                all_lessons.append({
+                    'teacher': teacher_name,
+                    'subject': lesson.subject,
+                    'grade': lesson.grade,
+                    'classroom': lesson.classroom,
+                    'hour_idx': hour_idx
+                })
+
+    if not all_lessons:
+        return TimetableResponse(
+            status="NO_LESSONS",
+            solution_time=0,
+            teachers=[],
+            validation_errors=["Нет уроков для распределения"]
+        )
+
+    # Создаем переменные для каждого урока: индекс выбранного слота из possible_slots
     lesson_vars = {}
+    for i, lesson in enumerate(all_lessons):
+        teacher_name = lesson['teacher']
+        availability = teachers[teacher_name].availability
 
-    # Создаем переменные для каждого урока
-    for teacher_id, teacher in request.teachers.items():
-        for lesson_idx, lesson in enumerate(teacher.lessons):
-            lesson_id = f"{teacher_id}_{lesson.subject}_{lesson.grade}_{lesson_idx}"
-            lesson_vars[lesson_id] = {}
+        possible_slots = []
+        for day in days:
+            if day in availability:
+                for slot in slots:
+                    if slot in availability[day]:
+                        possible_slots.append((day, slot))
 
-            for day in request.days:
-                for slot in request.slots:
-                    var_name = f"{lesson_id}_{day}_{slot}"
-                    var = model.NewBoolVar(var_name)
-                    lesson_vars[lesson_id][(day, slot)] = var
-
-    # Ограничение 1: количество часов должно совпадать
-    for teacher_id, teacher in request.teachers.items():
-        for lesson_idx, lesson in enumerate(teacher.lessons):
-            lesson_id = f"{teacher_id}_{lesson.subject}_{lesson.grade}_{lesson_idx}"
-            model.Add(
-                sum(lesson_vars[lesson_id][(day, slot)]
-                    for day in request.days
-                    for slot in request.slots)
-                == lesson.hours
+        if not possible_slots:
+            return TimetableResponse(
+                status="NO_SLOTS",
+                solution_time=0,
+                teachers=[],
+                validation_errors=[f"Учитель {teacher_name} не имеет доступных слотов"]
             )
 
-    # Ограничение 2: учитель не может вести два урока одновременно
-    for teacher_id, teacher in request.teachers.items():
-        for day in request.days:
-            for slot in request.slots:
-                teacher_lessons_at_time = []
-                for lesson_idx, lesson in enumerate(teacher.lessons):
-                    lesson_id = f"{teacher_id}_{lesson.subject}_{lesson.grade}_{lesson_idx}"
-                    teacher_lessons_at_time.append(lesson_vars[lesson_id][(day, slot)])
+        var = model.NewIntVar(0, len(possible_slots) - 1, f"lesson_{i}")
+        lesson_vars[i] = {
+            'var': var,
+            'lesson': lesson,
+            'possible_slots': possible_slots
+        }
 
-                if teacher_lessons_at_time:
-                    model.Add(sum(teacher_lessons_at_time) <= 1)
+    # Ограничение 1: Один учитель не может вести два урока одновременно
+    for i in range(len(all_lessons)):
+        for j in range(i + 1, len(all_lessons)):
+            if all_lessons[i]['teacher'] == all_lessons[j]['teacher']:
+                model.Add(lesson_vars[i]['var'] != lesson_vars[j]['var'])
 
-    # Ограничение 3: доступность учителя
-    for teacher_id, teacher in request.teachers.items():
-        for lesson_idx, lesson in enumerate(teacher.lessons):
-            lesson_id = f"{teacher_id}_{lesson.subject}_{lesson.grade}_{lesson_idx}"
+    # Ограничение 2: Один класс не может иметь два урока одновременно
+    for i in range(len(all_lessons)):
+        for j in range(i + 1, len(all_lessons)):
+            if all_lessons[i]['grade'] == all_lessons[j]['grade']:
+                model.Add(lesson_vars[i]['var'] != lesson_vars[j]['var'])
 
-            for day in request.days:
-                for slot in request.slots:
-                    if slot not in teacher.availability.get(day, []):
-                        model.Add(lesson_vars[lesson_id][(day, slot)] == 0)
+    # Ограничение 3: 🔥 ЖЕСТКАЯ ПРОВЕРКА КАБИНЕТОВ 🔥
+    # Один кабинет не может быть занят двумя разными уроками в одно и то же время
+    classroom_lesson_indices = defaultdict(list)
+    for i, lesson in enumerate(all_lessons):
+        if lesson.get('classroom'):
+            classroom_lesson_indices[lesson['classroom']].append(i)
 
-    # Ограничение 4: класс не может иметь два урока одновременно
-    class_lessons = {}
-    for teacher_id, teacher in request.teachers.items():
-        for lesson_idx, lesson in enumerate(teacher.lessons):
-            grade = lesson.grade
-            lesson_id = f"{teacher_id}_{lesson.subject}_{lesson.grade}_{lesson_idx}"
-            if grade not in class_lessons:
-                class_lessons[grade] = []
-            class_lessons[grade].append(lesson_id)
+    for classroom, indices in classroom_lesson_indices.items():
+        for d in days:
+            for s in slots:
+                # Находим все уроки, которые требуют этот кабинет и МОГУТ быть поставлены на (d, s)
+                conflicting_lessons_at_slot = []
+                for idx in indices:
+                    if (d, s) in lesson_vars[idx]['possible_slots']:
+                        pos = lesson_vars[idx]['possible_slots'].index((d, s))
+                        conflicting_lessons_at_slot.append(lesson_vars[idx]['var'] == pos)
 
-    for grade, lesson_ids in class_lessons.items():
-        for day in request.days:
-            for slot in request.slots:
-                class_lessons_at_time = [
-                    lesson_vars[lesson_id][(day, slot)]
-                    for lesson_id in lesson_ids
-                ]
-                if class_lessons_at_time:
-                    model.Add(sum(class_lessons_at_time) <= 1)
+                # В один слот (d, s) может быть назначен максимум один из этих уроков
+                if len(conflicting_lessons_at_slot) > 1:
+                    model.AddAtMostOne(conflicting_lessons_at_slot)
 
-    # Ограничение 5: max_days_per_week
-    for teacher_id, teacher in request.teachers.items():
-        if teacher.max_days_per_week is not None:
-            max_days = teacher.max_days_per_week
-
-            day_vars = {}
-            for day in request.days:
-                day_var = model.NewBoolVar(f"{teacher_id}_works_{day}")
-                day_vars[day] = day_var
-
-                day_lessons = []
-                for lesson_idx, lesson in enumerate(teacher.lessons):
-                    lesson_id = f"{teacher_id}_{lesson.subject}_{lesson.grade}_{lesson_idx}"
-                    for slot in request.slots:
-                        day_lessons.append(lesson_vars[lesson_id][(day, slot)])
-
-                if day_lessons:
-                    model.Add(sum(day_lessons) > 0).OnlyEnforceIf(day_var)
-                    model.Add(sum(day_lessons) == 0).OnlyEnforceIf(day_var.Not())
-
-            model.Add(sum(day_vars.values()) <= max_days)
-
-    # Решение
+    # Решаем
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 120
+    solver.parameters.max_time_in_seconds = 30.0
 
     status = solver.Solve(model)
 
-    if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
-        teachers_result = []
-
-        for teacher_id, teacher in request.teachers.items():
-            schedule = {}
-            total_lessons = 0
-
-            for lesson_idx, lesson in enumerate(teacher.lessons):
-                lesson_id = f"{teacher_id}_{lesson.subject}_{lesson.grade}_{lesson_idx}"
-
-                for day in request.days:
-                    for slot in request.slots:
-                        if solver.Value(lesson_vars[lesson_id][(day, slot)]) == 1:
-                            if day not in schedule:
-                                schedule[day] = {}
-
-                            slot_str = str(slot)
-                            if slot_str not in schedule[day]:
-                                schedule[day][slot_str] = []
-
-                            # Назначаем кабинет при создании урока
-                            classroom = get_classroom(lesson.subject, lesson.grade)
-
-                            schedule[day][slot_str].append(
-                                LessonAssignment(
-                                    subject=lesson.subject,
-                                    grade=lesson.grade,
-                                    teacher=teacher_id,
-                                    classroom=classroom  # <-- Передаем кабинет
-                                )
-                            )
-                            total_lessons += 1
-
-            teachers_result.append(TeacherSchedule(
-                teacher=teacher_id,
-                schedule=schedule,
-                total_lessons=total_lessons
-            ))
-
+    if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
         return TimetableResponse(
-            status=solver.StatusName(status),
-            solution_time=solver.WallTime(),
-            teachers=teachers_result,
-            validation_errors=[]
-        )
-    else:
-        return TimetableResponse(
-            status=solver.StatusName(status),
+            status="INFEASIBLE",
             solution_time=solver.WallTime(),
             teachers=[],
-            validation_errors=["Не удалось составить расписание. Проверьте ограничения и доступность учителей."]
+            validation_errors=[
+                "Не удалось составить расписание. Проверьте нагрузку, доступность учителей и конфликты кабинетов."]
         )
+
+    # Собираем результат
+    teacher_schedules = {}
+
+    for i, lesson in enumerate(all_lessons):
+        teacher_name = lesson['teacher']
+        slot_idx = solver.Value(lesson_vars[i]['var'])
+        day, slot = lesson_vars[i]['possible_slots'][slot_idx]
+
+        if teacher_name not in teacher_schedules:
+            teacher_schedules[teacher_name] = TeacherSchedule(
+                teacher=teacher_name,
+                total_lessons=0,
+                schedule={}
+            )
+
+        if day not in teacher_schedules[teacher_name].schedule:
+            teacher_schedules[teacher_name].schedule[day] = {}
+
+        if slot not in teacher_schedules[teacher_name].schedule[day]:
+            teacher_schedules[teacher_name].schedule[day][slot] = []
+
+        teacher_schedules[teacher_name].schedule[day][slot].append(
+            LessonAssignment(
+                subject=lesson['subject'],
+                grade=lesson['grade'],
+                teacher=teacher_name,
+                classroom=lesson.get('classroom', '')
+            )
+        )
+
+        teacher_schedules[teacher_name].total_lessons += 1
+
+    return TimetableResponse(
+        status="OPTIMAL" if status == cp_model.OPTIMAL else "FEASIBLE",
+        solution_time=solver.WallTime(),
+        teachers=list(teacher_schedules.values()),
+        validation_errors=[]
+    )
