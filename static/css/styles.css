@@ -600,3 +600,15 @@ button.add-btn { margin-top: 10px; padding: 12px 24px; background: linear-gradie
     background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
     box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
 }
+/* Отображение темы как текст в ячейке */
+.topic-display {
+    margin-top: 6px;
+    padding: 6px 8px;
+    background: #f0f4ff;
+    border-left: 3px solid #667eea;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #333;
+    font-weight: 500;
+    line-height: 1.4;
+}

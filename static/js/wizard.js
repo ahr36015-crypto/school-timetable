@@ -38,9 +38,9 @@ async function goToStep(step) {
     if (step === 4) loadSavedTimetables();
 
     if (step === 5) {
-        console.log("🔍 Проверка данных для редактора...");
+        console.log(" Проверка данных для редактора...");
         if (!currentResult || !currentResult.teachers || !currentTimetableId) {
-            console.warn("⚠ Данные или ID отсутствуют. Загружаю последнее расписание...");
+            console.warn(" Данные или ID отсутствуют. Загружаю последнее расписание...");
             try {
                 const res = await fetch('/timetables', {
                     headers: { 'Authorization': 'Bearer ' + getToken() }
@@ -356,7 +356,7 @@ function addClassroom() {
 
 function renderClassrooms() {
     document.getElementById('classroomsTable').innerHTML = schoolData.classrooms.map((c, i) =>
-        `<tr><td>${c.number}</td><td>${c.capacity || '-'}</td><td><button class="small danger" onclick="removeClassroom(${i})">🗑 Удалить</button></td></tr>`
+        `<tr><td>${c.number}</td><td>${c.capacity || '-'}</td><td><button class="small danger" onclick="removeClassroom(${i})"> Удалить</button></td></tr>`
     ).join('');
 }
 
@@ -566,7 +566,7 @@ function applyTimeTemplate() {
     if (!ensureTeacherExists(name)) return;
     const days = getSelectedDays('.tmpl-day');
     if (days.length === 0) {
-        alert(' Выберите хотя бы один день недели!\nБез выбранных дней учитель будет полностью недоступен.');
+        alert('⚠ Выберите хотя бы один день недели!\nБез выбранных дней учитель будет полностью недоступен.');
         return;
     }
     const startTime = document.getElementById('tmpl_start').value;
@@ -634,7 +634,7 @@ function applyExcludeTemplate() {
     const workingDays = allDays.filter(d => !excludedDays.includes(d));
     const allSlots = Array.from({ length: schoolData.lessonsPerDay }, (_, i) => i + 1);
     if (schoolData.availability[name] && Object.keys(schoolData.availability[name]).length > 0) {
-        if (!confirm(` У учителя "${name}" уже есть настройки. Заменить?`)) return;
+        if (!confirm(`⚠ У учителя "${name}" уже есть настройки. Заменить?`)) return;
     }
     schoolData.availability[name] = {};
     workingDays.forEach(day => { schoolData.availability[name][day] = [...allSlots]; });
@@ -936,7 +936,7 @@ function downloadExcel(format) {
 }
 
 // ============================================================
-// РЕДАКТОР ТЕМ (ПРОСТОЕ И НАДЁЖНОЕ РЕШЕНИЕ)
+// РЕДАКТОР ТЕМ (ИСПРАВЛЕННАЯ ВЕРСИЯ - ТЕМА КАК ТЕКСТ В ЯЧЕЙКЕ)
 // ============================================================
 
 function switchEditorMode(mode) {
@@ -1108,11 +1108,14 @@ function renderTopicsEditor() {
             const lesson = classSchedule[day][slot];
             html += `<td class="topics-cell">`;
             if (lesson) {
+                // ✅ ТЕМА ОТОБРАЖАЕТСЯ КАК ТЕКСТ (как предмет, учитель, кабинет)
+                const topicDisplay = lesson.topic ? `<div class="topic-display">${escapeHtml(lesson.topic)}</div>` : '';
                 html += `
                     <div class="topic-lesson-info">
                         <div class="topic-subject">${escapeHtml(lesson.subject)}</div>
                         <div class="topic-teacher">${escapeHtml(lesson.teacherShort)}</div>
-                        <div class="topic-classroom">${lesson.classroom ? '🚪 ' + escapeHtml(lesson.classroom) : ''}</div>
+                        <div class="topic-classroom">${lesson.classroom ? ' ' + escapeHtml(lesson.classroom) : ''}</div>
+                        ${topicDisplay}
                     </div>
                     <input type="text"
                            class="topic-input"
@@ -1154,8 +1157,10 @@ function onTopicBlur(input) {
     saveTopicsToDatabase().then(success => {
         if (success) {
             showTopicsSaveIndicator('✅ Сохранено', 'success');
+            // Перерисовываем таблицу, чтобы показать тему как текст
+            renderTopicsEditor();
         } else {
-            showTopicsSaveIndicator('❌ Ошибка сохранения', 'error');
+            showTopicsSaveIndicator(' Ошибка сохранения', 'error');
         }
     });
 }
