@@ -71,6 +71,25 @@ def ensure_topic_field(data: Dict[str, Any]) -> Dict[str, Any]:
     return data
 
 
+def remove_duplicates_from_schedule(schedule: Dict) -> Dict:
+    """Удаляет дубликаты уроков в расписании"""
+    for day_key, day_data in schedule.items():
+        for slot_key, lessons in day_data.items():
+            if isinstance(lessons, list):
+                seen = set()
+                unique_lessons = []
+                for lesson in lessons:
+                    # Ключ включает subject, grade, teacher, classroom
+                    key = f"{lesson.get('subject', '')}_{lesson.get('grade', '')}_{lesson.get('teacher', '')}_{lesson.get('classroom', '')}"
+                    if key not in seen:
+                        seen.add(key)
+                        unique_lessons.append(lesson)
+                    else:
+                        print(f"🧹 УДАЛЕН ДУБЛИКАТ: {key} в {day_key} {slot_key}")
+                schedule[day_key][slot_key] = unique_lessons
+    return schedule
+
+
 def response_to_dict(result: TimetableResponse, request: TimetableRequest) -> Dict[str, Any]:
     return {
         "status": result.status,
@@ -314,7 +333,7 @@ def generate_timetable(request: TimetableRequest, current_user: User = Depends(g
                 "teacher_stats": teacher_stats
             }
 
-        print("⚙️ Запускаю OR-Tools solver...")
+        print("️ Запускаю OR-Tools solver...")
         result: TimetableResponse = solve_timetable(request)
         print(f"✅ Solver завершил работу. Статус: {result.status}")
 
@@ -335,7 +354,7 @@ def generate_timetable(request: TimetableRequest, current_user: User = Depends(g
         db.add(saved)
         db.commit()
         db.refresh(saved)
-        print(f" Расписание сохранено с ID: {saved.id}")
+        print(f"💾 Расписание сохранено с ID: {saved.id}")
 
         return {
             "message": "Расписание сгенерировано",
@@ -386,7 +405,6 @@ def get_timetable(timetable_id: int, current_user: User = Depends(get_current_us
         if not timetable:
             raise HTTPException(status_code=404, detail="Расписание не найдено")
 
-        # ✅ ВАЖНО: гарантируем наличие поля topic во всех уроках
         data = ensure_topic_field(copy.deepcopy(timetable.data)) if timetable.data else {}
 
         print(f"📥 GET /timetables/{timetable_id} - возвращаем данные с {len(data.get('teachers', []))} учителями")
@@ -436,7 +454,7 @@ def delete_timetable(timetable_id: int, current_user: User = Depends(get_current
 
 
 # ============================================================
-# ПЕРЕМЕЩЕНИЕ УРОКА
+# ПЕРЕМЕЩЕНИЕ УРОКА (ИСПРАВЛЕННАЯ ВЕРСИЯ)
 # ============================================================
 @app.post("/timetables/{timetable_id}/move-lesson")
 def move_lesson(
@@ -469,12 +487,14 @@ def move_lesson(
         req_teacher = move_data['teacher'].strip().lower()
         req_subject = move_data['subject'].strip().lower()
         req_grade = str(move_data['grade']).strip()
+        req_classroom = move_data.get('classroom', '').strip()
         from_day = move_data['from_day']
         from_slot = str(move_data['from_slot'])
         to_day = move_data['to_day']
         to_slot = str(move_data['to_slot'])
 
-        print(f"📋 Параметры: teacher={req_teacher}, subject={req_subject}, grade={req_grade}")
+        print(
+            f"📋 Параметры: teacher={req_teacher}, subject={req_subject}, grade={req_grade}, classroom={req_classroom}")
         print(f"📋 Перемещение: {from_day} {from_slot} -> {to_day} {to_slot}")
 
         target_teacher = None
@@ -484,7 +504,7 @@ def move_lesson(
                 break
 
         if not target_teacher:
-            print(f"⚠️ Учитель '{req_teacher}' не найден")
+            print(f"️ Учитель '{req_teacher}' не найден")
             raise HTTPException(status_code=404, detail="Учитель не найден в расписании")
 
         schedule = target_teacher.get('schedule', {})
@@ -510,6 +530,7 @@ def move_lesson(
 
         print(f"📅 actual_from_day={actual_from_day}, actual_to_day={actual_to_day}")
 
+        # ✅ ШАГ 1: Удаляем урок со старого места
         day_schedule = schedule.get(actual_from_day, {})
         lessons_list = day_schedule.get(from_slot, [])
 
@@ -522,13 +543,15 @@ def move_lesson(
         for l in lessons_list:
             l_subject = str(l.get('subject', '')).strip().lower()
             l_grade = str(l.get('grade', '')).strip()
+            l_classroom = str(l.get('classroom', '')).strip()
 
-            print(f"  Проверяем: subject={l_subject}, grade={l_grade}")
+            print(f"  Проверяем: subject={l_subject}, grade={l_grade}, classroom={l_classroom}")
 
+            # Удаляем только ПЕРВЫЙ найденный урок с совпадающими параметрами
             is_same = (l_subject == req_subject and l_grade == req_grade)
 
-            if is_same:
-                print(f"✅ НАЙДЕН И УДАЛЯЕМ: {l['subject']} {l['grade']}")
+            if is_same and not removed:
+                print(f"✅ НАЙДЕН И УДАЛЯЕМ: {l['subject']} {l['grade']} {l.get('classroom', '')}")
                 removed = True
             else:
                 new_lessons_list.append(l)
@@ -544,6 +567,7 @@ def move_lesson(
                 del day_schedule[from_slot]
                 print(f" Слот {from_slot} удален (пустой)")
 
+        # ✅ ШАГ 2: Проверяем конфликты перед добавлением
         to_day_schedule = schedule.get(actual_to_day, {})
 
         if to_slot in to_day_schedule and to_day_schedule[to_slot]:
@@ -570,6 +594,7 @@ def move_lesson(
                                         detail=f"Конфликт: Класс {req_grade} уже имеет урок в это время у учителя {t['teacher']}"
                                     )
 
+        # ✅ ШАГ 3: Проверяем, нет ли уже такого урока в целевом слоте
         if actual_to_day not in schedule:
             schedule[actual_to_day] = {}
             print(f"✅ Создан день {actual_to_day}")
@@ -578,30 +603,37 @@ def move_lesson(
             schedule[actual_to_day][to_slot] = []
             print(f"✅ Создан слот {to_slot} в {actual_to_day}")
 
-        new_lesson = {
-            'subject': move_data['subject'],
-            'grade': move_data['grade'],
-            'teacher': move_data['teacher'],
-            'classroom': move_data.get('classroom', ''),
-            'topic': ''
-        }
+        # Проверяем дубликаты перед добавлением
+        existing_lessons = schedule[actual_to_day][to_slot]
+        already_exists = False
+        for existing in existing_lessons:
+            e_subject = str(existing.get('subject', '')).strip().lower()
+            e_grade = str(existing.get('grade', '')).strip()
+            e_classroom = str(existing.get('classroom', '')).strip()
 
-        schedule[actual_to_day][to_slot].append(new_lesson)
-        print(f"➕ ДОБАВЛЕН: {new_lesson['subject']} {new_lesson['grade']} в {actual_to_day} {to_slot}")
+            if e_subject == req_subject and e_grade == req_grade and e_classroom == req_classroom:
+                already_exists = True
+                print(f"⚠️ Урок уже существует в целевом слоте: {req_subject} {req_grade} {req_classroom}")
+                break
 
-        for d_key, d_val in schedule.items():
-            for s_key, s_val in d_val.items():
-                seen = set()
-                unique_lessons = []
-                for lesson in s_val:
-                    key = f"{lesson.get('subject', '')}_{lesson.get('grade', '')}_{lesson.get('teacher', '')}"
-                    if key not in seen:
-                        seen.add(key)
-                        unique_lessons.append(lesson)
-                    else:
-                        print(f"🧹 УДАЛЕН ДУБЛИКАТ: {key} в {d_key} {s_key}")
-                schedule[d_key][s_key] = unique_lessons
+        if not already_exists:
+            new_lesson = {
+                'subject': move_data['subject'],
+                'grade': move_data['grade'],
+                'teacher': move_data['teacher'],
+                'classroom': move_data.get('classroom', ''),
+                'topic': ''
+            }
+            schedule[actual_to_day][to_slot].append(new_lesson)
+            print(
+                f"➕ ДОБАВЛЕН: {new_lesson['subject']} {new_lesson['grade']} {new_lesson.get('classroom', '')} в {actual_to_day} {to_slot}")
+        else:
+            print(f"⚠️ Урок НЕ ДОБАВЛЕН (уже существует)")
 
+        # ✅ ШАГ 4: Удаляем дубликаты во всем расписании учителя
+        schedule = remove_duplicates_from_schedule(schedule)
+
+        # ✅ ШАГ 5: Сохраняем в БД
         timetable.data = copy.deepcopy(data)
         db.commit()
 
@@ -620,17 +652,6 @@ def move_lesson(
         fresh_data = ensure_topic_field(copy.deepcopy(fresh_timetable.data))
         print(f"✅ Загружены актуальные данные из БД")
         print(f"📊 Количество учителей: {len(fresh_data.get('teachers', []))}")
-
-        for t in fresh_data.get('teachers', []):
-            if t['teacher'].strip().lower() == req_teacher:
-                t_schedule = t.get('schedule', {})
-                print("📅 Расписание учителя после перемещения:")
-                for day, slots in t_schedule.items():
-                    for slot, lessons in slots.items():
-                        if lessons:
-                            lesson_info = [f"{l.get('subject')} {l.get('grade')}" for l in lessons]
-                            print(f"   {day} {slot}: {lesson_info}")
-                break
 
         return {"message": "Урок успешно перемещен", "data": fresh_data}
 
