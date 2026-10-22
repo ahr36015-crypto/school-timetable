@@ -127,6 +127,27 @@ function renderGlobalEditor() {
 }
 
 // ============================================================
+// ПОИСК УРОКОВ В ДНЕ/СЛОТЕ ПО ВСЕМ УЧИТЕЛЯМ
+// ============================================================
+function findLessonsInSlot(day, slot) {
+    const slotKey = String(slot);
+    const lessons = [];
+    if (!currentResult || !currentResult.teachers) return lessons;
+
+    currentResult.teachers.forEach(teacher => {
+        if (teacher.schedule && teacher.schedule[day] && teacher.schedule[day][slotKey]) {
+            teacher.schedule[day][slotKey].forEach(l => {
+                lessons.push({
+                    ...l,
+                    teacher: teacher.teacher
+                });
+            });
+        }
+    });
+    return lessons;
+}
+
+// ============================================================
 // НАЧАЛО ПЕРЕТАСКИВАНИЯ
 // ============================================================
 function handleGlobalDragStart(e, chipId) {
@@ -162,7 +183,7 @@ function handleGlobalDragStart(e, chipId) {
 }
 
 // ============================================================
-// ПРОВЕРКА ВАЛИДНОСТИ ЗОНЫ СБРОСА (С ПРОВЕРКОЙ КАБИНЕТА)
+// ПРОВЕРКА ВАЛИДНОСТИ ЗОНЫ СБРОСА (С ПРОВЕРКОЙ КАБИНЕТА ПО ВСЕМ УЧИТЕЛЯМ)
 // ============================================================
 function checkDropZoneValidity(zone) {
     if (!zone || !draggedLessonData) return;
@@ -190,45 +211,56 @@ function checkDropZoneValidity(zone) {
     }
 
     // Проверка 3: Конфликты с другими уроками
+    let conflictReason = null;
+
+    // 3a. Проверяем уроки в целевой ячейке (того же учителя)
     try {
         const existingLessons = JSON.parse(zone.dataset.lessons || '[]');
-        let conflictReason = null;
-
         for (const l of existingLessons) {
-            // Проверка конфликта по классу
             if (l.grade === draggedLessonData.grade) {
                 conflictReason = `Класс ${l.grade} уже имеет урок (${l.subject})`;
                 break;
             }
+        }
+    } catch (err) {
+        console.error('Ошибка парсинга lessons:', err);
+    }
 
-            // 🔥 ПРОВЕРКА КОНФЛИКТА ПО КАБИНЕТУ 🔥
-            if (draggedLessonData.classroom && l.classroom &&
-                draggedLessonData.classroom === l.classroom) {
-                conflictReason = `Кабинет ${l.classroom} уже занят (${l.subject} ${l.grade} кл)`;
+    // 3b. 🔥 ПРОВЕРКА КОНФЛИКТА ПО КАБИНЕТУ ПО ВСЕМ УЧИТЕЛЯМ 🔥
+    if (!conflictReason && draggedLessonData.classroom) {
+        const allLessonsInSlot = findLessonsInSlot(toDay, toSlot);
+        for (const l of allLessonsInSlot) {
+            // Пропускаем сам перетаскиваемый урок
+            if (l.teacher === draggedLessonData.teacher &&
+                l.subject === draggedLessonData.subject &&
+                l.grade === draggedLessonData.grade) {
+                continue;
+            }
+
+            if (l.classroom && draggedLessonData.classroom === l.classroom) {
+                conflictReason = `Кабинет ${l.classroom} уже занят (${l.subject} ${l.grade} кл, ${l.teacher})`;
                 break;
             }
         }
+    }
 
-        // Проверка доступности учителя
-        const teacherData = schoolData.teachers.find(t => t.full_name === toTeacher);
-        if (teacherData) {
-            const availability = schoolData.availability[toTeacher] || {};
-            const dayAvailability = availability[toDay] || [];
-            if (dayAvailability.length > 0 && !dayAvailability.includes(toSlot)) {
-                conflictReason = `Учитель недоступен в это время`;
-            }
+    // 3c. Проверка доступности учителя
+    const teacherData = schoolData.teachers.find(t => t.full_name === toTeacher);
+    if (teacherData) {
+        const availability = schoolData.availability[toTeacher] || {};
+        const dayAvailability = availability[toDay] || [];
+        if (dayAvailability.length > 0 && !dayAvailability.includes(toSlot)) {
+            conflictReason = `Учитель недоступен в это время`;
         }
+    }
 
-        if (conflictReason) {
-            zone.classList.add('drag-over-invalid');
-            zone.setAttribute('title', `❌ ${conflictReason}`);
-            zone.classList.add('conflict-reason');
-        } else {
-            zone.classList.add('drag-over-valid');
-            zone.setAttribute('title', '✅ Можно переместить');
-        }
-    } catch (err) {
+    if (conflictReason) {
+        zone.classList.add('drag-over-invalid');
+        zone.setAttribute('title', `❌ ${conflictReason}`);
+        zone.classList.add('conflict-reason');
+    } else {
         zone.classList.add('drag-over-valid');
+        zone.setAttribute('title', '✅ Можно переместить');
     }
 }
 
@@ -298,33 +330,37 @@ async function handleGlobalDrop(e) {
         return;
     }
 
-    // 🔥 ПРОВЕРКА КОНФЛИКТА ПО КАБИНЕТУ НА КЛИЕНТЕ 🔥
-    try {
-        const existingLessons = JSON.parse(targetCell.dataset.lessons || '[]');
-        for (const l of existingLessons) {
+    // 🔥 ПРОВЕРКА КОНФЛИКТА ПО КАБИНЕТУ ПО ВСЕМ УЧИТЕЛЯМ 🔥
+    if (draggedLessonData.classroom) {
+        const allLessonsInSlot = findLessonsInSlot(toDay, toSlot);
+        for (const l of allLessonsInSlot) {
+            // Пропускаем сам перетаскиваемый урок
+            if (l.teacher === draggedLessonData.teacher &&
+                l.subject === draggedLessonData.subject &&
+                l.grade === draggedLessonData.grade) {
+                continue;
+            }
+
             // Конфликт по классу
             if (l.grade === draggedLessonData.grade) {
-                alert(`️ Конфликт: Класс ${l.grade} уже имеет урок "${l.subject}" в это время`);
+                alert(`⚠️ Конфликт: Класс ${l.grade} уже имеет урок "${l.subject}" в это время`);
                 _isDragging = false;
                 await reloadAndRender();
                 return;
             }
 
             // Конфликт по кабинету
-            if (draggedLessonData.classroom && l.classroom &&
-                draggedLessonData.classroom === l.classroom) {
-                alert(`⚠️ Конфликт: Кабинет ${l.classroom} уже занят уроком "${l.subject}" (${l.grade} кл) в это время`);
+            if (l.classroom && draggedLessonData.classroom === l.classroom) {
+                alert(`⚠️ Конфликт: Кабинет ${l.classroom} уже занят уроком "${l.subject}" (${l.grade} кл, ${l.teacher}) в это время`);
                 _isDragging = false;
                 await reloadAndRender();
                 return;
             }
         }
-    } catch (err) {
-        console.error('Ошибка проверки конфликтов:', err);
     }
 
     if (!currentTimetableId) {
-        alert('️ Ошибка: Потерян ID расписания. Пожалуйста, обновите страницу.');
+        alert('⚠️ Ошибка: Потерян ID расписания. Пожалуйста, обновите страницу.');
         _isDragging = false;
         return;
     }
@@ -412,13 +448,13 @@ async function reloadAndRender() {
             if (reloadData && reloadData.data) {
                 currentResult = reloadData.data;
                 console.log('✅ currentResult обновлён с сервера');
-                console.log(' Количество учителей:', currentResult.teachers?.length);
+                console.log('📊 Количество учителей:', currentResult.teachers?.length);
             }
         } else {
             console.warn('⚠ Не удалось перезагрузить данные');
         }
     } catch (err) {
-        console.error('❌ Ошибка перезагрузки:', err);
+        console.error(' Ошибка перезагрузки:', err);
     }
 
     updateEditorClassFilter();
