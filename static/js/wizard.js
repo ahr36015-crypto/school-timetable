@@ -38,9 +38,9 @@ async function goToStep(step) {
     if (step === 4) loadSavedTimetables();
 
     if (step === 5) {
-        console.log(" Проверка данных для редактора...");
+        console.log("🔍 Проверка данных для редактора...");
         if (!currentResult || !currentResult.teachers || !currentTimetableId) {
-            console.warn(" Данные или ID отсутствуют. Загружаю последнее расписание...");
+            console.warn("⚠ Данные или ID отсутствуют. Загружаю последнее расписание...");
             try {
                 const res = await fetch('/timetables', {
                     headers: { 'Authorization': 'Bearer ' + getToken() }
@@ -356,7 +356,7 @@ function addClassroom() {
 
 function renderClassrooms() {
     document.getElementById('classroomsTable').innerHTML = schoolData.classrooms.map((c, i) =>
-        `<tr><td>${c.number}</td><td>${c.capacity || '-'}</td><td><button class="small danger" onclick="removeClassroom(${i})"> Удалить</button></td></tr>`
+        `<tr><td>${c.number}</td><td>${c.capacity || '-'}</td><td><button class="small danger" onclick="removeClassroom(${i})">🗑 Удалить</button></td></tr>`
     ).join('');
 }
 
@@ -611,11 +611,11 @@ function applyDaysTemplate() {
     const name = document.getElementById('tmpl_name2').value.trim();
     if (!ensureTeacherExists(name)) return;
     const days = getSelectedDays('.tmpl-day2');
-    if (days.length === 0) { alert(' Выберите хотя бы один день!'); return; }
+    if (days.length === 0) { alert('⚠ Выберите хотя бы один день!'); return; }
     const allSlots = Array.from({ length: schoolData.lessonsPerDay }, (_, i) => i + 1);
     const allDays = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
     if (schoolData.availability[name] && Object.keys(schoolData.availability[name]).length > 0) {
-        if (!confirm(`⚠ У учителя "${name}" уже есть настройки. Заменить?`)) return;
+        if (!confirm(` У учителя "${name}" уже есть настройки. Заменить?`)) return;
     }
     schoolData.availability[name] = {};
     days.forEach(day => { schoolData.availability[name][day] = [...allSlots]; });
@@ -841,7 +841,7 @@ async function loadSavedTimetables() {
                         <button class="small primary" onclick="window.loadSavedTimetable(${t.id})">👁 Открыть</button>
                         <button class="small outline" onclick="window.downloadSavedPDF(${t.id},'teachers')">PDF (уч.)</button>
                         <button class="small outline" onclick="window.downloadSavedPDF(${t.id},'classes')">PDF (кл.)</button>
-                        <button class="small danger" onclick="window.deleteSavedTimetable(${t.id})">🗑</button>
+                        <button class="small danger" onclick="window.deleteSavedTimetable(${t.id})"></button>
                     </div>
                 </div>
             `).join('');
@@ -936,7 +936,7 @@ function downloadExcel(format) {
 }
 
 // ============================================================
-// РЕДАКТОР ТЕМ (ИСПРАВЛЕННАЯ ВЕРСИЯ - ТЕМА КАК ТЕКСТ В ЯЧЕЙКЕ)
+// РЕДАКТОР ТЕМ (ИСПРАВЛЕННАЯ ВЕРСИЯ)
 // ============================================================
 
 function switchEditorMode(mode) {
@@ -964,7 +964,6 @@ async function onEditorFilterChange() {
     if (currentEditorMode === 'editor') {
         renderGlobalEditor();
     } else {
-        // При переключении класса загружаем свежие данные из БД
         await loadFreshTimetableData();
         renderTopicsEditor();
     }
@@ -995,25 +994,38 @@ async function loadFreshTimetableData() {
     }
 }
 
-async function saveTopicsToDatabase() {
-    if (!currentTimetableId || !currentResult) {
-        console.error('❌ Нет данных для сохранения');
+async function saveTopicToDatabase(teacher, subject, grade, day, slot, topic) {
+    if (!currentTimetableId) {
+        console.error('❌ Нет currentTimetableId');
         return false;
     }
 
     try {
-        console.log('💾 Сохранение тем в БД через PUT endpoint...');
-        const res = await fetch(`/timetables/${currentTimetableId}`, {
-            method: 'PUT',
+        console.log('💾 Сохранение темы через update-topics endpoint...');
+        const res = await fetch(`/timetables/${currentTimetableId}/update-topics`, {
+            method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': 'Bearer ' + getToken()
             },
-            body: JSON.stringify({ data: currentResult })
+            body: JSON.stringify({
+                updates: [{
+                    teacher: teacher,
+                    subject: subject,
+                    grade: grade,
+                    day: day,
+                    slot: slot,
+                    topic: topic
+                }]
+            })
         });
 
         if (res.ok) {
-            console.log('✅ Темы сохранены в БД');
+            const data = await res.json();
+            console.log('✅ Тема сохранена в БД');
+            if (data.data) {
+                currentResult = data.data;
+            }
             return true;
         } else {
             console.error('❌ Ошибка сохранения:', res.status);
@@ -1108,13 +1120,13 @@ function renderTopicsEditor() {
             const lesson = classSchedule[day][slot];
             html += `<td class="topics-cell">`;
             if (lesson) {
-                // ✅ ТЕМА ОТОБРАЖАЕТСЯ КАК ТЕКСТ (как предмет, учитель, кабинет)
+                // ТЕМА ОТОБРАЖАЕТСЯ КАК ТЕКСТ (как предмет, учитель, кабинет)
                 const topicDisplay = lesson.topic ? `<div class="topic-display">${escapeHtml(lesson.topic)}</div>` : '';
                 html += `
                     <div class="topic-lesson-info">
                         <div class="topic-subject">${escapeHtml(lesson.subject)}</div>
                         <div class="topic-teacher">${escapeHtml(lesson.teacherShort)}</div>
-                        <div class="topic-classroom">${lesson.classroom ? ' ' + escapeHtml(lesson.classroom) : ''}</div>
+                        <div class="topic-classroom">${lesson.classroom ? '🚪 ' + escapeHtml(lesson.classroom) : ''}</div>
                         ${topicDisplay}
                     </div>
                     <input type="text"
@@ -1140,7 +1152,7 @@ function renderTopicsEditor() {
     container.innerHTML = html;
 }
 
-function onTopicBlur(input) {
+async function onTopicBlur(input) {
     console.log('💾 onTopicBlur вызван:', input.dataset);
     const day = input.dataset.day;
     const slot = parseInt(input.dataset.slot);
@@ -1149,40 +1161,16 @@ function onTopicBlur(input) {
     const grade = input.dataset.grade;
     const topic = input.value.trim();
 
-    // Обновляем тему в currentResult
-    updateTopicInCurrentResult(teacher, subject, grade, day, slot, topic);
-
-    // Сохраняем в БД
     showTopicsSaveIndicator('⏳ Сохранение...', 'saving');
-    saveTopicsToDatabase().then(success => {
-        if (success) {
-            showTopicsSaveIndicator('✅ Сохранено', 'success');
-            // Перерисовываем таблицу, чтобы показать тему как текст
-            renderTopicsEditor();
-        } else {
-            showTopicsSaveIndicator(' Ошибка сохранения', 'error');
-        }
-    });
-}
 
-function updateTopicInCurrentResult(teacher, subject, grade, day, slot, topic) {
-    if (!currentResult || !currentResult.teachers) return;
+    const success = await saveTopicToDatabase(teacher, subject, grade, day, slot, topic);
 
-    const slotStr = String(slot);
-
-    for (const t of currentResult.teachers) {
-        if (t.teacher === teacher && t.schedule && t.schedule[day] && t.schedule[day][slotStr]) {
-            const lessons = t.schedule[day][slotStr];
-            for (const lesson of lessons) {
-                if (lesson.subject === subject && lesson.grade === grade) {
-                    lesson.topic = topic;
-                    console.log('✅ Тема обновлена в currentResult:', topic);
-                    return;
-                }
-            }
-        }
+    if (success) {
+        showTopicsSaveIndicator('✅ Сохранено', 'success');
+        renderTopicsEditor();
+    } else {
+        showTopicsSaveIndicator('❌ Ошибка сохранения', 'error');
     }
-    console.warn('⚠ Урок не найден для обновления темы');
 }
 
 function onTopicKeydown(event, input) {
@@ -1265,4 +1253,4 @@ window.onTopicKeydown = onTopicKeydown;
 window.showTopicsSaveIndicator = showTopicsSaveIndicator;
 window.exportTopicsToExcel = exportTopicsToExcel;
 window.loadFreshTimetableData = loadFreshTimetableData;
-window.saveTopicsToDatabase = saveTopicsToDatabase;
+window.saveTopicToDatabase = saveTopicToDatabase;
