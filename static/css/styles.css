@@ -60,7 +60,7 @@ button.add-btn { margin-top: 10px; padding: 12px 24px; background: linear-gradie
 .btn-danger { background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); padding: 10px 20px; }
 
 /* ============================================================
-   НАВИГАЦИЯ ПО ШАГАМ (WIZARD) - ИСПРАВЛЕНО
+   НАВИГАЦИЯ ПО ШАГАМ (WIZARD)
    ============================================================ */
 .wizard-nav {
     display: flex;
