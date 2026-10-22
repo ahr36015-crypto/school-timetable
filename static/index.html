@@ -8,59 +8,112 @@
 </head>
 <body>
     <!-- Авторизация -->
-    <div id="authContainer" class="container auth-container">
-        <h1>🎓 Генератор школьного расписания</h1>
-        <p class="subtitle">Войдите или создайте аккаунт</p>
-        <div class="tabs">
-            <button class="tab active" onclick="showLogin()">Вход</button>
-            <button class="tab" onclick="showRegister()">Регистрация</button>
-        </div>
-        <div id="loginForm" class="form-section active">
-            <div class="form-group"><label>Email</label><input type="email" id="loginEmail"></div>
-            <div class="form-group"><label>Пароль</label><input type="password" id="loginPassword"></div>
-            <button class="full" onclick="login()">Войти</button>
-            <div id="loginError" class="error"></div>
-        </div>
-        <div id="registerForm" class="form-section">
-            <div class="form-group"><label>ФИО</label><input type="text" id="regFullName"></div>
-            <div class="form-group"><label>Email</label><input type="email" id="regEmail"></div>
-            <div class="form-group"><label>Школа</label><input type="text" id="regSchool"></div>
-            <div class="form-group"><label>Пароль</label><input type="password" id="regPassword"></div>
-            <button class="full" onclick="register()">Зарегистрироваться</button>
-            <div id="regError" class="error"></div>
+    <div id="authContainer" class="auth-container">
+        <div class="auth-card">
+            <h1>🎓 Генератор школьного расписания</h1>
+            <p>Войдите или создайте аккаунт</p>
+            <div class="auth-tabs">
+                <button class="tab active" onclick="showLogin()">Вход</button>
+                <button class="tab" onclick="showRegister()">Регистрация</button>
+            </div>
+            <div class="form-section active" id="loginSection">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="loginEmail" placeholder="example@mail.ru">
+                </div>
+                <div class="form-group">
+                    <label>Пароль</label>
+                    <input type="password" id="loginPassword" placeholder="••••••••">
+                </div>
+                <div id="loginError" class="error-message"></div>
+                <button class="btn-primary" onclick="login()">Войти</button>
+            </div>
+            <div class="form-section" id="registerSection">
+                <div class="form-group">
+                    <label>ФИО</label>
+                    <input type="text" id="regFullName" placeholder="Иванов Иван Иванович">
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="regEmail" placeholder="example@mail.ru">
+                </div>
+                <div class="form-group">
+                    <label>Название школы</label>
+                    <input type="text" id="regSchool" placeholder="Школа №123">
+                </div>
+                <div class="form-group">
+                    <label>Пароль</label>
+                    <input type="password" id="regPassword" placeholder="Минимум 6 символов">
+                </div>
+                <div id="regError" class="error-message"></div>
+                <button class="btn-primary" onclick="register()">Зарегистрироваться</button>
+            </div>
         </div>
     </div>
 
     <!-- Основное приложение -->
-    <div id="mainApp" class="container">
-        <div class="header">
-            <div><h1>🎓 Генератор школьного расписания</h1><p class="subtitle" id="userInfo">Загрузка...</p></div>
-            <button class="logout-btn" onclick="logout()">Выйти</button>
-        </div>
+    <div id="mainApp" class="main-app">
+        <header class="app-header">
+            <div class="user-info" id="userInfo">Пользователь: Гость</div>
+            <button class="btn-danger" onclick="logout()">Выйти</button>
+        </header>
 
-        <!-- Шаги мастера -->
-        <div class="wizard-steps">
-            <div class="wizard-step active" onclick="goToStep(1)"><span class="wizard-step-number">1</span>Профиль</div>
-            <div class="wizard-step" onclick="goToStep(2)"><span class="wizard-step-number">2</span>Справочники</div>
-            <div class="wizard-step" onclick="goToStep(3)"><span class="wizard-step-number">3</span>Нагрузки</div>
-            <div class="wizard-step" onclick="goToStep(4)"><span class="wizard-step-number">4</span>Генерация</div>
-            <div class="wizard-step" onclick="goToStep(5)"><span class="wizard-step-number">5</span>Редактор</div>
-            <div class="wizard-step" onclick="goToStep(6)"><span class="wizard-step-number">6</span>Публикация</div>
-        </div>
+        <!-- Навигация по шагам -->
+        <nav class="wizard-nav">
+            <div class="wizard-step active" data-step="1">
+                <div class="step-number">1</div>
+                <div class="step-title">Профиль</div>
+            </div>
+            <div class="wizard-step" data-step="2">
+                <div class="step-number">2</div>
+                <div class="step-title">Справочники</div>
+            </div>
+            <div class="wizard-step" data-step="3">
+                <div class="step-number">3</div>
+                <div class="step-title">Нагрузки</div>
+            </div>
+            <div class="wizard-step" data-step="4">
+                <div class="step-number">4</div>
+                <div class="step-title">Генерация</div>
+            </div>
+            <div class="wizard-step" data-step="5">
+                <div class="step-number">5</div>
+                <div class="step-title">Редактор</div>
+            </div>
+            <div class="wizard-step" data-step="6">
+                <div class="step-number">6</div>
+                <div class="step-title">Публикация</div>
+            </div>
+        </nav>
 
-        <!-- Шаг 1: Профиль -->
-        <div id="step1" class="wizard-content active">
+        <!-- Шаг 1: Профиль школы -->
+        <div class="wizard-content active" id="step1">
             <h2>📋 Шаг 1: Профиль школы</h2>
             <p class="step-hint">Укажите базовые параметры учебного процесса: название школы, количество дней и уроков</p>
-            <div class="form-group"><label>Название школы</label><input type="text" id="schoolName" placeholder="Школа №123"></div>
-            <div class="form-group"><label>Дней в неделе</label><select id="daysPerWeek"><option value="5">5</option><option value="6">6</option></select></div>
-            <div class="form-group"><label>Уроков в день</label><input type="number" id="lessonsPerDay" value="7" min="1" max="10"></div>
-            <div class="form-group"><label>Время уроков</label><input type="text" id="lessonTimes" value="08:30-09:15, 09:25-10:10, 10:20-11:05, 11:25-12:10, 12:20-13:05, 13:15-14:00, 14:10-14:55"></div>
-            <button onclick="completeStep(1)">💾 Далее →</button>
+            <div class="form-group">
+                <label>Название школы</label>
+                <input type="text" id="schoolName" placeholder="Школа №123">
+            </div>
+            <div class="form-group">
+                <label>Дней в неделе</label>
+                <select id="daysPerWeek">
+                    <option value="5">5</option>
+                    <option value="6">6</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Уроков в день</label>
+                <input type="number" id="lessonsPerDay" min="1" max="10" value="7">
+            </div>
+            <div class="form-group">
+                <label>Время уроков</label>
+                <input type="text" id="lessonTimes" placeholder="08:30-09:15, 09:25-10:10, ...">
+            </div>
+            <button class="btn-primary" onclick="completeStep(1)">💾 Далее →</button>
         </div>
 
         <!-- Шаг 2: Справочники -->
-        <div id="step2" class="wizard-content">
+        <div class="wizard-content" id="step2">
             <h2>📚 Шаг 2: Справочники</h2>
             <p class="step-hint">Создайте списки классов, учителей, предметов и кабинетов — это основа для расписания</p>
             <div class="reference-tabs">
@@ -69,107 +122,109 @@
                 <button class="reference-tab" onclick="showRefTab('subjects')">Предметы</button>
                 <button class="reference-tab" onclick="showRefTab('classrooms')">Кабинеты</button>
             </div>
-
-            <div id="ref-classes" class="reference-content active">
+            <div class="reference-content active" id="ref-classes">
                 <h3>Классы</h3>
                 <div class="form-group">
-                    <input type="text" id="newClassName" placeholder="5А">
-                    <button class="add-btn" onclick="addClass()">➕ Добавить</button>
+                    <label>Название класса</label>
+                    <input type="text" id="newClassName" placeholder="Например: 5А">
                 </div>
-                <div id="classDuplicateWarning" class="duplicate-warning">Такой класс уже существует!</div>
-                <table class="data-table">
-                    <thead><tr><th>Название</th><th>Номер</th><th></th></tr></thead>
-                    <tbody id="classesTable"></tbody>
-                </table>
+                <div id="classDuplicateWarning" class="warning-message">⚠ Такой класс уже существует!</div>
+                <button class="btn-primary" onclick="addClass()">+ Добавить класс</button>
+                <button class="btn-secondary" onclick="importFromExcel()">📥 Импорт из Excel</button>
+                <table id="classesTable" class="data-table"></table>
             </div>
-
-            <div id="ref-teachers" class="reference-content">
+            <div class="reference-content" id="ref-teachers">
                 <h3>Учителя</h3>
                 <div class="form-group">
-                    <input type="text" id="newTeacherName" placeholder="Иванов И.И.">
-                    <button class="add-btn" onclick="addTeacher()">➕ Добавить учителя</button>
+                    <label>ФИО учителя</label>
+                    <input type="text" id="newTeacherName" placeholder="Иванов Иван Иванович">
                 </div>
-                <div id="teacherDuplicateWarning" class="duplicate-warning">Такой учитель уже существует!</div>
-                <table class="data-table" style="margin-top:20px;">
-                    <thead>
-                        <tr>
-                            <th style="width: 30%">ФИО</th>
-                            <th style="width: 25%">Email</th>
-                            <th style="width: 35%">Предметы</th>
-                            <th style="width: 10%"></th>
-                        </tr>
-                    </thead>
-                    <tbody id="teachersTable"></tbody>
-                </table>
+                <div id="teacherDuplicateWarning" class="warning-message"> Такой учитель уже существует!</div>
+                <button class="btn-primary" onclick="addTeacher()">+ Добавить учителя</button>
+                <table id="teachersTable" class="data-table"></table>
             </div>
-
-            <div id="ref-subjects" class="reference-content">
+            <div class="reference-content" id="ref-subjects">
                 <h3>Предметы</h3>
                 <div class="form-group">
+                    <label>Название предмета</label>
                     <input type="text" id="newSubjectName" placeholder="Математика">
-                    <select id="newSubjectCategory" style="margin-top:5px;">
+                </div>
+                <div class="form-group">
+                    <label>Категория</label>
+                    <select id="newSubjectCategory">
                         <option value="Основной">Основной</option>
                         <option value="Факультатив">Факультатив</option>
                         <option value="Кружок">Кружок</option>
-                        <option value="Консультация">Консультация</option>
                     </select>
-                    <button class="add-btn" onclick="addSubject()">➕ Добавить</button>
                 </div>
-                <div id="subjectDuplicateWarning" class="duplicate-warning">Такой предмет уже существует!</div>
-                <table class="data-table">
-                    <thead><tr><th>Предмет</th><th>Категория</th><th></th></tr></thead>
-                    <tbody id="subjectsTable"></tbody>
-                </table>
+                <div id="subjectDuplicateWarning" class="warning-message">⚠ Такой предмет уже существует!</div>
+                <button class="btn-primary" onclick="addSubject()">+ Добавить предмет</button>
+                <table id="subjectsTable" class="data-table"></table>
             </div>
-
-            <div id="ref-classrooms" class="reference-content">
+            <div class="reference-content" id="ref-classrooms">
                 <h3>Кабинеты</h3>
                 <div class="form-group">
+                    <label>Номер кабинета</label>
                     <input type="text" id="newClassroomNumber" placeholder="101">
-                    <input type="number" id="newClassroomCapacity" placeholder="Мест" style="margin-top:5px">
-                    <button class="add-btn" onclick="addClassroom()"> Добавить</button>
                 </div>
-                <div id="classroomDuplicateWarning" class="duplicate-warning">Такой кабинет уже существует!</div>
-                <table class="data-table">
-                    <thead><tr><th>Кабинет</th><th>Вместимость</th><th></th></tr></thead>
-                    <tbody id="classroomsTable"></tbody>
-                </table>
-                <div class="step-actions">
-                    <button class="outline" onclick="importFromExcel()">📥 Импорт Excel</button>
-                    <button class="primary" onclick="completeStep(2)">💾 Далее →</button>
+                <div class="form-group">
+                    <label>Вместимость</label>
+                    <input type="number" id="newClassroomCapacity" placeholder="30">
                 </div>
+                <div id="classroomDuplicateWarning" class="warning-message">⚠ Такой кабинет уже существует!</div>
+                <button class="btn-primary" onclick="addClassroom()">+ Добавить кабинет</button>
+                <table id="classroomsTable" class="data-table"></table>
             </div>
+            <button class="btn-primary" onclick="completeStep(2)">💾 Далее →</button>
         </div>
 
         <!-- Шаг 3: Нагрузки -->
-        <div id="step3" class="wizard-content">
+        <div class="wizard-content" id="step3">
             <h2>⚙ Шаг 3: Нагрузки</h2>
             <p class="step-hint">Назначьте учителям предметы и укажите, в какие дни и часы они могут работать</p>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-                <div>
-                    <h3>📋 Классический ввод</h3>
-                    <div class="form-group">
-                        <label>Учитель</label>
-                        <select id="teacherSelect" onchange="loadTeacherCard()"><option>-- Выберите --</option></select>
-                    </div>
-                    <div id="teacherCard" style="display:none">
-                        <div class="teacher-info"><h4>👤 <span id="currentTeacherName"></span></h4></div>
-                        <h4>Нагрузки</h4>
-                        <div id="workloadList"></div>
-                        <button class="small primary" onclick="addWorkload()"> Предмет</button>
-                        <h4 style="margin-top:20px">Доступность</h4>
-                        <div id="availabilityGrid" class="availability-grid"></div>
-                    </div>
+            <div class="form-group">
+                <label>Выберите учителя</label>
+                <select id="teacherSelect" onchange="loadTeacherCard()">
+                    <option value="">-- Выберите учителя --</option>
+                </select>
+                <datalist id="teacherDatalist"></datalist>
+            </div>
+            <div id="teacherCard" style="display:none">
+                <h3 id="currentTeacherName"></h3>
+                <div class="teacher-card-section">
+                    <h4>Нагрузки</h4>
+                    <div id="workloadList"></div>
+                    <button class="btn-primary" onclick="addWorkload()">+ Добавить нагрузку</button>
                 </div>
-                <div>
-                    <h3>🤖 Быстрый ввод (Шаблоны)</h3>
-                    <datalist id="teacherDatalist"></datalist>
-                    <div class="template-selector">
-                        <div class="template-card" onclick="selectTemplate(this, 'time_range')">
-                            <h4>⏰ По времени</h4>
-                            <div class="template-fields">
-                                <input type="text" id="tmpl_name" list="teacherDatalist" placeholder="ФИО учителя">
-                                <div class="checkbox-group" style="margin:10px 0">
+                <div class="teacher-card-section">
+                    <h4>Контроль нагрузки</h4>
+                    <div id="teacherLoadStats"></div>
+                </div>
+                <div class="teacher-card-section">
+                    <h4>Доступность</h4>
+                    <div class="templates">
+                        <div class="template-card" onclick="selectTemplate(this, 'time')">
+                            <h5>По времени</h5>
+                            <p>Указать диапазон времени</p>
+                        </div>
+                        <div class="template-card" onclick="selectTemplate(this, 'days')">
+                            <h5>По дням</h5>
+                            <p>Указать рабочие дни</p>
+                        </div>
+                        <div class="template-card" onclick="selectTemplate(this, 'exclude')">
+                            <h5>Исключения</h5>
+                            <p>Указать нерабочие дни</p>
+                        </div>
+                    </div>
+                    <div id="templateForm" style="display:none">
+                        <div id="timeTemplate" style="display:none">
+                            <div class="form-group">
+                                <label>ФИО учителя</label>
+                                <input type="text" id="tmpl_name" list="teacherDatalist">
+                            </div>
+                            <div class="form-group">
+                                <label>Дни недели</label>
+                                <div class="checkbox-group">
                                     <label><input type="checkbox" class="tmpl-day" value="Понедельник"> Пн</label>
                                     <label><input type="checkbox" class="tmpl-day" value="Вторник"> Вт</label>
                                     <label><input type="checkbox" class="tmpl-day" value="Среда"> Ср</label>
@@ -177,25 +232,25 @@
                                     <label><input type="checkbox" class="tmpl-day" value="Пятница"> Пт</label>
                                     <label><input type="checkbox" class="tmpl-day" value="Суббота"> Сб</label>
                                 </div>
-                                <div style="display:flex;gap:10px">
-                                    <select id="tmpl_start">
-                                        <option>08:30</option><option>09:25</option><option>10:20</option>
-                                        <option>11:25</option><option>12:20</option><option>13:15</option><option>14:10</option>
-                                    </select>
-                                    <select id="tmpl_end">
-                                        <option>09:15</option><option>10:10</option><option>11:05</option>
-                                        <option>12:10</option><option>13:05</option><option>14:00</option>
-                                        <option selected>14:55</option><option>15:50</option>
-                                    </select>
-                                </div>
-                                <button class="primary full" style="margin-top:10px" onclick="applyTimeTemplate()">✅ Применить</button>
                             </div>
+                            <div class="form-group">
+                                <label>С</label>
+                                <input type="time" id="tmpl_start">
+                            </div>
+                            <div class="form-group">
+                                <label>До</label>
+                                <input type="time" id="tmpl_end">
+                            </div>
+                            <button class="btn-primary" onclick="applyTimeTemplate()">Применить</button>
                         </div>
-                        <div class="template-card" onclick="selectTemplate(this, 'specific_days')">
-                            <h4>📅 Конкретные дни</h4>
-                            <div class="template-fields">
-                                <input type="text" id="tmpl_name2" list="teacherDatalist" placeholder="ФИО учителя">
-                                <div class="checkbox-group" style="margin:10px 0">
+                        <div id="daysTemplate" style="display:none">
+                            <div class="form-group">
+                                <label>ФИО учителя</label>
+                                <input type="text" id="tmpl_name2" list="teacherDatalist">
+                            </div>
+                            <div class="form-group">
+                                <label>Дни недели</label>
+                                <div class="checkbox-group">
                                     <label><input type="checkbox" class="tmpl-day2" value="Понедельник"> Пн</label>
                                     <label><input type="checkbox" class="tmpl-day2" value="Вторник"> Вт</label>
                                     <label><input type="checkbox" class="tmpl-day2" value="Среда"> Ср</label>
@@ -203,14 +258,17 @@
                                     <label><input type="checkbox" class="tmpl-day2" value="Пятница"> Пт</label>
                                     <label><input type="checkbox" class="tmpl-day2" value="Суббота"> Сб</label>
                                 </div>
-                                <button class="primary full" onclick="applyDaysTemplate()">✅ Применить</button>
                             </div>
+                            <button class="btn-primary" onclick="applyDaysTemplate()">Применить</button>
                         </div>
-                        <div class="template-card" onclick="selectTemplate(this, 'exclude_days')">
-                            <h4> Кроме дней</h4>
-                            <div class="template-fields">
-                                <input type="text" id="tmpl_name3" list="teacherDatalist" placeholder="ФИО учителя">
-                                <div class="checkbox-group" style="margin:10px 0">
+                        <div id="excludeTemplate" style="display:none">
+                            <div class="form-group">
+                                <label>ФИО учителя</label>
+                                <input type="text" id="tmpl_name3" list="teacherDatalist">
+                            </div>
+                            <div class="form-group">
+                                <label>Исключить дни</label>
+                                <div class="checkbox-group">
                                     <label><input type="checkbox" class="tmpl-day3" value="Понедельник"> Пн</label>
                                     <label><input type="checkbox" class="tmpl-day3" value="Вторник"> Вт</label>
                                     <label><input type="checkbox" class="tmpl-day3" value="Среда"> Ср</label>
@@ -218,132 +276,102 @@
                                     <label><input type="checkbox" class="tmpl-day3" value="Пятница"> Пт</label>
                                     <label><input type="checkbox" class="tmpl-day3" value="Суббота"> Сб</label>
                                 </div>
-                                <button class="primary full" onclick="applyExcludeTemplate()">✅ Применить</button>
                             </div>
+                            <button class="btn-primary" onclick="applyExcludeTemplate()">Применить</button>
                         </div>
                     </div>
+                    <div id="availabilityGrid" class="availability-grid"></div>
                 </div>
             </div>
-            <div class="step-actions"><button class="primary" onclick="completeStep(3)"> Далее →</button></div>
+            <button class="btn-primary" onclick="completeStep(3)">💾 Далее →</button>
         </div>
 
         <!-- Шаг 4: Генерация -->
-        <div id="step4" class="wizard-content">
+        <div class="wizard-content" id="step4">
             <h2>🚀 Шаг 4: Генерация</h2>
             <p class="step-hint">Алгоритм автоматически составит оптимальное расписание на основе ваших данных</p>
-            <div style="text-align:center;padding:40px">
-                <button id="generateBtn" onclick="generateTimetable()" style="font-size:20px;padding:20px 40px">Сгенерировать</button>
-            </div>
-            <div id="genError" class="error"></div>
-            <div id="genSuccess" class="success"></div>
-            <div id="resultsSection" class="results-section">
-                <div class="stats-grid">
-                    <div class="stat-card"><div class="stat-value" id="statTeachers">0</div><div class="stat-label">Учителей</div></div>
-                    <div class="stat-card"><div class="stat-value" id="statLessons">0</div><div class="stat-label">Уроков</div></div>
-                    <div class="stat-card"><div class="stat-value" id="statTime">0с</div><div class="stat-label">Время</div></div>
-                    <div class="stat-card"><div class="stat-value" id="statStatus">-</div><div class="stat-label">Статус</div></div>
+            <button class="btn-primary btn-large" id="generateBtn" onclick="generateTimetable()">Сгенерировать расписание</button>
+            <div id="genError" class="error-message"></div>
+            <div id="genSuccess" class="success-message"></div>
+            <div id="resultsSection" class="results-section" style="display:none">
+                <div class="stats-cards">
+                    <div class="stat-card">
+                        <div class="stat-value" id="statTeachers">0</div>
+                        <div class="stat-label">Учителей</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statLessons">0</div>
+                        <div class="stat-label">Уроков</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statTime">0 с</div>
+                        <div class="stat-label">Время</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statStatus">-</div>
+                        <div class="stat-label">Статус</div>
+                    </div>
                 </div>
+                <div id="generationStats"></div>
                 <div id="scheduleView"></div>
-                <div id="masterViewContainer" style="display:none"></div>
-                <div class="step-actions">
-                    <button class="outline" onclick="downloadPDF('teachers')">PDF (уч.)</button>
-                    <button class="outline" onclick="downloadPDF('classes')">PDF (кл.)</button>
-                    <button class="outline" onclick="downloadExcel('classes')">📊 Excel (кл.)</button>
-                    <button class="secondary" onclick="completeStep(4)">➡ К редактору</button>
-                </div>
             </div>
             <div class="saved-timetables">
-                <h3>📋 Сохранённые</h3>
+                <h3>📋 Сохранённые расписания</h3>
                 <div id="savedTimetablesList"></div>
             </div>
+            <button class="btn-primary" onclick="completeStep(4)"> Далее →</button>
         </div>
 
-        <!-- Шаг 5: Редактор (ОБНОВЛЁННЫЙ С ПЕРЕКЛЮЧАТЕЛЕМ РЕЖИМОВ) -->
-        <div id="step5" class="wizard-content">
+        <!-- Шаг 5: Редактор -->
+        <div class="wizard-content" id="step5">
             <h2>✏ Шаг 5: Редактор</h2>
             <p class="step-hint">Вручную скорректируйте расписание: перемещайте уроки, исправляйте конфликты</p>
-
-            <!-- Переключатель режимов -->
-            <div class="editor-mode-switcher">
-                <button class="mode-btn active" data-mode="editor" onclick="switchEditorMode('editor')">
-                    ✏️ Drag-and-Drop редактор
-                </button>
-                <button class="mode-btn" data-mode="topics" onclick="switchEditorMode('topics')">
-                     Редактор тем
-                </button>
+            <div class="editor-tabs">
+                <button class="mode-btn active" data-mode="editor" onclick="switchEditorMode('editor')">✏ Drag-and-Drop редактор</button>
+                <button class="mode-btn" data-mode="topics" onclick="switchEditorMode('topics')">Редактор тем</button>
             </div>
-
-            <!-- Панель управления -->
-            <div style="display:flex;gap:15px;margin-bottom:20px;align-items:center">
-                <div class="form-group" style="margin:0;flex:1">
+            <div class="editor-controls">
+                <div class="form-group">
                     <label>Фильтр по классу:</label>
                     <select id="editorClassFilter" onchange="onEditorFilterChange()">
-                        <option value="">-- Все --</option>
+                        <option value="">-- Показать всех --</option>
                     </select>
                 </div>
-                <button class="secondary small" onclick="validateTimetable()">Проверить</button>
-                <button id="exportTopicsBtn" class="outline small" style="display:none" onclick="exportTopicsToExcel()">
-                     Экспорт тем
-                </button>
+                <button class="btn-secondary" onclick="validateTimetable()">Проверить</button>
+                <button class="btn-secondary" id="exportTopicsBtn" onclick="exportTopicsToExcel()" style="display:none">Экспорт тем</button>
             </div>
-
-            <!-- Контейнер Drag-and-Drop редактора -->
-            <div id="globalEditorContainer" class="global-editor-container"></div>
-
-            <!-- Контейнер редактора тем -->
-        <div id="topicsEditorContainer" class="topics-editor-container" style="display:none">
             <div id="topicsSaveIndicator" class="save-indicator">
                 <span class="save-indicator-icon">✓</span>
                 <span class="save-indicator-text">Темы сохранены</span>
             </div>
-            <div id="topicsEditorContent"></div>
-        </div>
-
-            <div class="step-actions">
-                <button class="primary" onclick="completeStep(5)">➡ К публикации</button>
+            <div id="globalEditorContainer"></div>
+            <div id="topicsEditorContainer" style="display:none">
+                <div id="topicsEditorContent"></div>
             </div>
+            <button class="btn-primary" onclick="completeStep(5)">💾 Далее →</button>
         </div>
 
         <!-- Шаг 6: Публикация -->
-        <div id="step6" class="wizard-content">
+        <div class="wizard-content" id="step6">
             <h2>📢 Шаг 6: Публикация</h2>
             <p class="step-hint">Экспортируйте расписание в Excel/PDF или отправьте учителям</p>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-                <div class="stat-card">
-                    <h3>PDF</h3>
-                    <button class="primary" onclick="downloadPDF('teachers')">По учителям</button>
-                    <button class="primary" style="margin-top:10px" onclick="downloadPDF('classes')">По классам</button>
-                </div>
-                <div class="stat-card">
-                    <h3>Excel</h3>
-                    <button class="primary" onclick="downloadExcel('teachers')">По учителям</button>
-                    <button class="primary" style="margin-top:10px" onclick="downloadExcel('classes')">По классам</button>
-                </div>
-                <div class="stat-card">
-                    <h3>Отправка</h3>
-                    <button class="outline" onclick="sendToTeachers()">Telegram</button>
-                    <button class="outline" style="margin-top:10px" onclick="sendToEmail()">Email</button>
-                </div>
-                <div class="stat-card">
-                    <h3>Интеграция</h3>
-                    <button class="secondary" onclick="exportToJournal()">API Журнала</button>
-                </div>
-            </div>
-            <div style="text-align:center;margin-top:30px">
-                <button onclick="publishTimetable()" style="font-size:18px;padding:20px 40px">✅ Опубликовать</button>
+            <div class="publish-actions">
+                <button class="btn-primary" onclick="downloadPDF('teachers')">📄 PDF (учителя)</button>
+                <button class="btn-primary" onclick="downloadPDF('classes')">📄 PDF (классы)</button>
+                <button class="btn-primary" onclick="downloadExcel('classes')">📊 Excel</button>
+                <button class="btn-secondary" onclick="sendToTeachers()">📱 Отправить учителям</button>
+                <button class="btn-secondary" onclick="sendToEmail()">📧 Отправить на email</button>
+                <button class="btn-secondary" onclick="exportToJournal()"> Экспорт в журнал</button>
             </div>
         </div>
     </div>
 
-    <!-- Прогресс бар -->
+    <!-- Оверлей прогресса -->
     <div id="progressOverlay" class="progress-overlay">
-        <div class="progress-box">
-            <h2>🔄 Генерация...</h2>
-            <div class="progress-bar"><div class="progress-fill"></div></div>
-        </div>
+        <div class="progress-spinner"></div>
+        <p>Генерация расписания...</p>
     </div>
 
-    <!-- Подключение скриптов (ВАЖНО: subjects-dropdown.js ДО wizard.js) -->
     <script src="/static/js/state.js"></script>
     <script src="/static/js/subjects-dropdown.js"></script>
     <script src="/static/js/wizard.js"></script>

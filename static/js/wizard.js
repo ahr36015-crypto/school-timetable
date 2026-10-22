@@ -33,9 +33,18 @@ async function goToStep(step) {
     if (step === 3) {
         updateTeacherSelect();
         updateTeacherDatalist();
-        renderAvailabilityGrid(document.getElementById('teacherSelect').value);
+        const selectedTeacher = document.getElementById('teacherSelect').value;
+        renderAvailabilityGrid(selectedTeacher);
+        if (selectedTeacher) {
+            renderTeacherLoadStats(selectedTeacher);
+        }
     }
-    if (step === 4) loadSavedTimetables();
+    if (step === 4) {
+        loadSavedTimetables();
+        if (currentResult && currentResult.teachers) {
+            renderGenerationStats();
+        }
+    }
 
     if (step === 5) {
         console.log("🔍 Проверка данных для редактора...");
@@ -393,6 +402,107 @@ function updateTeacherDatalist() {
     if (datalist) datalist.innerHTML = schoolData.teachers.map(t => `<option value="${t.full_name}">`).join('');
 }
 
+// ============================================================
+// КОНТРОЛЬ НАГРУЗКИ УЧИТЕЛЯ (ШАГ 3)
+// ============================================================
+function getPlannedHours(teacherName) {
+    const workloads = schoolData.workloads.filter(w => w.teacher === teacherName);
+    return workloads.reduce((sum, w) => sum + (parseInt(w.hours) || 0), 0);
+}
+
+function getActualHours(teacherName) {
+    if (!currentResult || !currentResult.teachers) return null;
+    const teacher = currentResult.teachers.find(t => t.teacher === teacherName);
+    if (!teacher) return 0;
+    return teacher.total_lessons || 0;
+}
+
+function getLoadStatus(planned, actual) {
+    if (actual === null) return { text: 'Нет данных', class: 'load-unknown', icon: '⏳' };
+    if (actual === 0 && planned > 0) return { text: 'Не назначено', class: 'load-under', icon: '⚠️' };
+    if (actual < planned) return { text: 'Недогруз', class: 'load-under', icon: '⚠️' };
+    if (actual > planned) return { text: 'Перегруз', class: 'load-over', icon: '❌' };
+    return { text: 'Норма', class: 'load-ok', icon: '✅' };
+}
+
+function renderTeacherLoadStats(teacherName) {
+    const container = document.getElementById('teacherLoadStats');
+    if (!container) return;
+
+    if (!teacherName) {
+        container.innerHTML = '<p style="color:#999;text-align:center;padding:10px">Выберите учителя для просмотра нагрузки</p>';
+        return;
+    }
+
+    const plannedHours = getPlannedHours(teacherName);
+    const actualHours = getActualHours(teacherName);
+    const status = getLoadStatus(plannedHours, actualHours);
+
+    // Детализация по предметам
+    const workloads = schoolData.workloads.filter(w => w.teacher === teacherName);
+    let detailsHtml = '';
+
+    if (workloads.length > 0) {
+        detailsHtml = '<div class="load-details">';
+        workloads.forEach(w => {
+            const planned = parseInt(w.hours) || 0;
+            let actual = 0;
+            if (currentResult && currentResult.teachers) {
+                const teacher = currentResult.teachers.find(t => t.teacher === teacherName);
+                if (teacher && teacher.schedule) {
+                    Object.values(teacher.schedule).forEach(dayObj => {
+                        Object.values(dayObj).forEach(lessons => {
+                            if (Array.isArray(lessons)) {
+                                lessons.forEach(l => {
+                                    if (l.subject === w.subject && l.grade === w.grade) {
+                                        actual++;
+                                    }
+                                });
+                            }
+                        });
+                    });
+                }
+            }
+            const detailStatus = getLoadStatus(planned, actual);
+            detailsHtml += `
+                <div class="load-detail-row">
+                    <span class="load-detail-subject">${w.subject} (${w.grade} кл)</span>
+                    <span class="load-detail-hours">
+                        План: <strong>${planned}</strong> ч
+                        ${actual !== null ? `| Факт: <strong>${actual}</strong> ч` : '| Факт: —'}
+                    </span>
+                    <span class="load-detail-status ${detailStatus.class}">${detailStatus.icon} ${detailStatus.text}</span>
+                </div>
+            `;
+        });
+        detailsHtml += '</div>';
+    } else {
+        detailsHtml = '<p style="color:#999;font-size:13px;padding:10px">Нагрузки не назначены</p>';
+    }
+
+    container.innerHTML = `
+        <div class="teacher-load-card">
+            <div class="load-header">
+                <div class="load-summary">
+                    <div class="load-item">
+                        <div class="load-label">План</div>
+                        <div class="load-value">${plannedHours} ч</div>
+                    </div>
+                    <div class="load-item">
+                        <div class="load-label">Факт</div>
+                        <div class="load-value">${actualHours !== null ? actualHours + ' ч' : '—'}</div>
+                    </div>
+                    <div class="load-item">
+                        <div class="load-label">Статус</div>
+                        <div class="load-value ${status.class}">${status.icon} ${status.text}</div>
+                    </div>
+                </div>
+            </div>
+            ${detailsHtml}
+        </div>
+    `;
+}
+
 function loadTeacherCard() {
     const teacher = document.getElementById('teacherSelect').value;
     if (!teacher) {
@@ -403,6 +513,7 @@ function loadTeacherCard() {
     document.getElementById('currentTeacherName').textContent = teacher;
     renderWorkloads(teacher);
     renderAvailabilityGrid(teacher);
+    renderTeacherLoadStats(teacher);
 }
 
 function renderWorkloads(teacher) {
@@ -477,6 +588,7 @@ function updateWorkloadFromInput(input) {
     if (workloads[idx]) {
         workloads[idx][field] = field === 'hours' ? parseInt(input.value) : input.value;
         saveSchoolData();
+        renderTeacherLoadStats(teacher);
     }
 }
 
@@ -486,6 +598,7 @@ function addWorkload() {
     schoolData.workloads.push({ teacher, subject: '', grade: '', classroom: '', hours: 1 });
     renderWorkloads(teacher);
     saveSchoolData();
+    renderTeacherLoadStats(teacher);
 }
 
 function updateWorkload(idx, field, value) {
@@ -494,6 +607,7 @@ function updateWorkload(idx, field, value) {
     if (workloads[idx]) {
         workloads[idx][field] = field === 'hours' ? parseInt(value) : value;
         saveSchoolData();
+        renderTeacherLoadStats(teacher);
     }
 }
 
@@ -504,6 +618,7 @@ function removeWorkload(idx) {
     schoolData.workloads.splice(globalIdx, 1);
     renderWorkloads(teacher);
     saveSchoolData();
+    renderTeacherLoadStats(teacher);
 }
 
 function renderAvailabilityGrid(teacher) {
@@ -619,7 +734,7 @@ function applyDaysTemplate() {
     const name = document.getElementById('tmpl_name2').value.trim();
     if (!ensureTeacherExists(name)) return;
     const days = getSelectedDays('.tmpl-day2');
-    if (days.length === 0) { alert('⚠ Выберите хотя бы один день!'); return; }
+    if (days.length === 0) { alert(' Выберите хотя бы один день!'); return; }
     const allSlots = Array.from({ length: schoolData.lessonsPerDay }, (_, i) => i + 1);
     const allDays = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
     if (schoolData.availability[name] && Object.keys(schoolData.availability[name]).length > 0) {
@@ -650,6 +765,98 @@ function applyExcludeTemplate() {
     saveSchoolData();
     refreshTeacherCard(name);
     alert(`✅ Исключения применены для ${name}`);
+}
+
+// ============================================================
+// СТАТИСТИКА ГЕНЕРАЦИИ (ШАГ 4)
+// ============================================================
+function renderGenerationStats() {
+    const container = document.getElementById('generationStats');
+    if (!container) return;
+
+    if (!currentResult || !currentResult.teachers || schoolData.teachers.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    const rows = [];
+    let totalPlanned = 0;
+    let totalActual = 0;
+    let okCount = 0;
+    let underCount = 0;
+    let overCount = 0;
+
+    schoolData.teachers.forEach(teacher => {
+        const planned = getPlannedHours(teacher.full_name);
+        const actual = getActualHours(teacher.full_name);
+        const status = getLoadStatus(planned, actual);
+
+        totalPlanned += planned;
+        if (actual !== null) totalActual += actual;
+
+        if (status.class === 'load-ok') okCount++;
+        else if (status.class === 'load-under') underCount++;
+        else if (status.class === 'load-over') overCount++;
+
+        rows.push(`
+            <tr class="stat-row ${status.class}">
+                <td class="stat-teacher">${teacher.full_name}</td>
+                <td class="stat-planned">${planned} ч</td>
+                <td class="stat-actual">${actual !== null ? actual + ' ч' : '—'}</td>
+                <td class="stat-diff">
+                    ${actual !== null ? (actual - planned > 0 ? '+' : '') + (actual - planned) : '—'}
+                </td>
+                <td class="stat-status">${status.icon} ${status.text}</td>
+            </tr>
+        `);
+    });
+
+    container.innerHTML = `
+        <div class="generation-stats">
+            <h3>📊 Контроль нагрузки учителей</h3>
+            <div class="stats-summary">
+                <div class="stats-summary-item">
+                    <div class="stats-summary-value">${schoolData.teachers.length}</div>
+                    <div class="stats-summary-label">Всего учителей</div>
+                </div>
+                <div class="stats-summary-item stats-ok">
+                    <div class="stats-summary-value">${okCount}</div>
+                    <div class="stats-summary-label">✅ Норма</div>
+                </div>
+                <div class="stats-summary-item stats-under">
+                    <div class="stats-summary-value">${underCount}</div>
+                    <div class="stats-summary-label">⚠️ Недогруз</div>
+                </div>
+                <div class="stats-summary-item stats-over">
+                    <div class="stats-summary-value">${overCount}</div>
+                    <div class="stats-summary-label">❌ Перегруз</div>
+                </div>
+            </div>
+            <table class="stats-table">
+                <thead>
+                    <tr>
+                        <th>Учитель</th>
+                        <th>План</th>
+                        <th>Факт</th>
+                        <th>Разница</th>
+                        <th>Статус</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows.join('')}
+                </tbody>
+                <tfoot>
+                    <tr class="stat-total">
+                        <td><strong>ИТОГО</strong></td>
+                        <td><strong>${totalPlanned} ч</strong></td>
+                        <td><strong>${totalActual} ч</strong></td>
+                        <td><strong>${totalActual - totalPlanned > 0 ? '+' : ''}${totalActual - totalPlanned}</strong></td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    `;
 }
 
 async function generateTimetable() {
@@ -753,6 +960,9 @@ async function generateTimetable() {
         succ.classList.add('show');
         renderSchedule();
         loadSavedTimetables();
+
+        // 🆕 Показываем статистику нагрузки
+        renderGenerationStats();
     } catch (e) {
         document.getElementById('progressOverlay').classList.remove('active');
         err.textContent = 'Ошибка: ' + e.message;
@@ -846,7 +1056,7 @@ async function loadSavedTimetables() {
                 <div class="saved-timetable-item">
                     <div><h4>${t.name}</h4><p>${new Date(t.created_at).toLocaleString('ru-RU')}</p></div>
                     <div class="saved-timetable-actions">
-                        <button class="small primary" onclick="window.loadSavedTimetable(${t.id})">👁 Открыть</button>
+                        <button class="small primary" onclick="window.loadSavedTimetable(${t.id})"> Открыть</button>
                         <button class="small outline" onclick="window.downloadSavedPDF(${t.id},'teachers')">PDF (уч.)</button>
                         <button class="small outline" onclick="window.downloadSavedPDF(${t.id},'classes')">PDF (кл.)</button>
                         <button class="small danger" onclick="window.deleteSavedTimetable(${t.id})">🗑</button>
@@ -878,6 +1088,7 @@ window.loadSavedTimetable = async function (id) {
             document.getElementById('statStatus').textContent = currentResult.status;
             document.getElementById('resultsSection').classList.add('active');
             renderSchedule();
+            renderGenerationStats();
             alert('✅ Расписание загружено');
         } else alert('Ошибка');
     } catch (e) { alert('Ошибка: ' + e.message); }
@@ -1040,7 +1251,7 @@ async function saveTopicToDatabase(teacher, subject, grade, day, slot, topic) {
             return false;
         }
     } catch (e) {
-        console.error('❌ Ошибка сети при сохранении:', e);
+        console.error(' Ошибка сети при сохранении:', e);
         return false;
     }
 }
@@ -1065,7 +1276,7 @@ function escapeAttr(str) {
 }
 
 function renderTopicsEditor() {
-    console.log('🎨 renderTopicsEditor вызван');
+    console.log(' renderTopicsEditor вызван');
     const container = document.getElementById('topicsEditorContent');
     const filterGrade = document.getElementById('editorClassFilter')?.value || '';
     if (!currentResult || !currentResult.teachers) {
@@ -1168,7 +1379,7 @@ async function onTopicBlur(input) {
     const grade = input.dataset.grade;
     const topic = input.value.trim();
 
-    showTopicsSaveIndicator('⏳ Сохранение...', 'saving');
+    showTopicsSaveIndicator(' Сохранение...', 'saving');
 
     const success = await saveTopicToDatabase(teacher, subject, grade, day, slot, topic);
 
@@ -1261,3 +1472,5 @@ window.showTopicsSaveIndicator = showTopicsSaveIndicator;
 window.exportTopicsToExcel = exportTopicsToExcel;
 window.loadFreshTimetableData = loadFreshTimetableData;
 window.saveTopicToDatabase = saveTopicToDatabase;
+window.renderTeacherLoadStats = renderTeacherLoadStats;
+window.renderGenerationStats = renderGenerationStats;
