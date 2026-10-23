@@ -3,7 +3,7 @@
    ============================================================ */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
-.container { background: white; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); padding: 40px; max-width: 1600px; margin: 0 auto; }
+.container { background: white; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); padding: 40px; max-width: 1600px; margin: 0 auto; width: 100%; }
 h1 { text-align: center; color: #333; margin-bottom: 10px; font-size: 32px; }
 .subtitle { text-align: center; color: #666; margin-bottom: 30px; }
 
@@ -49,7 +49,7 @@ button.add-btn { margin-top: 10px; padding: 12px 24px; background: linear-gradie
 
 .form-section { display: none; }
 .form-section.active { display: block; }
-#mainApp { display: none; }
+#mainApp { display: none; width: 100%; max-width: 1600px; margin: 0 auto; }
 #mainApp.active { display: block; }
 
 /* ============================================================
@@ -72,6 +72,7 @@ button.add-btn { margin-top: 10px; padding: 12px 24px; background: linear-gradie
     background: #f8f9fa;
     border-radius: 12px;
     overflow-x: auto;
+    width: 100%;
 }
 
 .wizard-step {
@@ -142,7 +143,7 @@ button.add-btn { margin-top: 10px; padding: 12px 24px; background: linear-gradie
 /* ============================================================
    КОНТЕНТ ШАГОВ
    ============================================================ */
-.wizard-content { display: none; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+.wizard-content { display: none; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 100%; }
 .wizard-content.active { display: block; }
 .wizard-content h2 { color: #333; margin-bottom: 10px; font-size: 24px; }
 
@@ -423,7 +424,7 @@ button.add-btn { margin-top: 10px; padding: 12px 24px; background: linear-gradie
 /* ============================================================
    ТАБЛИЦА РЕДАКТОРА (DRAG-AND-DROP)
    ============================================================ */
-.global-editor-container { overflow-x: auto; margin-top: 20px; border: 1px solid #eee; border-radius: 8px; background: white; padding: 10px; }
+.global-editor-container { overflow-x: auto; margin-top: 20px; border: 1px solid #eee; border-radius: 8px; background: white; padding: 10px; width: 100%; }
 
 .global-table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1200px; user-select: none; }
 .global-table th, .global-table td { border: 1px solid #ddd; padding: 6px; text-align: center; vertical-align: middle; }
