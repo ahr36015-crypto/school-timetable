@@ -7,6 +7,48 @@ let pendingTopicUpdates = [];
 let saveIndicatorTimeout = null;
 
 // ============================================================
+// НАВИГАЦИЯ ПО КЛИКУ НА ВКЛАДКИ (ДЕЛЕГИРОВАНИЕ СОБЫТИЙ)
+// ============================================================
+document.addEventListener('click', function(e) {
+    const step = e.target.closest('.wizard-step');
+    if (step && step.dataset.step) {
+        const targetStep = parseInt(step.dataset.step);
+        if (targetStep && targetStep !== currentStep) {
+            if (canNavigateToStep(targetStep)) {
+                goToStep(targetStep);
+            } else {
+                alert(' Сначала завершите текущий шаг и нажмите "Далее"');
+            }
+        }
+    }
+});
+
+function canNavigateToStep(targetStep) {
+    if (targetStep < currentStep) return true;
+    if (targetStep === currentStep + 1) {
+        return isCurrentStepComplete();
+    }
+    return false;
+}
+
+function isCurrentStepComplete() {
+    switch(currentStep) {
+        case 1:
+            return schoolData.name && schoolData.days && schoolData.lessonsPerDay;
+        case 2:
+            return schoolData.classes.length > 0 && schoolData.teachers.length > 0;
+        case 3:
+            return schoolData.workloads.length > 0;
+        case 4:
+            return currentResult !== null;
+        case 5:
+            return true;
+        default:
+            return false;
+    }
+}
+
+// ============================================================
 // НАВИГАЦИЯ ПО МАСТЕРУ
 // ============================================================
 async function goToStep(step) {
@@ -17,7 +59,10 @@ async function goToStep(step) {
         else s.classList.remove('completed');
     });
     document.getElementById('step' + step).classList.add('active');
-    document.querySelectorAll('.wizard-step')[step - 1].classList.add('active');
+    const stepElements = document.querySelectorAll('.wizard-step');
+    if (stepElements[step - 1]) {
+        stepElements[step - 1].classList.add('active');
+    }
     currentStep = step;
     console.log(`Переход на шаг ${step}`);
 
@@ -86,6 +131,7 @@ async function goToStep(step) {
             console.log("🎨 Рендеринг таблицы редактора...");
             updateEditorClassFilter();
             if (currentEditorMode === 'topics') {
+                await loadFreshTimetableData();
                 renderTopicsEditor();
             } else {
                 renderGlobalEditor();
@@ -420,7 +466,7 @@ function getActualHours(teacherName) {
 function getLoadStatus(planned, actual) {
     if (actual === null) return { text: 'Нет данных', class: 'load-unknown', icon: '⏳' };
     if (actual === 0 && planned > 0) return { text: 'Не назначено', class: 'load-under', icon: '⚠️' };
-    if (actual < planned) return { text: 'Недогруз', class: 'load-under', icon: '⚠️' };
+    if (actual < planned) return { text: 'Недогруз', class: 'load-under', icon: '️' };
     if (actual > planned) return { text: 'Перегруз', class: 'load-over', icon: '❌' };
     return { text: 'Норма', class: 'load-ok', icon: '✅' };
 }
@@ -438,7 +484,6 @@ function renderTeacherLoadStats(teacherName) {
     const actualHours = getActualHours(teacherName);
     const status = getLoadStatus(plannedHours, actualHours);
 
-    // Детализация по предметам
     const workloads = schoolData.workloads.filter(w => w.teacher === teacherName);
     let detailsHtml = '';
 
@@ -548,7 +593,7 @@ function renderWorkloads(teacher) {
                        data-idx="${i}" data-field="hours" min="1" max="40"
                        onchange="updateWorkloadFromInput(this)">
             </div>
-            <button class="small danger" onclick="removeWorkload(${i})" style="margin-top: 24px;">🗑</button>
+            <button class="small danger" onclick="removeWorkload(${i})" style="margin-top: 24px;"></button>
         </div>
     `).join('');
 }
@@ -718,7 +763,7 @@ function applyTimeTemplate() {
         return;
     }
     if (schoolData.availability[name] && Object.keys(schoolData.availability[name]).length > 0) {
-        if (!confirm(`⚠ У учителя "${name}" уже есть настройки. Новые значения ПОЛНОСТЬЮ ЗАМЕНЯТ старые. Продолжить?`))
+        if (!confirm(` У учителя "${name}" уже есть настройки. Новые значения ПОЛНОСТЬЮ ЗАМЕНЯТ старые. Продолжить?`))
             return;
     }
     schoolData.availability[name] = {};
@@ -734,7 +779,7 @@ function applyDaysTemplate() {
     const name = document.getElementById('tmpl_name2').value.trim();
     if (!ensureTeacherExists(name)) return;
     const days = getSelectedDays('.tmpl-day2');
-    if (days.length === 0) { alert(' Выберите хотя бы один день!'); return; }
+    if (days.length === 0) { alert('⚠ Выберите хотя бы один день!'); return; }
     const allSlots = Array.from({ length: schoolData.lessonsPerDay }, (_, i) => i + 1);
     const allDays = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
     if (schoolData.availability[name] && Object.keys(schoolData.availability[name]).length > 0) {
@@ -889,7 +934,7 @@ async function generateTimetable() {
     err.classList.remove('show');
     succ.classList.remove('show');
     btn.disabled = true;
-    btn.textContent = '⏳ Генерация...';
+    btn.textContent = ' Генерация...';
     document.getElementById('progressOverlay').classList.add('active');
 
     try {
@@ -960,8 +1005,6 @@ async function generateTimetable() {
         succ.classList.add('show');
         renderSchedule();
         loadSavedTimetables();
-
-        // 🆕 Показываем статистику нагрузки
         renderGenerationStats();
     } catch (e) {
         document.getElementById('progressOverlay').classList.remove('active');
@@ -1056,10 +1099,10 @@ async function loadSavedTimetables() {
                 <div class="saved-timetable-item">
                     <div><h4>${t.name}</h4><p>${new Date(t.created_at).toLocaleString('ru-RU')}</p></div>
                     <div class="saved-timetable-actions">
-                        <button class="small primary" onclick="window.loadSavedTimetable(${t.id})"> Открыть</button>
+                        <button class="small primary" onclick="window.loadSavedTimetable(${t.id})">👁 Открыть</button>
                         <button class="small outline" onclick="window.downloadSavedPDF(${t.id},'teachers')">PDF (уч.)</button>
                         <button class="small outline" onclick="window.downloadSavedPDF(${t.id},'classes')">PDF (кл.)</button>
-                        <button class="small danger" onclick="window.deleteSavedTimetable(${t.id})">🗑</button>
+                        <button class="small danger" onclick="window.deleteSavedTimetable(${t.id})"></button>
                     </div>
                 </div>
             `).join('');
@@ -1175,7 +1218,7 @@ function switchEditorMode(mode) {
         editorContainer.style.display = 'none';
         topicsContainer.style.display = 'block';
         exportBtn.style.display = 'inline-block';
-        renderTopicsEditor();
+        loadFreshTimetableData().then(() => renderTopicsEditor());
     }
 }
 
@@ -1203,7 +1246,7 @@ async function loadFreshTimetableData() {
             const data = await res.json();
             if (data && data.data) {
                 currentResult = data.data;
-                console.log('✅ Свежие данные загружены из БД');
+                console.log('✅ Свежие данные загружены из БД, учителей:', currentResult.teachers?.length);
             }
         } else {
             console.error('❌ Ошибка загрузки данных:', res.status);
@@ -1221,6 +1264,8 @@ async function saveTopicToDatabase(teacher, subject, grade, day, slot, topic) {
 
     try {
         console.log('💾 Сохранение темы через update-topics endpoint...');
+        console.log('   Данные:', { teacher, subject, grade, day, slot, topic });
+
         const res = await fetch(`/timetables/${currentTimetableId}/update-topics`, {
             method: 'POST',
             headers: {
@@ -1233,7 +1278,7 @@ async function saveTopicToDatabase(teacher, subject, grade, day, slot, topic) {
                     subject: subject,
                     grade: grade,
                     day: day,
-                    slot: slot,
+                    slot: parseInt(slot),
                     topic: topic
                 }]
             })
@@ -1241,17 +1286,19 @@ async function saveTopicToDatabase(teacher, subject, grade, day, slot, topic) {
 
         if (res.ok) {
             const data = await res.json();
-            console.log('✅ Тема сохранена в БД');
+            console.log('✅ Тема сохранена в БД, обновлено:', data.updated_count);
             if (data.data) {
                 currentResult = data.data;
+                console.log('📊 currentResult обновлён, учителей:', currentResult.teachers?.length);
             }
             return true;
         } else {
-            console.error('❌ Ошибка сохранения:', res.status);
+            const errorData = await res.json();
+            console.error(' Ошибка сохранения:', res.status, errorData);
             return false;
         }
     } catch (e) {
-        console.error(' Ошибка сети при сохранении:', e);
+        console.error('❌ Ошибка сети при сохранении:', e);
         return false;
     }
 }
@@ -1279,10 +1326,12 @@ function renderTopicsEditor() {
     console.log(' renderTopicsEditor вызван');
     const container = document.getElementById('topicsEditorContent');
     const filterGrade = document.getElementById('editorClassFilter')?.value || '';
+
     if (!currentResult || !currentResult.teachers) {
         container.innerHTML = '<p style="padding:20px;text-align:center;color:#999">Нет данных. Сгенерируйте расписание.</p>';
         return;
     }
+
     if (!filterGrade) {
         container.innerHTML = `
             <div style="padding:30px;text-align:center;background:#fff3cd;border-radius:8px;color:#856404">
@@ -1292,9 +1341,11 @@ function renderTopicsEditor() {
         `;
         return;
     }
+
     const days = currentResult.days || ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"];
     const slots = currentResult.slots || [1, 2, 3, 4, 5, 6, 7];
     const times = schoolData.lessonTimes || [];
+
     const classSchedule = {};
     days.forEach(day => {
         classSchedule[day] = {};
@@ -1302,6 +1353,7 @@ function renderTopicsEditor() {
             classSchedule[day][slot] = null;
         });
     });
+
     currentResult.teachers.forEach(teacher => {
         if (!teacher.schedule) return;
         Object.keys(teacher.schedule).forEach(day => {
@@ -1323,6 +1375,9 @@ function renderTopicsEditor() {
             });
         });
     });
+
+    console.log('📋 classSchedule для класса', filterGrade, ':', classSchedule);
+
     let html = '<div style="overflow-x:auto">';
     html += '<table class="topics-table">';
     html += '<thead><tr>';
@@ -1332,6 +1387,7 @@ function renderTopicsEditor() {
         html += `<th class="topics-slot-header">Урок ${slot}<br><small>${timeStr}</small></th>`;
     });
     html += '</tr></thead><tbody>';
+
     days.forEach(day => {
         html += `<tr class="topics-day-row">`;
         html += `<td class="topics-day-cell">${day}</td>`;
@@ -1344,7 +1400,7 @@ function renderTopicsEditor() {
                     <div class="topic-lesson-info">
                         <div class="topic-subject">${escapeHtml(lesson.subject)}</div>
                         <div class="topic-teacher">${escapeHtml(lesson.teacherShort)}</div>
-                        <div class="topic-classroom">${lesson.classroom ? '🚪 ' + escapeHtml(lesson.classroom) : ''}</div>
+                        <div class="topic-classroom">${lesson.classroom ? ' ' + escapeHtml(lesson.classroom) : ''}</div>
                         ${topicDisplay}
                     </div>
                     <input type="text"
@@ -1366,8 +1422,10 @@ function renderTopicsEditor() {
         });
         html += `</tr>`;
     });
+
     html += '</tbody></table></div>';
     container.innerHTML = html;
+    console.log('✅ Таблица тем отрисована');
 }
 
 async function onTopicBlur(input) {
@@ -1379,13 +1437,12 @@ async function onTopicBlur(input) {
     const grade = input.dataset.grade;
     const topic = input.value.trim();
 
-    showTopicsSaveIndicator(' Сохранение...', 'saving');
+    showTopicsSaveIndicator('⏳ Сохранение...', 'saving');
 
     const success = await saveTopicToDatabase(teacher, subject, grade, day, slot, topic);
 
     if (success) {
         showTopicsSaveIndicator('✅ Сохранено', 'success');
-        renderTopicsEditor();
     } else {
         showTopicsSaveIndicator('❌ Ошибка сохранения', 'error');
     }
@@ -1395,11 +1452,6 @@ function onTopicKeydown(event, input) {
     if (event.key === 'Enter') {
         event.preventDefault();
         input.blur();
-        const allInputs = [...document.querySelectorAll('.topic-input')];
-        const currentIndex = allInputs.indexOf(input);
-        if (currentIndex < allInputs.length - 1) {
-            allInputs[currentIndex + 1].focus();
-        }
     }
 }
 
@@ -1415,7 +1467,7 @@ function showTopicsSaveIndicator(text, type = 'success') {
     const textEl = indicator.querySelector('.save-indicator-text');
 
     if (iconEl) {
-        iconEl.textContent = type === 'success' ? '✓' : type === 'saving' ? '⏳' : '✗';
+        iconEl.textContent = type === 'success' ? '✓' : type === 'saving' ? '' : '✗';
     }
     if (textEl) {
         textEl.textContent = text;
