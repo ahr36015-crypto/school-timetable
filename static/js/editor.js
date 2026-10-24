@@ -58,12 +58,12 @@ function updateUndoButtonState() {
         undoBtn.disabled = false;
         undoBtn.style.opacity = '1';
         undoBtn.style.cursor = 'pointer';
-        undoBtn.textContent = ` Отменить (${window.undoHistory.length})`;
+        undoBtn.textContent = `↶ Отменить (${window.undoHistory.length})`;
     } else {
         undoBtn.disabled = true;
         undoBtn.style.opacity = '0.5';
         undoBtn.style.cursor = 'not-allowed';
-        undoBtn.textContent = '↶ Отменить';
+        undoBtn.textContent = ' Отменить';
     }
 }
 
@@ -95,7 +95,7 @@ async function undoLastAction() {
     const snapshot = window.undoHistory.pop();
     currentResult = snapshot;
 
-    console.log(' Отмена действия. Осталось в истории:', window.undoHistory.length);
+    console.log('️ Отмена действия. Осталось в истории:', window.undoHistory.length);
 
     // Отправляем восстановленное состояние на сервер
     if (currentTimetableId) {
@@ -269,6 +269,7 @@ function handleGlobalDragStart(e, chipId) {
     chip.style.opacity = '0.4';
     _isDragging = true;
 
+    // Подсвечиваем все зоны
     document.querySelectorAll('.drop-zone').forEach(zone => {
         zone.classList.add('drag-active');
         checkDropZoneValidity(zone);
@@ -315,6 +316,7 @@ function checkDropZoneValidity(zone) {
         console.error('Ошибка парсинга lessons:', err);
     }
 
+    // 🔥 ПРОВЕРКА КОНФЛИКТА ПО КАБИНЕТУ
     if (!conflictReason && draggedLessonData.classroom) {
         const allLessonsInSlot = findLessonsInSlot(toDay, toSlot);
         for (const l of allLessonsInSlot) {
@@ -356,6 +358,30 @@ function handleGlobalDragOver(e) {
     const zone = e.target.closest('.drop-zone');
     if (!zone || !draggedLessonData) return;
     checkDropZoneValidity(zone);
+
+    // 🔥 АВТОМАТИЧЕСКАЯ ПРОКРУТКА К ЗОНЕ
+    const zoneRect = zone.getBoundingClientRect();
+    const container = document.querySelector('.global-editor-container');
+    if (container) {
+        const containerRect = container.getBoundingClientRect();
+        const scrollLeft = container.scrollLeft;
+        const scrollTop = container.scrollTop;
+
+        // Если зона выходит за правую границу
+        if (zoneRect.right > containerRect.right - 50) {
+            container.scrollTo({
+                left: scrollLeft + (zoneRect.right - containerRect.right) + 100,
+                behavior: 'smooth'
+            });
+        }
+        // Если зона выходит за левую границу
+        else if (zoneRect.left < containerRect.left + 50) {
+            container.scrollTo({
+                left: scrollLeft - (containerRect.left - zoneRect.left) - 100,
+                behavior: 'smooth'
+            });
+        }
+    }
 }
 
 function handleGlobalDragLeave(e) {
@@ -406,6 +432,7 @@ async function handleGlobalDrop(e) {
         return;
     }
 
+    // 🔥 ПРОВЕРКА КОНФЛИКТОВ ПЕРЕД ПЕРЕМЕЩЕНИЕМ
     if (draggedLessonData.classroom) {
         const allLessonsInSlot = findLessonsInSlot(toDay, toSlot);
         for (const l of allLessonsInSlot) {
@@ -432,7 +459,7 @@ async function handleGlobalDrop(e) {
     }
 
     if (!currentTimetableId) {
-        alert('️ Ошибка: Потерян ID расписания. Пожалуйста, обновите страницу.');
+        alert('⚠️ Ошибка: Потерян ID расписания. Пожалуйста, обновите страницу.');
         _isDragging = false;
         return;
     }
@@ -468,7 +495,7 @@ async function handleGlobalDrop(e) {
         });
 
         const result = await response.json();
-        console.log('📥 Ответ сервера:', response.status, result);
+        console.log(' Ответ сервера:', response.status, result);
 
         if (response.ok) {
             console.log('✅ Сервер вернул успех');
@@ -481,9 +508,7 @@ async function handleGlobalDrop(e) {
         } else {
             const errorMsg = result.detail || 'Не удалось переместить';
             alert(`⚠️ ${errorMsg}`);
-            // Удаляем последний snapshot, так как перемещение не удалось
-            window.undoHistory.pop();
-            updateUndoButtonState();
+            // ❌ ВАЖНО: Не удаляем snapshot при ошибке - пользователь может попробовать другое место
             if (srcEl && _originalParent) {
                 _originalParent.appendChild(srcEl);
             }
@@ -492,9 +517,7 @@ async function handleGlobalDrop(e) {
     } catch (error) {
         console.error('❌ Ошибка сети:', error);
         alert('❌ Ошибка соединения с сервером');
-        // Удаляем последний snapshot
-        window.undoHistory.pop();
-        updateUndoButtonState();
+        // ❌ ВАЖНО: Не удаляем snapshot при ошибке
         if (srcEl && _originalParent) {
             _originalParent.appendChild(srcEl);
         }
@@ -525,7 +548,7 @@ async function reloadAndRender() {
             if (reloadData && reloadData.data) {
                 currentResult = reloadData.data;
                 console.log('✅ currentResult обновлён с сервера');
-                console.log('📊 Количество учителей:', currentResult.teachers?.length);
+                console.log(' Количество учителей:', currentResult.teachers?.length);
             }
         } else {
             console.warn('⚠ Не удалось перезагрузить данные');
