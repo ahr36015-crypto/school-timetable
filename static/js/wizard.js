@@ -6,8 +6,13 @@ let topicsSaveTimeout = null;
 let pendingTopicUpdates = [];
 let saveIndicatorTimeout = null;
 
+// История Undo (общая для editor.js и wizard.js)
+if (!window.undoHistory) {
+    window.undoHistory = [];
+}
+
 // ============================================================
-// НАВИГАЦИЯ ПО КЛИКУ НА ВКЛАДКИ (ДЕЛЕГИРОВАНИЕ СОБЫТИЙ)
+// НАВИГАЦИЯ ПО КЛИКУ НА ВКЛАДКИ
 // ============================================================
 document.addEventListener('click', function(e) {
     const step = e.target.closest('.wizard-step');
@@ -17,7 +22,7 @@ document.addEventListener('click', function(e) {
             if (canNavigateToStep(targetStep)) {
                 goToStep(targetStep);
             } else {
-                alert(' Сначала завершите текущий шаг и нажмите "Далее"');
+                alert('⚠ Сначала завершите текущий шаг и нажмите "Далее"');
             }
         }
     }
@@ -112,6 +117,9 @@ async function goToStep(step) {
                             if (data && data.data) {
                                 currentResult = data.data;
                                 currentTimetableId = latest.id;
+                                // Очищаем историю Undo при загрузке нового расписания
+                                window.undoHistory = [];
+                                if (typeof updateUndoButtonState === 'function') updateUndoButtonState();
                                 console.log("✅ Данные и ID успешно восстановлены!");
                             }
                         }
@@ -128,7 +136,7 @@ async function goToStep(step) {
             }
         }
         if (currentResult && currentResult.teachers && currentTimetableId) {
-            console.log("🎨 Рендеринг таблицы редактора...");
+            console.log(" Рендеринг таблицы редактора...");
             updateEditorClassFilter();
             if (currentEditorMode === 'topics') {
                 await loadFreshTimetableData();
@@ -466,7 +474,7 @@ function getActualHours(teacherName) {
 function getLoadStatus(planned, actual) {
     if (actual === null) return { text: 'Нет данных', class: 'load-unknown', icon: '⏳' };
     if (actual === 0 && planned > 0) return { text: 'Не назначено', class: 'load-under', icon: '⚠️' };
-    if (actual < planned) return { text: 'Недогруз', class: 'load-under', icon: '️' };
+    if (actual < planned) return { text: 'Недогруз', class: 'load-under', icon: '⚠️' };
     if (actual > planned) return { text: 'Перегруз', class: 'load-over', icon: '❌' };
     return { text: 'Норма', class: 'load-ok', icon: '✅' };
 }
@@ -593,7 +601,7 @@ function renderWorkloads(teacher) {
                        data-idx="${i}" data-field="hours" min="1" max="40"
                        onchange="updateWorkloadFromInput(this)">
             </div>
-            <button class="small danger" onclick="removeWorkload(${i})" style="margin-top: 24px;"></button>
+            <button class="small danger" onclick="removeWorkload(${i})" style="margin-top: 24px;">🗑</button>
         </div>
     `).join('');
 }
@@ -763,7 +771,7 @@ function applyTimeTemplate() {
         return;
     }
     if (schoolData.availability[name] && Object.keys(schoolData.availability[name]).length > 0) {
-        if (!confirm(` У учителя "${name}" уже есть настройки. Новые значения ПОЛНОСТЬЮ ЗАМЕНЯТ старые. Продолжить?`))
+        if (!confirm(`⚠ У учителя "${name}" уже есть настройки. Новые значения ПОЛНОСТЬЮ ЗАМЕНЯТ старые. Продолжить?`))
             return;
     }
     schoolData.availability[name] = {};
@@ -858,7 +866,7 @@ function renderGenerationStats() {
 
     container.innerHTML = `
         <div class="generation-stats">
-            <h3>📊 Контроль нагрузки учителей</h3>
+            <h3> Контроль нагрузки учителей</h3>
             <div class="stats-summary">
                 <div class="stats-summary-item">
                     <div class="stats-summary-value">${schoolData.teachers.length}</div>
@@ -1099,10 +1107,10 @@ async function loadSavedTimetables() {
                 <div class="saved-timetable-item">
                     <div><h4>${t.name}</h4><p>${new Date(t.created_at).toLocaleString('ru-RU')}</p></div>
                     <div class="saved-timetable-actions">
-                        <button class="small primary" onclick="window.loadSavedTimetable(${t.id})">👁 Открыть</button>
+                        <button class="small primary" onclick="window.loadSavedTimetable(${t.id})"> Открыть</button>
                         <button class="small outline" onclick="window.downloadSavedPDF(${t.id},'teachers')">PDF (уч.)</button>
                         <button class="small outline" onclick="window.downloadSavedPDF(${t.id},'classes')">PDF (кл.)</button>
-                        <button class="small danger" onclick="window.deleteSavedTimetable(${t.id})"></button>
+                        <button class="small danger" onclick="window.deleteSavedTimetable(${t.id})">🗑</button>
                     </div>
                 </div>
             `).join('');
@@ -1124,6 +1132,9 @@ window.loadSavedTimetable = async function (id) {
         if (res.ok && data.data) {
             currentResult = data.data;
             currentTimetableId = id;
+            // Очищаем историю Undo при загрузке расписания
+            window.undoHistory = [];
+            if (typeof updateUndoButtonState === 'function') updateUndoButtonState();
             document.getElementById('statTeachers').textContent = currentResult.teachers.length;
             document.getElementById('statLessons').textContent =
                 currentResult.teachers.reduce((s, t) => s + t.total_lessons, 0);
@@ -1258,7 +1269,7 @@ async function loadFreshTimetableData() {
 
 async function saveTopicToDatabase(teacher, subject, grade, day, slot, topic) {
     if (!currentTimetableId) {
-        console.error('❌ Нет currentTimetableId');
+        console.error(' Нет currentTimetableId');
         return false;
     }
 
@@ -1294,7 +1305,7 @@ async function saveTopicToDatabase(teacher, subject, grade, day, slot, topic) {
             return true;
         } else {
             const errorData = await res.json();
-            console.error(' Ошибка сохранения:', res.status, errorData);
+            console.error('❌ Ошибка сохранения:', res.status, errorData);
             return false;
         }
     } catch (e) {
@@ -1323,7 +1334,7 @@ function escapeAttr(str) {
 }
 
 function renderTopicsEditor() {
-    console.log(' renderTopicsEditor вызван');
+    console.log('🎨 renderTopicsEditor вызван');
     const container = document.getElementById('topicsEditorContent');
     const filterGrade = document.getElementById('editorClassFilter')?.value || '';
 
@@ -1376,7 +1387,7 @@ function renderTopicsEditor() {
         });
     });
 
-    console.log('📋 classSchedule для класса', filterGrade, ':', classSchedule);
+    console.log(' classSchedule для класса', filterGrade, ':', classSchedule);
 
     let html = '<div style="overflow-x:auto">';
     html += '<table class="topics-table">';
@@ -1400,7 +1411,7 @@ function renderTopicsEditor() {
                     <div class="topic-lesson-info">
                         <div class="topic-subject">${escapeHtml(lesson.subject)}</div>
                         <div class="topic-teacher">${escapeHtml(lesson.teacherShort)}</div>
-                        <div class="topic-classroom">${lesson.classroom ? ' ' + escapeHtml(lesson.classroom) : ''}</div>
+                        <div class="topic-classroom">${lesson.classroom ? '🚪 ' + escapeHtml(lesson.classroom) : ''}</div>
                         ${topicDisplay}
                     </div>
                     <input type="text"
@@ -1437,7 +1448,7 @@ async function onTopicBlur(input) {
     const grade = input.dataset.grade;
     const topic = input.value.trim();
 
-    showTopicsSaveIndicator('⏳ Сохранение...', 'saving');
+    showTopicsSaveIndicator(' Сохранение...', 'saving');
 
     const success = await saveTopicToDatabase(teacher, subject, grade, day, slot, topic);
 
@@ -1467,7 +1478,7 @@ function showTopicsSaveIndicator(text, type = 'success') {
     const textEl = indicator.querySelector('.save-indicator-text');
 
     if (iconEl) {
-        iconEl.textContent = type === 'success' ? '✓' : type === 'saving' ? '' : '✗';
+        iconEl.textContent = type === 'success' ? '✓' : type === 'saving' ? '⏳' : '✗';
     }
     if (textEl) {
         textEl.textContent = text;
@@ -1526,3 +1537,5 @@ window.loadFreshTimetableData = loadFreshTimetableData;
 window.saveTopicToDatabase = saveTopicToDatabase;
 window.renderTeacherLoadStats = renderTeacherLoadStats;
 window.renderGenerationStats = renderGenerationStats;
+window.undoLastAction = undoLastAction;
+window.updateUndoButtonState = updateUndoButtonState;

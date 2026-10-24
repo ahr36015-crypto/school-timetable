@@ -1,5 +1,5 @@
 // static/js/editor.js
-// Визуальный редактор расписания с Drag-and-Drop
+// Визуальный редактор расписания с Drag-and-Drop и Undo
 
 // ============================================================
 // ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
@@ -7,6 +7,12 @@
 let _isDragging = false;
 let _draggedChipId = null;
 let _originalParent = null;
+
+// История для Undo (максимум 20 действий)
+if (!window.undoHistory) {
+    window.undoHistory = [];
+}
+const MAX_UNDO_HISTORY = 20;
 
 // ============================================================
 // ОБНОВЛЕНИЕ ФИЛЬТРА ПО КЛАССУ
@@ -37,10 +43,91 @@ function updateEditorClassFilter() {
     select.innerHTML = '<option value="">-- Показать всех --</option> ' +
         Array.from(grades).sort().map(g => `<option value="${g}">${g} класс</option>`).join('');
     select.value = currentVal;
+
+    updateUndoButtonState();
 }
 
 // ============================================================
-// РЕНДЕР ГЛОБАЛЬНОГО РЕДАКТОРА (С ЗАЩИТОЙ ОТ ДУБЛЕЙ ДНЕЙ)
+// УПРАВЛЕНИЕ КНОПКОЙ UNDO
+// ============================================================
+function updateUndoButtonState() {
+    const undoBtn = document.getElementById('undoBtn');
+    if (!undoBtn) return;
+
+    if (window.undoHistory.length > 0) {
+        undoBtn.disabled = false;
+        undoBtn.style.opacity = '1';
+        undoBtn.style.cursor = 'pointer';
+        undoBtn.textContent = ` Отменить (${window.undoHistory.length})`;
+    } else {
+        undoBtn.disabled = true;
+        undoBtn.style.opacity = '0.5';
+        undoBtn.style.cursor = 'not-allowed';
+        undoBtn.textContent = '↶ Отменить';
+    }
+}
+
+function saveUndoSnapshot() {
+    if (!currentResult) return;
+
+    // Глубокий клон текущего состояния
+    const snapshot = JSON.parse(JSON.stringify(currentResult));
+
+    window.undoHistory.push(snapshot);
+
+    // Ограничиваем историю 20 элементами
+    if (window.undoHistory.length > MAX_UNDO_HISTORY) {
+        window.undoHistory.shift();
+    }
+
+    console.log('💾 Snapshot сохранён в историю Undo. Всего:', window.undoHistory.length);
+    updateUndoButtonState();
+}
+
+async function undoLastAction() {
+    if (window.undoHistory.length === 0) {
+        alert('Нет действий для отмены');
+        return;
+    }
+
+    if (!confirm('Отменить последнее действие?')) return;
+
+    const snapshot = window.undoHistory.pop();
+    currentResult = snapshot;
+
+    console.log(' Отмена действия. Осталось в истории:', window.undoHistory.length);
+
+    // Отправляем восстановленное состояние на сервер
+    if (currentTimetableId) {
+        try {
+            const res = await fetch(`/timetables/${currentTimetableId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + getToken()
+                },
+                body: JSON.stringify({ data: currentResult })
+            });
+
+            if (res.ok) {
+                console.log('✅ Сервер принял откат');
+                showToast('✅ Действие отменено');
+            } else {
+                console.error('❌ Ошибка сервера при откате:', res.status);
+                alert('Ошибка при откате на сервере');
+            }
+        } catch (e) {
+            console.error('❌ Ошибка сети при откате:', e);
+            alert('Ошибка соединения при откате');
+        }
+    }
+
+    updateUndoButtonState();
+    renderGlobalEditor();
+}
+
+// ============================================================
+// РЕНДЕР ГЛОБАЛЬНОГО РЕДАКТОРА
 // ============================================================
 function renderGlobalEditor() {
     const container = document.getElementById('globalEditorContainer');
@@ -54,7 +141,6 @@ function renderGlobalEditor() {
     const filterGrade = document.getElementById('editorClassFilter') ?
         document.getElementById('editorClassFilter').value : "";
 
-    // ✅ ЗАЩИТА ОТ ДУБЛЕЙ: используем Set для уникальных дней и слотов
     const daysSet = new Set(currentResult.days || ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"]);
     const days = Array.from(daysSet);
 
@@ -62,9 +148,6 @@ function renderGlobalEditor() {
     const slots = Array.from(slotsSet).sort((a, b) => a - b);
 
     const times = schoolData.lessonTimes || [];
-
-    console.log('📅 Дни для рендера:', days);
-    console.log('🔢 Слоты для рендера:', slots);
 
     let html = '<table class="global-table"><thead><tr>';
     html += '<th class="teacher-header">Учитель / День</th>';
@@ -354,6 +437,9 @@ async function handleGlobalDrop(e) {
         return;
     }
 
+    // 💾 СОХРАНЯЕМ SNAPSHOT ПЕРЕД ПЕРЕМЕЩЕНИЕМ
+    saveUndoSnapshot();
+
     const srcEl = document.getElementById(_draggedChipId);
     if (srcEl && targetCell) {
         targetCell.appendChild(srcEl);
@@ -395,6 +481,9 @@ async function handleGlobalDrop(e) {
         } else {
             const errorMsg = result.detail || 'Не удалось переместить';
             alert(`⚠️ ${errorMsg}`);
+            // Удаляем последний snapshot, так как перемещение не удалось
+            window.undoHistory.pop();
+            updateUndoButtonState();
             if (srcEl && _originalParent) {
                 _originalParent.appendChild(srcEl);
             }
@@ -403,6 +492,9 @@ async function handleGlobalDrop(e) {
     } catch (error) {
         console.error('❌ Ошибка сети:', error);
         alert('❌ Ошибка соединения с сервером');
+        // Удаляем последний snapshot
+        window.undoHistory.pop();
+        updateUndoButtonState();
         if (srcEl && _originalParent) {
             _originalParent.appendChild(srcEl);
         }
@@ -433,7 +525,7 @@ async function reloadAndRender() {
             if (reloadData && reloadData.data) {
                 currentResult = reloadData.data;
                 console.log('✅ currentResult обновлён с сервера');
-                console.log(' Количество учителей:', currentResult.teachers?.length);
+                console.log('📊 Количество учителей:', currentResult.teachers?.length);
             }
         } else {
             console.warn('⚠ Не удалось перезагрузить данные');
@@ -462,3 +554,14 @@ function validateTimetable() {
     if (!currentResult) { alert('Нет данных'); return; }
     alert('✅ Проверка завершена');
 }
+
+// Экспорт функций
+window.updateEditorClassFilter = updateEditorClassFilter;
+window.renderGlobalEditor = renderGlobalEditor;
+window.handleGlobalDragStart = handleGlobalDragStart;
+window.handleGlobalDragOver = handleGlobalDragOver;
+window.handleGlobalDragLeave = handleGlobalDragLeave;
+window.handleGlobalDrop = handleGlobalDrop;
+window.validateTimetable = validateTimetable;
+window.undoLastAction = undoLastAction;
+window.updateUndoButtonState = updateUndoButtonState;

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Генератор школьного расписания</title>
-    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="/static/css/styles.css?v=20261024">
 </head>
 <body>
     <!-- Авторизация -->
@@ -12,7 +12,7 @@
         <div class="auth-card">
             <h1>🎓 Генератор школьного расписания</h1>
             <p>Войдите или создайте аккаунт</p>
-            <div class="auth-tabs">
+            <div class="tabs">
                 <button class="tab active" onclick="showLogin()">Вход</button>
                 <button class="tab" onclick="showRegister()">Регистрация</button>
             </div>
@@ -26,7 +26,7 @@
                     <input type="password" id="loginPassword" placeholder="••••••••">
                 </div>
                 <div id="loginError" class="error-message"></div>
-                <button class="btn-primary" onclick="login()">Войти</button>
+                <button class="btn-primary full" onclick="login()">Войти</button>
             </div>
             <div class="form-section" id="registerSection">
                 <div class="form-group">
@@ -46,7 +46,7 @@
                     <input type="password" id="regPassword" placeholder="Минимум 6 символов">
                 </div>
                 <div id="regError" class="error-message"></div>
-                <button class="btn-primary" onclick="register()">Зарегистрироваться</button>
+                <button class="btn-primary full" onclick="register()">Зарегистрироваться</button>
             </div>
         </div>
     </div>
@@ -139,7 +139,7 @@
                     <label>ФИО учителя</label>
                     <input type="text" id="newTeacherName" placeholder="Иванов Иван Иванович">
                 </div>
-                <div id="teacherDuplicateWarning" class="warning-message"> Такой учитель уже существует!</div>
+                <div id="teacherDuplicateWarning" class="warning-message">⚠ Такой учитель уже существует!</div>
                 <button class="btn-primary" onclick="addTeacher()">+ Добавить учителя</button>
                 <table id="teachersTable" class="data-table"></table>
             </div>
@@ -288,12 +288,12 @@
 
         <!-- Шаг 4: Генерация -->
         <div class="wizard-content" id="step4">
-            <h2>🚀 Шаг 4: Генерация</h2>
+            <h2> Шаг 4: Генерация</h2>
             <p class="step-hint">Алгоритм автоматически составит оптимальное расписание на основе ваших данных</p>
             <button class="btn-primary btn-large" id="generateBtn" onclick="generateTimetable()">Сгенерировать расписание</button>
             <div id="genError" class="error-message"></div>
             <div id="genSuccess" class="success-message"></div>
-            <div id="resultsSection" class="results-section" style="display:none">
+            <div id="resultsSection" class="results-section">
                 <div class="stats-cards">
                     <div class="stat-card">
                         <div class="stat-value" id="statTeachers">0</div>
@@ -319,7 +319,7 @@
                 <h3>📋 Сохранённые расписания</h3>
                 <div id="savedTimetablesList"></div>
             </div>
-            <button class="btn-primary" onclick="completeStep(4)"> Далее →</button>
+            <button class="btn-primary" onclick="completeStep(4)">💾 Далее →</button>
         </div>
 
         <!-- Шаг 5: Редактор -->
@@ -337,6 +337,7 @@
                         <option value="">-- Показать всех --</option>
                     </select>
                 </div>
+                <button class="btn-secondary" id="undoBtn" onclick="undoLastAction()" disabled style="opacity:0.5;cursor:not-allowed;">↶ Отменить</button>
                 <button class="btn-secondary" onclick="validateTimetable()">Проверить</button>
                 <button class="btn-secondary" id="exportTopicsBtn" onclick="exportTopicsToExcel()" style="display:none">Экспорт тем</button>
             </div>
@@ -353,15 +354,15 @@
 
         <!-- Шаг 6: Публикация -->
         <div class="wizard-content" id="step6">
-            <h2>📢 Шаг 6: Публикация</h2>
+            <h2> Шаг 6: Публикация</h2>
             <p class="step-hint">Экспортируйте расписание в Excel/PDF или отправьте учителям</p>
             <div class="publish-actions">
-                <button class="btn-primary" onclick="downloadPDF('teachers')">📄 PDF (учителя)</button>
+                <button class="btn-primary" onclick="downloadPDF('teachers')"> PDF (учителя)</button>
                 <button class="btn-primary" onclick="downloadPDF('classes')">📄 PDF (классы)</button>
                 <button class="btn-primary" onclick="downloadExcel('classes')">📊 Excel</button>
                 <button class="btn-secondary" onclick="sendToTeachers()">📱 Отправить учителям</button>
                 <button class="btn-secondary" onclick="sendToEmail()">📧 Отправить на email</button>
-                <button class="btn-secondary" onclick="exportToJournal()"> Экспорт в журнал</button>
+                <button class="btn-secondary" onclick="exportToJournal()">📋 Экспорт в журнал</button>
             </div>
         </div>
     </div>
