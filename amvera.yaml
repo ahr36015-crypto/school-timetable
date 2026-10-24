@@ -11,3 +11,5 @@ run:
   scriptName: api:app
   port: 8000
   persistence: false
+  # Добавляем комментарий в конец файла
+  echo "# Force rebuild $(date)" >> amvera.yaml
