@@ -58,7 +58,7 @@ function updateUndoButtonState() {
         undoBtn.disabled = false;
         undoBtn.style.opacity = '1';
         undoBtn.style.cursor = 'pointer';
-        undoBtn.textContent = ` Отменить (${window.undoHistory.length})`;
+        undoBtn.textContent = `↶ Отменить (${window.undoHistory.length})`;
     } else {
         undoBtn.disabled = true;
         undoBtn.style.opacity = '0.5';
@@ -78,7 +78,7 @@ function saveUndoSnapshot() {
         window.undoHistory.shift();
     }
 
-    console.log('💾 Snapshot сохранён в историю Undo. Всего:', window.undoHistory.length);
+    console.log(' Snapshot сохранён в историю Undo. Всего:', window.undoHistory.length);
     updateUndoButtonState();
 }
 
@@ -93,7 +93,7 @@ async function undoLastAction() {
     const snapshot = window.undoHistory.pop();
     currentResult = snapshot;
 
-    console.log('️ Отмена действия. Осталось в истории:', window.undoHistory.length);
+    console.log('↩️ Отмена действия. Осталось в истории:', window.undoHistory.length);
 
     if (currentTimetableId) {
         try {
@@ -273,7 +273,7 @@ function handleGlobalDragStart(e, chipId) {
 }
 
 // ============================================================
-// ПРОВЕРКА ВАЛИДНОСТИ ЗОНЫ СБРОСА (ИСПРАВЛЕНО)
+// ПРОВЕРКА ВАЛИДНОСТИ ЗОНЫ СБРОСА
 // ============================================================
 function checkDropZoneValidity(zone) {
     if (!zone || !draggedLessonData) return;
@@ -288,7 +288,7 @@ function checkDropZoneValidity(zone) {
     // Проверка 1: Нельзя перемещать к другому учителю
     if (toTeacher !== draggedLessonData.teacher) {
         zone.classList.add('drag-over-invalid');
-        zone.setAttribute('title', '❌ Нельзя переместить к другому учителю');
+        zone.setAttribute('title', ' Нельзя переместить к другому учителю');
         zone.classList.add('conflict-reason');
         return;
     }
@@ -300,7 +300,7 @@ function checkDropZoneValidity(zone) {
         return;
     }
 
-    // Проверка 3: Конфликты с другими уроками
+    // Проверка 3: Конфликты с другими уроками в целевой ячейке
     let conflictReason = null;
 
     try {
@@ -433,14 +433,14 @@ async function handleGlobalDrop(e) {
         return;
     }
 
-    //  ПРОВЕРКА КОНФЛИКТОВ ДО СОХРАНЕНИЯ SNAPSHOT
+    // 🔥 ПРОВЕРКА КОНФЛИКТОВ ДО СОХРАНЕНИЯ SNAPSHOT
     let hasConflict = false;
 
     try {
         const existingLessons = JSON.parse(targetCell.dataset.lessons || '[]');
         for (const l of existingLessons) {
             if (l.grade === draggedLessonData.grade) {
-                alert(`⚠️ Конфликт: Класс ${l.grade} уже имеет урок "${l.subject}" в это время`);
+                alert(`️ Конфликт: Класс ${l.grade} уже имеет урок "${l.subject}" в это время`);
                 hasConflict = true;
                 break;
             }
@@ -460,7 +460,7 @@ async function handleGlobalDrop(e) {
             }
 
             if (l.classroom && draggedLessonData.classroom === l.classroom) {
-                alert(`️ Конфликт: Кабинет ${l.classroom} уже занят уроком "${l.subject}" (${l.grade} кл, ${l.teacher}) в это время`);
+                alert(`⚠️ Конфликт: Кабинет ${l.classroom} уже занят уроком "${l.subject}" (${l.grade} кл, ${l.teacher}) в это время`);
                 hasConflict = true;
                 break;
             }
@@ -522,6 +522,8 @@ async function handleGlobalDrop(e) {
                 srcEl.style.cursor = 'grab';
             }
             showToast('✅ Урок перемещен!');
+            // 🔥 ВАЖНО: Перерисовываем таблицу после успешного перемещения
+            await reloadAndRender();
         } else {
             const errorMsg = result.detail || 'Не удалось переместить';
             alert(`⚠️ ${errorMsg}`);
@@ -571,10 +573,10 @@ async function reloadAndRender() {
                 console.log('📊 Количество учителей:', currentResult.teachers?.length);
             }
         } else {
-            console.warn(' Не удалось перезагрузить данные');
+            console.warn('⚠ Не удалось перезагрузить данные');
         }
     } catch (err) {
-        console.error('❌ Ошибка перезагрузки:', err);
+        console.error(' Ошибка перезагрузки:', err);
     }
 
     updateEditorClassFilter();
