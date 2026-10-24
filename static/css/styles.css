@@ -4,7 +4,7 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #f5f7fa;
     min-height: 100vh;
     padding: 20px;
 }
@@ -12,7 +12,7 @@ body {
 .container {
     background: white;
     border-radius: 20px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.1);
     padding: 40px;
     max-width: 100%;
     width: 100%;
@@ -26,7 +26,7 @@ h1 { text-align: center; color: #333; margin-bottom: 10px; font-size: 32px; }
    АВТОРИЗАЦИЯ
    ============================================================ */
 .auth-container { max-width: 450px; margin: 100px auto; }
-.auth-card { background: white; border-radius: 20px; padding: 40px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+.auth-card { background: white; border-radius: 20px; padding: 40px; box-shadow: 0 20px 60px rgba(0,0,0,0.1); }
 .auth-card h1 { font-size: 26px; margin-bottom: 10px; }
 .auth-card p { text-align: center; color: #666; margin-bottom: 25px; }
 .tabs { display: flex; margin-bottom: 30px; border-bottom: 2px solid #eee; }
@@ -90,7 +90,7 @@ button.add-btn { margin-top: 10px; padding: 12px 24px; background: linear-gradie
     gap: 10px;
     margin: 20px 0 30px 0;
     padding: 15px;
-    background: #f8f9fa;
+    background: white;
     border-radius: 12px;
     overflow-x: auto;
     width: 100%;
