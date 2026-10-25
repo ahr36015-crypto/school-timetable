@@ -69,16 +69,13 @@ function updateUndoButtonState() {
 
 function saveUndoSnapshot() {
     if (!currentResult) return;
-
     const snapshot = JSON.parse(JSON.stringify(currentResult));
-
     window.undoHistory.push(snapshot);
 
     if (window.undoHistory.length > MAX_UNDO_HISTORY) {
         window.undoHistory.shift();
     }
-
-    console.log(' Snapshot сохранён в историю Undo. Всего:', window.undoHistory.length);
+    console.log('💾 Snapshot сохранён. Всего в истории:', window.undoHistory.length);
     updateUndoButtonState();
 }
 
@@ -87,13 +84,10 @@ async function undoLastAction() {
         alert('Нет действий для отмены');
         return;
     }
-
     if (!confirm('Отменить последнее действие?')) return;
 
     const snapshot = window.undoHistory.pop();
     currentResult = snapshot;
-
-    console.log('↩️ Отмена действия. Осталось в истории:', window.undoHistory.length);
 
     if (currentTimetableId) {
         try {
@@ -105,20 +99,15 @@ async function undoLastAction() {
                 },
                 body: JSON.stringify({ data: currentResult })
             });
-
             if (res.ok) {
-                console.log('✅ Сервер принял откат');
                 showToast('✅ Действие отменено');
             } else {
-                console.error('❌ Ошибка сервера при откате:', res.status);
                 alert('Ошибка при откате на сервере');
             }
         } catch (e) {
-            console.error('❌ Ошибка сети при откате:', e);
             alert('Ошибка соединения при откате');
         }
     }
-
     updateUndoButtonState();
     renderGlobalEditor();
 }
@@ -135,16 +124,10 @@ function renderGlobalEditor() {
         return;
     }
 
-    const filterGrade = document.getElementById('editorClassFilter') ?
-        document.getElementById('editorClassFilter').value : "";
-
-    const daysSet = new Set(currentResult.days || ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"]);
-    const days = Array.from(daysSet);
-
-    const slotsSet = new Set(currentResult.slots || [1, 2, 3, 4, 5, 6, 7]);
-    const slots = Array.from(slotsSet).sort((a, b) => a - b);
-
-    const times = getLessonTimes();
+    const filterGrade = document.getElementById('editorClassFilter') ? document.getElementById('editorClassFilter').value : "";
+    const days = Array.from(new Set(currentResult.days || ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"]));
+    const slots = Array.from(new Set(currentResult.slots || [1, 2, 3, 4, 5, 6, 7])).sort((a, b) => a - b);
+    const times = schoolData.lessonTimes || [];
 
     let html = '<table class="global-table"><thead><tr>';
     html += '<th class="teacher-header">Учитель / День</th>';
@@ -169,9 +152,7 @@ function renderGlobalEditor() {
                     lessons = teacher.schedule[day][slotKey];
                 }
 
-                const visibleLessons = filterGrade
-                    ? lessons.filter(l => l && l.grade === filterGrade)
-                    : lessons;
+                const visibleLessons = filterGrade ? lessons.filter(l => l && l.grade === filterGrade) : lessons;
 
                 let cellContent = '';
                 visibleLessons.forEach(l => {
@@ -213,7 +194,6 @@ function renderGlobalEditor() {
 
     html += '</tbody></table>';
     container.innerHTML = html;
-    console.log('✅ Таблица редактора отрисована');
 }
 
 // ============================================================
@@ -227,10 +207,7 @@ function findLessonsInSlot(day, slot) {
     currentResult.teachers.forEach(teacher => {
         if (teacher.schedule && teacher.schedule[day] && teacher.schedule[day][slotKey]) {
             teacher.schedule[day][slotKey].forEach(l => {
-                lessons.push({
-                    ...l,
-                    teacher: teacher.teacher
-                });
+                lessons.push({ ...l, teacher: teacher.teacher });
             });
         }
     });
@@ -238,20 +215,16 @@ function findLessonsInSlot(day, slot) {
 }
 
 // ============================================================
-// НАЧАЛО ПЕРЕТАСКИВАНИЯ
+// DRAG AND DROP ЛОГИКА
 // ============================================================
 function handleGlobalDragStart(e, chipId) {
-    if (_isDragging) {
-        e.preventDefault();
-        return;
-    }
+    if (_isDragging) { e.preventDefault(); return; }
 
     _draggedChipId = chipId;
     const chip = document.getElementById(chipId);
     if (!chip) return;
 
     _originalParent = chip.parentElement;
-
     draggedLessonData = {
         teacher: chip.dataset.teacher,
         subject: chip.dataset.subject,
@@ -272,12 +245,8 @@ function handleGlobalDragStart(e, chipId) {
     });
 }
 
-// ============================================================
-// ПРОВЕРКА ВАЛИДНОСТИ ЗОНЫ СБРОСА
-// ============================================================
 function checkDropZoneValidity(zone) {
     if (!zone || !draggedLessonData) return;
-
     zone.classList.remove('drag-over-valid', 'drag-over-invalid', 'conflict-reason');
     zone.removeAttribute('title');
 
@@ -285,66 +254,39 @@ function checkDropZoneValidity(zone) {
     const toDay = zone.dataset.day;
     const toSlot = parseInt(zone.dataset.slot);
 
-    // Проверка 1: Нельзя перемещать к другому учителю
     if (toTeacher !== draggedLessonData.teacher) {
         zone.classList.add('drag-over-invalid');
-        zone.setAttribute('title', ' Нельзя переместить к другому учителю');
-        zone.classList.add('conflict-reason');
+        zone.setAttribute('title', '❌ Нельзя переместить к другому учителю');
         return;
     }
-
-    // Проверка 2: Нельзя на то же самое место
     if (toDay === draggedLessonData.fromDay && toSlot === draggedLessonData.fromSlot) {
         zone.classList.add('drag-over-invalid');
         zone.setAttribute('title', '❌ Это текущее место урока');
         return;
     }
 
-    // Проверка 3: Конфликты с другими уроками в целевой ячейке
     let conflictReason = null;
-
     try {
         const existingLessons = JSON.parse(zone.dataset.lessons || '[]');
         for (const l of existingLessons) {
-            // Конфликт по классу
             if (l.grade === draggedLessonData.grade) {
                 conflictReason = `Класс ${l.grade} уже имеет урок (${l.subject})`;
                 break;
             }
         }
-    } catch (err) {
-        console.error('Ошибка парсинга lessons:', err);
-    }
+    } catch (err) { console.error('Ошибка парсинга lessons:', err); }
 
-    // Проверка 4: Конфликт по кабинету (по всем учителям)
     if (!conflictReason && draggedLessonData.classroom) {
         const allLessonsInSlot = findLessonsInSlot(toDay, toSlot);
         for (const l of allLessonsInSlot) {
-            // Пропускаем сам перетаскиваемый урок
-            if (l.teacher === draggedLessonData.teacher &&
-                l.subject === draggedLessonData.subject &&
-                l.grade === draggedLessonData.grade) {
-                continue;
-            }
-
+            if (l.teacher === draggedLessonData.teacher && l.subject === draggedLessonData.subject && l.grade === draggedLessonData.grade) continue;
             if (l.classroom && draggedLessonData.classroom === l.classroom) {
-                conflictReason = `Кабинет ${l.classroom} уже занят (${l.subject} ${l.grade} кл, ${l.teacher})`;
+                conflictReason = `Кабинет ${l.classroom} уже занят (${l.subject} ${l.grade} кл)`;
                 break;
             }
         }
     }
 
-    // Проверка 5: Доступность учителя
-    const teacherData = schoolData.teachers.find(t => t.full_name === toTeacher);
-    if (teacherData) {
-        const availability = schoolData.availability[toTeacher] || {};
-        const dayAvailability = availability[toDay] || [];
-        if (dayAvailability.length > 0 && !dayAvailability.includes(toSlot)) {
-            conflictReason = `Учитель недоступен в это время`;
-        }
-    }
-
-    // Применяем стили
     if (conflictReason) {
         zone.classList.add('drag-over-invalid');
         zone.setAttribute('title', `❌ ${conflictReason}`);
@@ -362,23 +304,15 @@ function handleGlobalDragOver(e) {
     if (!zone || !draggedLessonData) return;
     checkDropZoneValidity(zone);
 
-    // Автопрокрутка к зоне
+    // Автопрокрутка к зоне при перетаскивании к краю
     const zoneRect = zone.getBoundingClientRect();
     const container = document.querySelector('.global-editor-container');
     if (container) {
         const containerRect = container.getBoundingClientRect();
-        const scrollLeft = container.scrollLeft;
-
         if (zoneRect.right > containerRect.right - 50) {
-            container.scrollTo({
-                left: scrollLeft + (zoneRect.right - containerRect.right) + 100,
-                behavior: 'smooth'
-            });
+            container.scrollBy({ left: 100, behavior: 'smooth' });
         } else if (zoneRect.left < containerRect.left + 50) {
-            container.scrollTo({
-                left: scrollLeft - (containerRect.left - zoneRect.left) - 100,
-                behavior: 'smooth'
-            });
+            container.scrollBy({ left: -100, behavior: 'smooth' });
         }
     }
 }
@@ -406,20 +340,16 @@ async function handleGlobalDrop(e) {
     }
 
     const targetCell = e.target.closest('.drop-zone');
-    if (!targetCell || !targetCell.dataset.teacher || _isDragging) {
+    if (!targetCell || !targetCell.dataset.teacher || _isDragging === 'processing') {
         _isDragging = false;
         return;
     }
 
-    _isDragging = true;
-
+    _isDragging = 'processing';
     const toTeacher = targetCell.dataset.teacher;
     const toDay = targetCell.dataset.day;
     const toSlot = parseInt(targetCell.dataset.slot);
 
-    console.log('🔄 НАЧАЛО ПЕРЕМЕЩЕНИЯ:', draggedLessonData, '->', toDay, toSlot);
-
-    // Проверка 1: Нельзя к другому учителю
     if (toTeacher !== draggedLessonData.teacher) {
         alert('⚠️ Нельзя переместить урок к другому учителю');
         _isDragging = false;
@@ -427,72 +357,52 @@ async function handleGlobalDrop(e) {
         return;
     }
 
-    // Проверка 2: Нельзя на то же место
     if (toDay === draggedLessonData.fromDay && toSlot === draggedLessonData.fromSlot) {
         _isDragging = false;
         return;
     }
 
-    // 🔥 ПРОВЕРКА КОНФЛИКТОВ ДО СОХРАНЕНИЯ SNAPSHOT
+    // ПРОВЕРКА КОНФЛИКТОВ ПЕРЕД СОХРАНЕНИЕМ
     let hasConflict = false;
-
     try {
         const existingLessons = JSON.parse(targetCell.dataset.lessons || '[]');
         for (const l of existingLessons) {
             if (l.grade === draggedLessonData.grade) {
-                alert(`️ Конфликт: Класс ${l.grade} уже имеет урок "${l.subject}" в это время`);
+                alert(`⚠️ Конфликт: Класс ${l.grade} уже имеет урок "${l.subject}"`);
                 hasConflict = true;
                 break;
             }
         }
-    } catch (err) {
-        console.error('Ошибка парсинга lessons:', err);
-    }
+    } catch (err) { console.error('Ошибка парсинга:', err); }
 
-    // Проверка конфликта по кабинету
     if (!hasConflict && draggedLessonData.classroom) {
         const allLessonsInSlot = findLessonsInSlot(toDay, toSlot);
         for (const l of allLessonsInSlot) {
-            if (l.teacher === draggedLessonData.teacher &&
-                l.subject === draggedLessonData.subject &&
-                l.grade === draggedLessonData.grade) {
-                continue;
-            }
-
+            if (l.teacher === draggedLessonData.teacher && l.subject === draggedLessonData.subject && l.grade === draggedLessonData.grade) continue;
             if (l.classroom && draggedLessonData.classroom === l.classroom) {
-                alert(`⚠️ Конфликт: Кабинет ${l.classroom} уже занят уроком "${l.subject}" (${l.grade} кл, ${l.teacher}) в это время`);
+                alert(`⚠️ Конфликт: Кабинет ${l.classroom} уже занят`);
                 hasConflict = true;
                 break;
             }
         }
     }
 
-    // Если есть конфликт - отменяем перемещение БЕЗ сохранения snapshot
     if (hasConflict) {
-        console.log('❌ Обнаружен конфликт, перемещение отменено');
         _isDragging = false;
         await reloadAndRender();
         return;
     }
 
-    // ✅ Нет конфликтов - сохраняем snapshot и продолжаем
-    if (!currentTimetableId) {
-        alert('⚠️ Ошибка: Потерян ID расписания. Пожалуйста, обновите страницу.');
-        _isDragging = false;
-        return;
-    }
-
+    // Если конфликтов нет, сохраняем историю и отправляем на сервер
     saveUndoSnapshot();
 
     const srcEl = document.getElementById(_draggedChipId);
     if (srcEl && targetCell) {
         targetCell.appendChild(srcEl);
         srcEl.style.opacity = '0.6';
-        srcEl.style.cursor = 'wait';
     }
 
     try {
-        console.log('📡 Отправка запроса на сервер...');
         const response = await fetch(`/timetables/${currentTimetableId}/move-lesson`, {
             method: 'POST',
             headers: {
@@ -512,37 +422,23 @@ async function handleGlobalDrop(e) {
         });
 
         const result = await response.json();
-        console.log(' Ответ сервера:', response.status, result);
-
         if (response.ok) {
-            console.log('✅ Сервер вернул успех');
             currentResult = result.data;
-            if (srcEl) {
-                srcEl.style.opacity = '1';
-                srcEl.style.cursor = 'grab';
-            }
             showToast('✅ Урок перемещен!');
-            // 🔥 ВАЖНО: Перерисовываем таблицу после успешного перемещения
+            // 🔥 ВАЖНО: Перерисовываем таблицу, чтобы обновить data-lessons во всех ячейках
             await reloadAndRender();
         } else {
-            const errorMsg = result.detail || 'Не удалось переместить';
-            alert(`⚠️ ${errorMsg}`);
-            // Удаляем snapshot если сервер отклонил
-            window.undoHistory.pop();
+            alert(`⚠️ ${result.detail || 'Не удалось переместить'}`);
+            window.undoHistory.pop(); // Откатываем историю, если сервер отклонил
             updateUndoButtonState();
-            if (srcEl && _originalParent) {
-                _originalParent.appendChild(srcEl);
-            }
+            if (srcEl && _originalParent) _originalParent.appendChild(srcEl);
             await reloadAndRender();
         }
     } catch (error) {
-        console.error('❌ Ошибка сети:', error);
         alert('❌ Ошибка соединения с сервером');
         window.undoHistory.pop();
         updateUndoButtonState();
-        if (srcEl && _originalParent) {
-            _originalParent.appendChild(srcEl);
-        }
+        if (srcEl && _originalParent) _originalParent.appendChild(srcEl);
         await reloadAndRender();
     } finally {
         _isDragging = false;
@@ -554,34 +450,24 @@ async function handleGlobalDrop(e) {
 
 async function reloadAndRender() {
     if (!currentTimetableId) {
-        console.warn('⚠ Нет currentTimetableId, пропускаем перезагрузку');
         renderGlobalEditor();
         return;
     }
-
     try {
-        console.log('🔄 Перезагрузка данных с сервера...');
         const reloadRes = await fetch(`/timetables/${currentTimetableId}`, {
             headers: { 'Authorization': 'Bearer ' + getToken() }
         });
-
         if (reloadRes.ok) {
             const reloadData = await reloadRes.json();
             if (reloadData && reloadData.data) {
                 currentResult = reloadData.data;
-                console.log('✅ currentResult обновлён с сервера');
-                console.log('📊 Количество учителей:', currentResult.teachers?.length);
             }
-        } else {
-            console.warn('⚠ Не удалось перезагрузить данные');
         }
     } catch (err) {
-        console.error(' Ошибка перезагрузки:', err);
+        console.error('Ошибка перезагрузки:', err);
     }
-
     updateEditorClassFilter();
     renderGlobalEditor();
-    console.log('✅ Таблица перерисована');
 }
 
 function showToast(message) {
@@ -600,7 +486,7 @@ function validateTimetable() {
     alert('✅ Проверка завершена');
 }
 
-// Экспорт функций
+// Экспорт функций в глобальную область
 window.updateEditorClassFilter = updateEditorClassFilter;
 window.renderGlobalEditor = renderGlobalEditor;
 window.handleGlobalDragStart = handleGlobalDragStart;
