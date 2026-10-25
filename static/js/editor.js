@@ -159,10 +159,13 @@ function renderGlobalEditor() {
                     if (!l) return;
                     const classroom = l.classroom ? `<br><small>${l.classroom}</small>` : '';
                     const chipId = `chip-${day}-${teacher.teacher}-${slot}-${l.subject}-${l.grade}`.replace(/\s+/g, '-');
+                    const chipTitle = `Перетащите, чтобы изменить время: ${l.subject}, ${l.grade} кл`;
 
                     cellContent += `
                         <div id="${chipId}" class="lesson-chip"
                              draggable="true"
+                             title="${chipTitle}"
+                             aria-label="${chipTitle}"
                              ondragstart="handleGlobalDragStart(event, '${chipId}')"
                              data-teacher="${teacher.teacher}"
                              data-subject="${l.subject}"
@@ -175,6 +178,11 @@ function renderGlobalEditor() {
                         </div>
                     `;
                 });
+
+                // пустая ячейка — показываем подсказку, что сюда можно перетащить урок
+                if (!cellContent) {
+                    cellContent = '<span class="drop-hint" title="Пусто — можно перетащить сюда урок">+</span>';
+                }
 
                 const allLessonsJson = JSON.stringify(lessons).replace(/"/g, '&quot;');
                 html += `<td class="drop-zone"

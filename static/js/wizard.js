@@ -604,7 +604,7 @@ function renderWorkloads(teacher) {
                        data-idx="${i}" data-field="hours" min="1" max="40"
                        onchange="updateWorkloadFromInput(this)">
             </div>
-            <button class="small danger" onclick="removeWorkload(${i})" style="margin-top: 24px;">🗑</button>
+            <button class="small danger" onclick="removeWorkload(${i})" style="margin-top: 24px;" title="Удалить нагрузку" aria-label="Удалить нагрузку">🗑</button>
         </div>
     `).join('');
 }
@@ -1069,13 +1069,13 @@ function renderSchedule() {
     const slots = currentResult.slots || [1, 2, 3, 4, 5, 6, 7];
     const times = getLessonTimes();
 
-    let html = '<div style="overflow-x:auto;"><table class="master-table" style="min-width:100%;border-collapse:collapse;font-size:13px;">';
-    html += '<thead><tr><th style="background:#f8f9fa;width:120px;"></th><th style="background:#f8f9fa;width:80px;"></th>';
-    sortedGrades.forEach(g => html += `<th style="background:#9b59b6;color:white;padding:8px;">${g} кл</th>`);
+    let html = '<div class="schedule-scroll"><table class="schedule-table">';
+    html += '<thead><tr><th class="sched-corner" style="width:120px;"></th><th class="sched-corner" style="width:80px;"></th>';
+    sortedGrades.forEach(g => html += `<th class="sched-grade">${g} кл</th>`);
     html += '</tr></thead><tbody>';
 
     days.forEach(day => {
-        html += `<tr><td colspan="${sortedGrades.length + 2}" style="background:#eee;font-weight:bold;text-align:center;">${day}</td></tr>`;
+        html += `<tr><td class="sched-day" colspan="${sortedGrades.length + 2}">${day}</td></tr>`;
         slots.forEach((slot, sIdx) => {
             const timeStr = times[sIdx] || `Урок ${slot}`;
             const lessonLabel = `Урок ${slot}`;
@@ -1087,9 +1087,9 @@ function renderSchedule() {
             ];
             params.forEach((p, idx) => {
                 html += `<tr>`;
-                html += `<td style="font-weight:bold;color:#800080;text-align:center;border:1px solid #ddd;">${p.label}</td>`;
+                html += `<td class="sched-param">${p.label}</td>`;
                 if (idx === 0) {
-                    html += `<td rowspan="4" style="font-weight:bold;text-align:center;vertical-align:middle;border:1px solid #ddd;background:#fafafa;">${lessonLabel}</td>`;
+                    html += `<td class="sched-lesson" rowspan="4">${lessonLabel}</td>`;
                 }
                 sortedGrades.forEach(grade => {
                     let val = "-";
@@ -1100,16 +1100,16 @@ function renderSchedule() {
                             if (found) { val = found[p.key] || "-"; break; }
                         }
                     }
-                    html += `<td style="border:1px solid #ddd;text-align:center;">${val}</td>`;
+                    html += `<td class="sched-value">${val}</td>`;
                 });
                 html += `</tr>`;
             });
             html += `<tr>`;
-            html += `<td style="font-weight:bold;color:#800080;text-align:center;border:1px solid #ddd;">Вычитано</td>`;
-            html += `<td style="font-weight:bold;text-align:center;border:1px solid #ddd;background:#f0f0f0;">${timeStr}</td>`;
-            sortedGrades.forEach(() => html += `<td style="border:1px solid #ddd;text-align:center;">-</td>`);
+            html += `<td class="sched-param">Вычитано</td>`;
+            html += `<td class="sched-lesson">${timeStr}</td>`;
+            sortedGrades.forEach(() => html += `<td class="sched-value">—</td>`);
             html += `</tr>`;
-            html += `<tr><td colspan="${sortedGrades.length + 2}" style="height:8px;border:none;"></td></tr>`;
+            html += `<tr class="schedule-spacer"><td colspan="${sortedGrades.length + 2}"></td></tr>`;
         });
     });
     html += '</tbody></table></div>';
@@ -1131,10 +1131,10 @@ async function loadSavedTimetables() {
                 <div class="saved-timetable-item">
                     <div><h4>${t.name}</h4><p>${new Date(t.created_at).toLocaleString('ru-RU')}</p></div>
                     <div class="saved-timetable-actions">
-                        <button class="small primary" onclick="window.loadSavedTimetable(${t.id})"> Открыть</button>
-                        <button class="small outline" onclick="window.downloadSavedPDF(${t.id},'teachers')">PDF (уч.)</button>
-                        <button class="small outline" onclick="window.downloadSavedPDF(${t.id},'classes')">PDF (кл.)</button>
-                        <button class="small danger" onclick="window.deleteSavedTimetable(${t.id})">🗑</button>
+                        <button class="small primary" onclick="window.loadSavedTimetable(${t.id})" title="Открыть расписание в редакторе"> Открыть</button>
+                        <button class="small outline" onclick="window.downloadSavedPDF(${t.id},'teachers')" title="Скачать PDF по учителям">PDF (уч.)</button>
+                        <button class="small outline" onclick="window.downloadSavedPDF(${t.id},'classes')" title="Скачать PDF по классам">PDF (кл.)</button>
+                        <button class="small danger" onclick="window.deleteSavedTimetable(${t.id})" title="Удалить расписание" aria-label="Удалить расписание">🗑</button>
                     </div>
                 </div>
             `).join('');
