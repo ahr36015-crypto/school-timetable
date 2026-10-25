@@ -8,6 +8,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from datetime import datetime
 import os
+import io
 
 print("🚀 ЗАГРУЗКА МОДУЛЯ pdf_generator.py...")
 
@@ -81,9 +82,9 @@ def generate_teachers_pdf(result_dict, days, slots):
     """Генерация PDF по учителям"""
     print(f"📄 Генерируем PDF по учителям: {len(result_dict.get('teachers', []))} учителей")
 
-    filename = '/tmp/timetable_teachers.pdf'
+    buffer = io.BytesIO()
     doc = SimpleDocTemplate(
-        filename,
+        buffer,
         pagesize=landscape(A4),
         rightMargin=15 * mm,
         leftMargin=15 * mm,
@@ -189,10 +190,13 @@ def generate_teachers_pdf(result_dict, days, slots):
         elements.append(Spacer(1, 10 * mm))
         elements.append(PageBreak())
 
+    # Убираем завершающий разрыв страницы, чтобы не было пустого листа
+    while elements and isinstance(elements[-1], PageBreak):
+        elements.pop()
+
     doc.build(elements)
 
-    with open(filename, 'rb') as f:
-        return f.read()
+    return buffer.getvalue()
 
 
 def generate_classes_pdf(result_dict, days, slots):
@@ -217,9 +221,9 @@ def generate_classes_pdf(result_dict, days, slots):
                         'teacher': lesson['teacher']
                     })
 
-    filename = '/tmp/timetable_classes.pdf'
+    buffer = io.BytesIO()
     doc = SimpleDocTemplate(
-        filename,
+        buffer,
         pagesize=landscape(A4),
         rightMargin=15 * mm,
         leftMargin=15 * mm,
@@ -323,7 +327,10 @@ def generate_classes_pdf(result_dict, days, slots):
         elements.append(Spacer(1, 10 * mm))
         elements.append(PageBreak())
 
+    # Убираем завершающий разрыв страницы, чтобы не было пустого листа
+    while elements and isinstance(elements[-1], PageBreak):
+        elements.pop()
+
     doc.build(elements)
 
-    with open(filename, 'rb') as f:
-        return f.read()
+    return buffer.getvalue()

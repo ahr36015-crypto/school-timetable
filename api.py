@@ -225,8 +225,8 @@ def ai_parse_text(request: AIInputRequest, current_user: User = Depends(get_curr
         result["teacher_name"] = " ".join(clean_name_parts).title()
 
     lesson_patterns = [
-        r'ведет\s+(?:урок\s+)?([а-яё\s]+?)\s+(?:в\s+)?(\d+(?:-\d+)?)\s*(?:класс|кл)',
-        r'преподает\s+([а-яё\s]+?)\s+(\d+(?:-\d+)?)\s*(?:класс|кл)'
+        r'(?:ведет|вести|проводит|проводить)\s+(?:урок\s+)?([а-яё\s]+?)\s+(?:в\s+)?(\d+(?:-\d+)?)\s*(?:класс|кл)',
+        r'(?:преподает|преподавать)\s+([а-яё\s]+?)\s+(?:в\s+)?(\d+(?:-\d+)?)\s*(?:класс|кл)'
     ]
     for pattern in lesson_patterns:
         matches = re.findall(pattern, text)

@@ -13,12 +13,15 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from database import get_db, User
 
-# Жестко задаем ключ (убираем пробелы и переносы строк)
-SECRET_KEY = "my-super-secret-key-12345-abc"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 10080
+# Ключ и параметры берём из окружения; значение по умолчанию — для локальной разработки
+SECRET_KEY = os.getenv("SECRET_KEY", "my-super-secret-key-12345-abc")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "10080"))
 
-print(f"✅ auth.py загружен. SECRET_KEY = '{SECRET_KEY}'")
+if SECRET_KEY == "my-super-secret-key-12345-abc":
+    print("⚠️ SECRET_KEY не задан в окружении — используется значение по умолчанию (не для продакшена)")
+else:
+    print("✅ auth.py загружен. SECRET_KEY получен из окружения")
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
