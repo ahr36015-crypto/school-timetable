@@ -490,7 +490,7 @@ def move_lesson(
         req_grade = str(move_data['grade']).strip()
         req_classroom = move_data.get('classroom', '').strip()
         from_day = move_data['from_day']
-        from_slot = int(move_data['from_slot'])
+        from_slot = str(move_data['from_slot'])  # ключи слотов в JSON — строки
         to_day = move_data['to_day']
         to_slot = str(move_data['to_slot'])
 
@@ -699,7 +699,7 @@ def update_lesson_topics(
             req_subject = update.subject.strip().lower()
             req_grade = str(update.grade).strip()
             target_day = update.day
-            target_slot = update.slot  # int, совпадает с ключами schedule
+            target_slot = str(update.slot)  # ключи слотов в JSON — строки
 
             print(
                 f"  Обработка: teacher={req_teacher}, subject={req_subject}, grade={req_grade}, day={target_day}, slot={target_slot}")

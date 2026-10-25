@@ -127,7 +127,7 @@ function renderGlobalEditor() {
     const filterGrade = document.getElementById('editorClassFilter') ? document.getElementById('editorClassFilter').value : "";
     const days = Array.from(new Set(currentResult.days || ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"]));
     const slots = Array.from(new Set(currentResult.slots || [1, 2, 3, 4, 5, 6, 7])).sort((a, b) => a - b);
-    const times = schoolData.lessonTimes || [];
+    const times = getLessonTimes();
 
     let html = '<table class="global-table"><thead><tr>';
     html += '<th class="teacher-header">Учитель / День</th>';
@@ -241,9 +241,23 @@ function handleGlobalDragStart(e, chipId) {
 
     document.querySelectorAll('.drop-zone').forEach(zone => {
         zone.classList.add('drag-active');
-        checkDropZoneValidity(zone);
     });
 }
+
+// Сброс состояния перетаскивания при отмене (Esc / отпускание вне таблицы).
+// Без этого _isDragging остаётся true и следующие перетаскивания блокируются.
+document.addEventListener('dragend', () => {
+    if (_isDragging === 'processing') return; // идёт сохранение на сервере — не мешаем
+    _isDragging = false;
+    _draggedChipId = null;
+    _originalParent = null;
+    draggedLessonData = null;
+    document.querySelectorAll('.drop-zone').forEach(el => {
+        el.classList.remove('drag-over-valid', 'drag-over-invalid', 'drag-active', 'conflict-reason');
+        el.removeAttribute('title');
+    });
+    document.querySelectorAll('.lesson-chip').forEach(c => { c.style.opacity = '1'; });
+});
 
 function checkDropZoneValidity(zone) {
     if (!zone || !draggedLessonData) return;
