@@ -12,10 +12,10 @@ if not DATABASE_URL:
     # Для локальной разработки
     DATABASE_URL = "postgresql+psycopg2://timetable_user:timetable2024!@localhost:5432/school_timetable"
 
-# Создаём пул соединений
+# Создаём пул соединений (для SQLite пул не используется)
 engine = create_engine(
     DATABASE_URL,
-    pool_size=20,
+    pool_size=20 if not DATABASE_URL.startswith("sqlite") else None,
     max_overflow=10,
     pool_timeout=30,
     pool_recycle=1800,
@@ -92,5 +92,8 @@ def get_db():
     db = SessionLocal()
     try:
         yield db
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()

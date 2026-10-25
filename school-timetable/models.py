@@ -20,6 +20,9 @@ class TimetableRequest(BaseModel):
     days: List[str] = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"]
     slots: List[int] = [1, 2, 3, 4, 5, 6, 7]
     teachers: Dict[str, Teacher]
+    lesson_times: List[str] = Field(default_factory=list, alias="lessonTimes")
+
+    model_config = {"populate_by_name": True}
 
 
 class LessonAssignment(BaseModel):

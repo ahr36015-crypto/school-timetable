@@ -96,6 +96,7 @@ def response_to_dict(result: TimetableResponse, request: TimetableRequest) -> Di
         "solution_time": result.solution_time,
         "days": request.days,
         "slots": request.slots,
+        "lessonTimes": request.lesson_times,
         "teachers": [{
             "teacher": t.teacher,
             "total_lessons": t.total_lessons,
@@ -489,7 +490,7 @@ def move_lesson(
         req_grade = str(move_data['grade']).strip()
         req_classroom = move_data.get('classroom', '').strip()
         from_day = move_data['from_day']
-        from_slot = str(move_data['from_slot'])
+        from_slot = int(move_data['from_slot'])
         to_day = move_data['to_day']
         to_slot = str(move_data['to_slot'])
 
@@ -698,7 +699,7 @@ def update_lesson_topics(
             req_subject = update.subject.strip().lower()
             req_grade = str(update.grade).strip()
             target_day = update.day
-            target_slot = str(update.slot)
+            target_slot = update.slot  # int, совпадает с ключами schedule
 
             print(
                 f"  Обработка: teacher={req_teacher}, subject={req_subject}, grade={req_grade}, day={target_day}, slot={target_slot}")
@@ -907,7 +908,7 @@ def export_topics_excel(
 @app.get("/timetables/{timetable_id}/export/excel")
 def export_excel(
         timetable_id: int,
-        format: str = Query("classes", regex="^(teachers|classes)$"),
+        format: str = Query("classes", pattern="^(teachers|classes)$"),
         current_user: User = Depends(get_current_user),
         db: Session = Depends(get_db)
 ):
@@ -929,7 +930,7 @@ def export_excel(
         ]
 
     wb = generate_class_template_excel(data)
-    filename = f"raspisanie_{timetable_id}.xlsx"
+    filename = f"raspisanie_{format}_{timetable_id}.xlsx"
     output = io.BytesIO()
     wb.save(output)
     output.seek(0)
@@ -947,7 +948,7 @@ def export_excel(
 @app.get("/timetables/{timetable_id}/export/pdf")
 def export_pdf(
         timetable_id: int,
-        format: str = Query("teachers", regex="^(teachers|classes)$"),
+        format: str = Query("teachers", pattern="^(teachers|classes)$"),
         current_user: User = Depends(get_current_user),
         db: Session = Depends(get_db)
 ):

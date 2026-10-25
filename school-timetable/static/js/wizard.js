@@ -389,7 +389,10 @@ function renderSubjects() {
 function removeSubject(i) {
     const subjectName = schoolData.subjects[i].name;
     schoolData.teachers.forEach(t => {
-        t.subjects = t.subjects.filter(s => s !== subjectName);
+        t.subjects = (t.subjects || []).filter(s => {
+            const sName = typeof s === 'string' ? s : (s?.name || '');
+            return sName !== subjectName;
+        });
     });
     schoolData.subjects.splice(i, 1);
     renderSubjects();
@@ -667,8 +670,19 @@ function updateWorkload(idx, field, value) {
 function removeWorkload(idx) {
     const teacher = document.getElementById('teacherSelect').value;
     const workloads = schoolData.workloads.filter(w => w.teacher === teacher);
-    const globalIdx = schoolData.workloads.indexOf(workloads[idx]);
-    schoolData.workloads.splice(globalIdx, 1);
+    const workloadToRemove = workloads[idx];
+    if (!workloadToRemove) return;
+
+    // Находим индекс в глобальном массиве по всем признакам
+    const globalIdx = schoolData.workloads.findIndex(
+        w => w.teacher === workloadToRemove.teacher &&
+             w.subject === workloadToRemove.subject &&
+             w.grade === workloadToRemove.grade &&
+             w.hours === workloadToRemove.hours
+    );
+    if (globalIdx !== -1) {
+        schoolData.workloads.splice(globalIdx, 1);
+    }
     renderWorkloads(teacher);
     saveSchoolData();
     renderTeacherLoadStats(teacher);
@@ -676,13 +690,20 @@ function removeWorkload(idx) {
 
 function renderAvailabilityGrid(teacher) {
     if (!teacher) return;
-    const days = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"];
+    const allDays = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
+    const days = allDays.slice(0, schoolData.days || 5);
     const slots = Array.from({ length: schoolData.lessonsPerDay }, (_, i) => i + 1);
-    const times = schoolData.lessonTimes;
+    const times = getLessonTimes();
     if (!schoolData.availability[teacher]) {
         schoolData.availability[teacher] = {};
-        days.forEach(d => schoolData.availability[teacher][d] = [...slots]);
     }
+    days.forEach(d => {
+        if (!Array.isArray(schoolData.availability[teacher][d])) {
+            schoolData.availability[teacher][d] = [...slots];
+        }
+    });
+    const grid = document.getElementById('availabilityGrid');
+    grid.style.gridTemplateColumns = `100px repeat(${slots.length}, 1fr)`;
     let html = '<div class="availability-cell header"></div>';
     slots.forEach((s, index) => {
         const timeStr = times[index] ? `<div class="time-label">${times[index]}</div>` : '';
@@ -690,21 +711,24 @@ function renderAvailabilityGrid(teacher) {
     });
     days.forEach(day => {
         html += `<div class="availability-cell header">${day}</div>`;
-        slots.forEach((slot, index) => {
-            const isAvailable = schoolData.availability[teacher][day].includes(slot);
+        slots.forEach((slot) => {
+            const isAvailable = (schoolData.availability[teacher][day] || []).includes(slot);
             html += `<div class="availability-cell ${isAvailable ? 'available' : 'unavailable'}"
                           onclick="toggleAvailability('${teacher}', '${day}', ${slot})">
                         <span>${slot}</span>
                      </div>`;
         });
     });
-    document.getElementById('availabilityGrid').innerHTML = html;
+    grid.innerHTML = html;
 }
 
 function toggleAvailability(teacher, day, slot) {
-    const idx = schoolData.availability[teacher][day].indexOf(slot);
-    if (idx > -1) schoolData.availability[teacher][day].splice(idx, 1);
-    else schoolData.availability[teacher][day].push(slot);
+    if (!schoolData.availability[teacher]) schoolData.availability[teacher] = {};
+    if (!Array.isArray(schoolData.availability[teacher][day])) schoolData.availability[teacher][day] = [];
+    const arr = schoolData.availability[teacher][day];
+    const idx = arr.indexOf(slot);
+    if (idx > -1) arr.splice(idx, 1);
+    else arr.push(slot);
     renderAvailabilityGrid(teacher);
     saveSchoolData();
 }
@@ -935,9 +959,9 @@ async function generateTimetable() {
         return;
     }
 
-    const days = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"].slice(0, schoolData.days);
+    const days = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"].slice(0, schoolData.days);
     const slots = Array.from({ length: schoolData.lessonsPerDay }, (_, i) => i + 1);
-    const requestData = { days, slots, teachers };
+    const requestData = { days, slots, teachers, lessonTimes: schoolData.lessonTimes || [] };
 
     err.classList.remove('show');
     succ.classList.remove('show');
@@ -1043,7 +1067,7 @@ function renderSchedule() {
 
     const days = currentResult.days || ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"];
     const slots = currentResult.slots || [1, 2, 3, 4, 5, 6, 7];
-    const times = schoolData.lessonTimes || [];
+    const times = getLessonTimes();
 
     let html = '<div style="overflow-x:auto;"><table class="master-table" style="min-width:100%;border-collapse:collapse;font-size:13px;">';
     html += '<thead><tr><th style="background:#f8f9fa;width:120px;"></th><th style="background:#f8f9fa;width:80px;"></th>';
@@ -1355,7 +1379,7 @@ function renderTopicsEditor() {
 
     const days = currentResult.days || ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"];
     const slots = currentResult.slots || [1, 2, 3, 4, 5, 6, 7];
-    const times = schoolData.lessonTimes || [];
+    const times = getLessonTimes();
 
     const classSchedule = {};
     days.forEach(day => {

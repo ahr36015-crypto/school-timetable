@@ -144,7 +144,7 @@ function renderGlobalEditor() {
     const slotsSet = new Set(currentResult.slots || [1, 2, 3, 4, 5, 6, 7]);
     const slots = Array.from(slotsSet).sort((a, b) => a - b);
 
-    const times = schoolData.lessonTimes || [];
+    const times = getLessonTimes();
 
     let html = '<table class="global-table"><thead><tr>';
     html += '<th class="teacher-header">Учитель / День</th>';
@@ -406,12 +406,12 @@ async function handleGlobalDrop(e) {
     }
 
     const targetCell = e.target.closest('.drop-zone');
-    if (!targetCell || !targetCell.dataset.teacher || _isDragging === 'processing') {
+    if (!targetCell || !targetCell.dataset.teacher || _isDragging) {
         _isDragging = false;
         return;
     }
 
-    _isDragging = 'processing';
+    _isDragging = true;
 
     const toTeacher = targetCell.dataset.teacher;
     const toDay = targetCell.dataset.day;

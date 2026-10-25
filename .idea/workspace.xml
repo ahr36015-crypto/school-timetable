@@ -5,8 +5,34 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="dada3f91-6dbc-4b52-a819-d56147c1b4b6" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.env" beforeDir="false" afterPath="$PROJECT_DIR$/school-timetable/.env" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.env.example" beforeDir="false" afterPath="$PROJECT_DIR$/school-timetable/.env.example" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore " beforeDir="false" afterPath="$PROJECT_DIR$/school-timetable/.gitignore " afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/js/editor.js" beforeDir="false" afterPath="$PROJECT_DIR$/static/js/editor.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/amvera.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/school-timetable/amvera.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/api.py" beforeDir="false" afterPath="$PROJECT_DIR$/school-timetable/api.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/auth.py" beforeDir="false" afterPath="$PROJECT_DIR$/school-timetable/auth.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/database.py" beforeDir="false" afterPath="$PROJECT_DIR$/school-timetable/database.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/excel_generator.py" beforeDir="false" afterPath="$PROJECT_DIR$/school-timetable/excel_generator.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/fonts/COPYRIGHT.txt" beforeDir="false" afterPath="$PROJECT_DIR$/school-timetable/fonts/COPYRIGHT.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/fonts/DejaVuSans-Bold.ttf" beforeDir="false" afterPath="$PROJECT_DIR$/school-timetable/fonts/DejaVuSans-Bold.ttf" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/fonts/DejaVuSans-BoldOblique.ttf" beforeDir="false" afterPath="$PROJECT_DIR$/school-timetable/fonts/DejaVuSans-BoldOblique.ttf" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/fonts/DejaVuSans-ExtraLight.ttf" beforeDir="false" afterPath="$PROJECT_DIR$/school-timetable/fonts/DejaVuSans-ExtraLight.ttf" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/fonts/DejaVuSans-Oblique.ttf" beforeDir="false" afterPath="$PROJECT_DIR$/school-timetable/fonts/DejaVuSans-Oblique.ttf" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/fonts/DejaVuSans.ttf" beforeDir="false" afterPath="$PROJECT_DIR$/school-timetable/fonts/DejaVuSans.ttf" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/fonts/LICENSE.txt" beforeDir="false" afterPath="$PROJECT_DIR$/school-timetable/fonts/LICENSE.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/school-timetable/models.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pdf_generator.py" beforeDir="false" afterPath="$PROJECT_DIR$/school-timetable/pdf_generator.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/school-timetable/requirements.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/schemas.py" beforeDir="false" afterPath="$PROJECT_DIR$/school-timetable/schemas.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/solver.py" beforeDir="false" afterPath="$PROJECT_DIR$/school-timetable/solver.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/static/css/styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/school-timetable/static/css/styles.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/static/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/school-timetable/static/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/static/js/editor.js" beforeDir="false" afterPath="$PROJECT_DIR$/school-timetable/static/js/editor.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/static/js/main.js" beforeDir="false" afterPath="$PROJECT_DIR$/school-timetable/static/js/main.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/static/js/state.js" beforeDir="false" afterPath="$PROJECT_DIR$/school-timetable/static/js/state.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/static/js/subjects-dropdown.js" beforeDir="false" afterPath="$PROJECT_DIR$/school-timetable/static/js/subjects-dropdown.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/static/js/wizard.js" beforeDir="false" afterPath="$PROJECT_DIR$/school-timetable/static/js/wizard.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -36,6 +62,9 @@
     &quot;accountId&quot;: &quot;19984f5f-5250-4d70-98f8-a78cd42d1589&quot;
   }
 }</component>
+  <component name="HighlightingSettingsPerFile">
+    <setting file="file://$PROJECT_DIR$/.venv/lib/python3.14/site-packages/passlib/utils/handlers.py" root0="SKIP_INSPECTION" />
+  </component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 0
 }</component>
@@ -44,28 +73,31 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;DefaultHtmlFileTemplate&quot;: &quot;HTML File&quot;,
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;Python.api.executor&quot;: &quot;Run&quot;,
-    &quot;Python.main.executor&quot;: &quot;Run&quot;,
-    &quot;Python.solver.executor&quot;: &quot;Run&quot;,
-    &quot;Python.solver_v2.executor&quot;: &quot;Run&quot;,
-    &quot;Python.solver_v3.executor&quot;: &quot;Run&quot;,
-    &quot;Python.solver_v4.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/Users/aleksandr/PycharmProjects/PythonProject/fonts&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "DefaultHtmlFileTemplate": "HTML File",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Python.api.executor": "Run",
+    "Python.main.executor": "Run",
+    "Python.solver.executor": "Run",
+    "Python.solver_v2.executor": "Run",
+    "Python.solver_v3.executor": "Run",
+    "Python.solver_v4.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "main",
+    "last_opened_file_path": "/Users/aleksandr/PycharmProjects/PythonProject/school-timetable",
+    "settings.editor.selected.configurable": "org.intellij.sdk.settings.AppSettingsConfigurable"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/school-timetable" />
       <recent name="$PROJECT_DIR$/fonts" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/school-timetable" />
       <recent name="$PROJECT_DIR$/fonts" />
       <recent name="$PROJECT_DIR$/static" />
     </key>

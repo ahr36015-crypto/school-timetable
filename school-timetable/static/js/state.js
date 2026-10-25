@@ -23,6 +23,14 @@ function checkAuth() {
 
 function saveSchoolData() { localStorage.setItem('schoolData', JSON.stringify(schoolData)); }
 
+// Время уроков: приоритет у сохранённого расписания, затем — локальные настройки
+function getLessonTimes() {
+    if (currentResult && Array.isArray(currentResult.lessonTimes) && currentResult.lessonTimes.length) {
+        return currentResult.lessonTimes;
+    }
+    return schoolData.lessonTimes || [];
+}
+
 function logout() { localStorage.clear(); location.reload(); }
 
 // Управление вкладками входа/регистрации

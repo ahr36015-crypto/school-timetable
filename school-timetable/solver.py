@@ -91,64 +91,42 @@ def solve_timetable(request: TimetableRequest) -> TimetableResponse:
             'possible_slots': possible_slots
         }
 
-    # Ограничение 1: Один учитель не может вести два урока одновременно
-    for i in range(len(all_lessons)):
-        for j in range(i + 1, len(all_lessons)):
-            if all_lessons[i]['teacher'] == all_lessons[j]['teacher']:
-                model.Add(lesson_vars[i]['var'] != lesson_vars[j]['var'])
+    # Булевы переменные: lesson_at[i][(day, slot)] == True, если урок i стоит в это время.
+    # Это позволяет сравнивать уроки по РЕАЛЬНОМУ (день, урок), а не по индексу в
+    # possible_slots — у разных учителей списки доступных слотов различаются,
+    # поэтому сравнение индексов давало ложные конфликты.
+    lesson_at = {}
+    for i, lv in lesson_vars.items():
+        for p, (day, slot) in enumerate(lv['possible_slots']):
+            b = model.NewBoolVar(f"at_{i}_{day}_{slot}")
+            lesson_at[(i, day, slot)] = b
+            model.Add(lv['var'] == p).OnlyEnforceIf(b)
+            model.Add(lv['var'] != p).OnlyEnforceIf(b.Not())
 
-    # Ограничение 2: Один класс не может иметь два урока одновременно
-    for i in range(len(all_lessons)):
-        for j in range(i + 1, len(all_lessons)):
-            if all_lessons[i]['grade'] == all_lessons[j]['grade']:
-                model.Add(lesson_vars[i]['var'] != lesson_vars[j]['var'])
+    # Ограничения 1-3: в один момент времени не более одного урока
+    #   - у одного учителя,
+    #   - у одного класса,
+    #   - в одном кабинете.
+    for day in days:
+        for slot in slots:
+            by_teacher = defaultdict(list)
+            by_grade = defaultdict(list)
+            by_classroom = defaultdict(list)
 
-    # Ограничение 3: 🔥 ЖЕСТКАЯ ПРОВЕРКА КАБИНЕТОВ 🔥
-    # Один кабинет не может быть занят двумя разными уроками в одно и то же время
-    classroom_lesson_indices = defaultdict(list)
-    for i, lesson in enumerate(all_lessons):
-        if lesson.get('classroom'):
-            classroom_lesson_indices[lesson['classroom']].append(i)
+            for i, lv in lesson_vars.items():
+                b = lesson_at.get((i, day, slot))
+                if b is None:
+                    continue
+                lesson = lv['lesson']
+                by_teacher[lesson['teacher']].append(b)
+                by_grade[lesson['grade']].append(b)
+                if lesson.get('classroom'):
+                    by_classroom[lesson['classroom']].append(b)
 
-    for classroom, indices in classroom_lesson_indices.items():
-        # Для каждой пары уроков, требующих один кабинет
-        for d in range(len(indices)):
-            for e in range(d + 1, len(indices)):
-                idx_i = indices[d]
-                idx_j = indices[e]
-
-                # Проверяем каждый возможный слот
-                for day in days:
-                    for slot in slots:
-                        # Если оба урока МОГУТ быть поставлены на этот слот
-                        pos_i = None
-                        pos_j = None
-
-                        for p, (d_i, s_i) in enumerate(lesson_vars[idx_i]['possible_slots']):
-                            if d_i == day and s_i == slot:
-                                pos_i = p
-                                break
-
-                        for p, (d_j, s_j) in enumerate(lesson_vars[idx_j]['possible_slots']):
-                            if d_j == day and s_j == slot:
-                                pos_j = p
-                                break
-
-                        # Если оба могут быть на этом слоте - запрещаем
-                        if pos_i is not None and pos_j is not None:
-                            # Создаем булевы переменные для каждого урока
-                            b_i = model.NewBoolVar(f'b_{idx_i}_{day}_{slot}')
-                            b_j = model.NewBoolVar(f'b_{idx_j}_{day}_{slot}')
-
-                            # Связываем их с основными переменными
-                            model.Add(lesson_vars[idx_i]['var'] == pos_i).OnlyEnforceIf(b_i)
-                            model.Add(lesson_vars[idx_i]['var'] != pos_i).OnlyEnforceIf(b_i.Not())
-
-                            model.Add(lesson_vars[idx_j]['var'] == pos_j).OnlyEnforceIf(b_j)
-                            model.Add(lesson_vars[idx_j]['var'] != pos_j).OnlyEnforceIf(b_j.Not())
-
-                            # Запрещаем обоим быть True одновременно
-                            model.AddAtMostOne(b_i, b_j)
+            for group in (by_teacher, by_grade, by_classroom):
+                for _, bools in group.items():
+                    if len(bools) > 1:
+                        model.AddAtMostOne(bools)
 
     # Решаем
     solver = cp_model.CpSolver()
