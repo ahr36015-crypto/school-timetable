@@ -12,16 +12,19 @@ if not DATABASE_URL:
     # Для локальной разработки
     DATABASE_URL = "postgresql+psycopg2://timetable_user:timetable2024!@localhost:5432/school_timetable"
 
-# Создаём пул соединений (для SQLite пул не используется)
-engine = create_engine(
-    DATABASE_URL,
-    pool_size=20 if not DATABASE_URL.startswith("sqlite") else None,
-    max_overflow=10,
-    pool_timeout=30,
-    pool_recycle=1800,
-    pool_pre_ping=True,
-    echo=False
-)
+# Создаём пул соединений (SQLite не поддерживает параметры пула QueuePool)
+if DATABASE_URL.startswith("sqlite"):
+    engine = create_engine(DATABASE_URL, pool_pre_ping=True, echo=False)
+else:
+    engine = create_engine(
+        DATABASE_URL,
+        pool_size=20,
+        max_overflow=10,
+        pool_timeout=30,
+        pool_recycle=1800,
+        pool_pre_ping=True,
+        echo=False
+    )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()

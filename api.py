@@ -482,7 +482,9 @@ def move_lesson(
 
         print(f"✅ Расписание загружено из БД")
 
-        data = timetable.data
+        # Работаем с КОПИЕЙ данных: мутация ORM-объекта in-place не отслеживается SQLAlchemy,
+        # поэтому изменения не сохранялись. Изменённую копию присваиваем в конце.
+        data = copy.deepcopy(timetable.data)
         teachers = data.get('teachers', [])
 
         req_teacher = move_data['teacher'].strip().lower()
@@ -635,7 +637,7 @@ def move_lesson(
         schedule = remove_duplicates_from_schedule(schedule)
 
         # ✅ ШАГ 5: Сохраняем в БД
-        timetable.data = copy.deepcopy(data)
+        timetable.data = data
         db.commit()
 
         print(f"✅ ДАННЫЕ СОХРАНЕНЫ В БД")
@@ -688,7 +690,9 @@ def update_lesson_topics(
         if not timetable:
             raise HTTPException(status_code=404, detail="Расписание не найдено")
 
-        data = timetable.data
+        # Работаем с КОПИЕЙ данных: мутация ORM-объекта in-place не отслеживается SQLAlchemy,
+        # поэтому изменения не сохранялись. Изменённую копию присваиваем в конце.
+        data = copy.deepcopy(timetable.data)
         teachers = data.get('teachers', [])
         updated_count = 0
 
@@ -743,7 +747,7 @@ def update_lesson_topics(
 
         print(f"✅ Обновлено тем: {updated_count}")
 
-        timetable.data = copy.deepcopy(data)
+        timetable.data = data
         db.commit()
         db.expire_all()
 
