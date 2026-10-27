@@ -103,11 +103,11 @@
             </div>
             <div class="form-group">
                 <label>Уроков в день</label>
-                <input type="number" id="lessonsPerDay" min="1" max="10" value="7">
+                <input type="number" id="lessonsPerDay" min="1" max="10" value="7" onchange="renderLessonTimeRows()">
             </div>
             <div class="form-group">
                 <label>Время уроков</label>
-                <input type="text" id="lessonTimes" placeholder="08:30-09:15, 09:25-10:10, ...">
+                <div id="lessonTimesContainer" class="lesson-times"></div>
             </div>
             <button class="btn-primary" onclick="completeStep(1)">💾 Далее →</button>
         </div>
@@ -160,6 +160,19 @@
                 <div id="subjectDuplicateWarning" class="warning-message">⚠ Такой предмет уже существует!</div>
                 <button class="btn-primary" onclick="addSubject()">+ Добавить предмет</button>
                 <table id="subjectsTable" class="data-table"></table>
+
+                <hr style="margin:25px 0; border:none; border-top:1px solid #eee;">
+                <h3>Кто что ведёт</h3>
+                <p class="step-hint">Выберите учителя, добавьте классы, которые он ведёт, и предметы в каждом классе</p>
+                <div class="form-group">
+                    <label>Учитель</label>
+                    <input type="text" id="assignTeacher" list="teacherDatalist"
+                           placeholder="Иванов Иван Иванович" onchange="loadAssignmentCard()">
+                </div>
+                <div id="assignmentCard" style="display:none">
+                    <button class="btn-primary" onclick="addAssignmentClass()">+ Добавить класс</button>
+                    <div id="assignmentList" class="assignment-list"></div>
+                </div>
             </div>
             <div class="reference-content" id="ref-classrooms">
                 <h3>Кабинеты</h3>
@@ -188,6 +201,7 @@
                     <option value="">-- Выберите учителя --</option>
                 </select>
                 <datalist id="teacherDatalist"></datalist>
+                <datalist id="classDatalist"></datalist>
             </div>
             <div id="teacherCard" style="display:none">
                 <h3 id="currentTeacherName"></h3>

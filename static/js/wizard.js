@@ -151,12 +151,65 @@ async function goToStep(step) {
     }
 }
 
+const DEFAULT_LESSON_TIMES = [
+    "08:30-09:15", "09:25-10:10", "10:20-11:05", "11:25-12:10",
+    "12:20-13:05", "13:15-14:00", "14:10-14:55", "15:05-15:50",
+    "16:00-16:45", "16:55-17:40"
+];
+
+function _splitTimeRange(range) {
+    if (typeof range === 'string' && range.indexOf('-') !== -1) {
+        const parts = range.split('-');
+        return [parts[0].trim(), parts[1].trim()];
+    }
+    return ['', ''];
+}
+
+// Строки времени уроков: для каждого урока — поля «начало» и «окончание»
+function renderLessonTimeRows() {
+    const container = document.getElementById('lessonTimesContainer');
+    if (!container) return;
+    const counter = document.getElementById('lessonsPerDay');
+    const count = counter ? (parseInt(counter.value) || 7) : 7;
+    const saved = (schoolData.lessonTimes && schoolData.lessonTimes.length) ? schoolData.lessonTimes : [];
+    let html = '<div class="lesson-time-row lesson-time-head">' +
+        '<span class="lesson-time-label"></span>' +
+        '<span class="lt-col">Начало</span>' +
+        '<span class="lesson-time-dash">–</span>' +
+        '<span class="lt-col">Окончание</span>' +
+        '</div>';
+    for (let i = 0; i < count; i++) {
+        const [start, end] = _splitTimeRange(saved[i] || DEFAULT_LESSON_TIMES[i] || '');
+        html += `
+            <div class="lesson-time-row">
+                <span class="lesson-time-label">Урок ${i + 1}</span>
+                <input type="time" class="lt-start" value="${start}" aria-label="Урок ${i + 1}: начало">
+                <span class="lesson-time-dash">–</span>
+                <input type="time" class="lt-end" value="${end}" aria-label="Урок ${i + 1}: окончание">
+            </div>`;
+    }
+    container.innerHTML = html;
+}
+
+function collectLessonTimes() {
+    const rows = document.querySelectorAll('#lessonTimesContainer .lesson-time-row:not(.lesson-time-head)');
+    const times = [];
+    rows.forEach(row => {
+        const startEl = row.querySelector('.lt-start');
+        const endEl = row.querySelector('.lt-end');
+        const start = startEl ? startEl.value : '';
+        const end = endEl ? endEl.value : '';
+        times.push((start && end) ? `${start}-${end}` : '');
+    });
+    return times;
+}
+
 function completeStep(step) {
     if (step === 1) {
         schoolData.name = document.getElementById('schoolName').value;
         schoolData.days = parseInt(document.getElementById('daysPerWeek').value);
         schoolData.lessonsPerDay = parseInt(document.getElementById('lessonsPerDay').value);
-        schoolData.lessonTimes = document.getElementById('lessonTimes').value.split(',').map(t => t.trim());
+        schoolData.lessonTimes = collectLessonTimes();
     }
     saveSchoolData();
     goToStep(step + 1);
@@ -167,14 +220,11 @@ function restoreStep1Fields() {
     const nameField = document.getElementById('schoolName');
     const daysField = document.getElementById('daysPerWeek');
     const lessonsField = document.getElementById('lessonsPerDay');
-    const timesField = document.getElementById('lessonTimes');
 
     if (nameField && schoolData.name) nameField.value = schoolData.name;
     if (daysField && schoolData.days) daysField.value = schoolData.days;
     if (lessonsField && schoolData.lessonsPerDay) lessonsField.value = schoolData.lessonsPerDay;
-    if (timesField && schoolData.lessonTimes && schoolData.lessonTimes.length > 0) {
-        timesField.value = schoolData.lessonTimes.join(', ');
-    }
+    renderLessonTimeRows();
 }
 
 // ============================================================
@@ -313,9 +363,8 @@ function renderTeachers() {
                        placeholder="email@school.ru"
                        style="width:100%;padding:4px;border:1px solid #ddd;border-radius:4px;">
             </td>
-            <td class="subjects-cell">${subjectsButtonHtml(t, i)}</td>
             <td>
-                <button class="small danger" onclick="removeTeacher(${i})" title="Удалить учителя">🗑</button>
+                <button class="small danger" onclick="removeTeacher(${i})" title="Удалить учителя" aria-label="Удалить учителя">🗑</button>
             </td>
         </tr>`;
     }).join('');
@@ -332,20 +381,6 @@ function updateTeacherEmail(teacherIndex, newEmail) {
     schoolData.teachers[teacherIndex].email = newEmail;
     saveSchoolData();
 }
-
-document.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-subjects-toggle]');
-    if (!btn) return;
-    const teacherIndex = parseInt(btn.dataset.teacherId, 10);
-    const teacher = (schoolData.teachers || [])[teacherIndex];
-    if (!teacher) return;
-    SubjectsDropdown.open(btn, {
-        teacherId: teacherIndex,
-        items: getSubjectCatalog(),
-        selected: (teacher.subjects || []).map(sdSubjectName).filter(Boolean),
-        onChange: (values) => updateTeacherSubjects(teacherIndex, values)
-    });
-});
 
 function removeTeacher(i) {
     if (confirm('Удалить учителя?')) {
@@ -394,6 +429,14 @@ function removeSubject(i) {
             return sName !== subjectName;
         });
     });
+    // убираем предмет из назначений «учитель → класс → предметы»
+    if (schoolData.teacherAssignments) {
+        Object.values(schoolData.teacherAssignments).forEach(items => {
+            items.forEach(it => {
+                it.subjects = (it.subjects || []).filter(s => s !== subjectName);
+            });
+        });
+    }
     schoolData.subjects.splice(i, 1);
     renderSubjects();
     renderTeachers();
@@ -457,6 +500,104 @@ function updateTeacherSelect() {
 function updateTeacherDatalist() {
     const datalist = document.getElementById('teacherDatalist');
     if (datalist) datalist.innerHTML = schoolData.teachers.map(t => `<option value="${t.full_name}">`).join('');
+    const classDatalist = document.getElementById('classDatalist');
+    if (classDatalist) classDatalist.innerHTML = (schoolData.classes || []).map(c => `<option value="${c.name}">`).join('');
+}
+
+// ============================================================
+// НАЗНАЧЕНИЯ «УЧИТЕЛЬ → КЛАССЫ → ПРЕДМЕТЫ» (ВКЛАДКА «ПРЕДМЕТЫ»)
+// ============================================================
+function ensureTeacherExistsSilent(name) {
+    if (!name) return;
+    if (!schoolData.teachers.find(t => t.full_name.toLowerCase() === name.toLowerCase())) {
+        schoolData.teachers.push({ full_name: name, email: '', subjects: [] });
+        renderTeachers();
+        updateTeacherSelect();
+        updateTeacherDatalist();
+        saveSchoolData();
+    }
+}
+
+function getTeacherAssignments(teacher) {
+    if (!schoolData.teacherAssignments) schoolData.teacherAssignments = {};
+    if (!schoolData.teacherAssignments[teacher]) schoolData.teacherAssignments[teacher] = [];
+    return schoolData.teacherAssignments[teacher];
+}
+
+function loadAssignmentCard() {
+    const input = document.getElementById('assignTeacher');
+    const teacher = input ? input.value.trim() : '';
+    const card = document.getElementById('assignmentCard');
+    if (!card) return;
+    if (!teacher) { card.style.display = 'none'; return; }
+    ensureTeacherExistsSilent(teacher);
+    getTeacherAssignments(teacher);
+    card.style.display = 'block';
+    renderAssignmentList(teacher);
+}
+
+function renderAssignmentList(teacher) {
+    const container = document.getElementById('assignmentList');
+    if (!container) return;
+    const items = getTeacherAssignments(teacher);
+    if (!items.length) {
+        container.innerHTML = '<p style="color:#999;padding:8px">Классы не добавлены. Нажмите «+ Добавить класс».</p>';
+        return;
+    }
+    const subjects = (schoolData.subjects || []).map(s => s.name);
+    container.innerHTML = items.map((it, i) => `
+        <div class="assignment-block">
+            <div class="assignment-head">
+                <div class="form-group" style="margin:0;">
+                    <label>Класс</label>
+                    <input type="text" value="${sdEscapeAttr(it.grade || '')}" list="classDatalist"
+                           placeholder="5А" onchange="updateAssignmentGrade(${i}, this.value)"
+                           aria-label="Класс ${i + 1}">
+                </div>
+                <button class="small danger" onclick="removeAssignmentClass(${i})" title="Удалить класс" aria-label="Удалить класс">🗑</button>
+            </div>
+            <div class="form-group">
+                <label>Предметы в этом классе</label>
+                <div class="checkbox-group">
+                    ${subjects.length
+                        ? subjects.map(s => `<label><input type="checkbox" ${(it.subjects || []).includes(s) ? 'checked' : ''} onchange="toggleAssignmentSubject(${i}, '${sdEscapeAttr(s)}', this.checked)"> ${sdEscapeAttr(s)}</label>`).join('')
+                        : '<span style="color:#999;font-size:13px">Сначала добавьте предметы выше</span>'}
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function addAssignmentClass() {
+    const teacher = document.getElementById('assignTeacher').value.trim();
+    if (!teacher) { alert('Сначала введите учителя'); return; }
+    getTeacherAssignments(teacher).push({ grade: '', subjects: [] });
+    renderAssignmentList(teacher);
+    saveSchoolData();
+}
+
+function removeAssignmentClass(i) {
+    const teacher = document.getElementById('assignTeacher').value.trim();
+    getTeacherAssignments(teacher).splice(i, 1);
+    renderAssignmentList(teacher);
+    saveSchoolData();
+}
+
+function updateAssignmentGrade(i, value) {
+    const teacher = document.getElementById('assignTeacher').value.trim();
+    const items = getTeacherAssignments(teacher);
+    if (items[i]) { items[i].grade = value; saveSchoolData(); }
+}
+
+function toggleAssignmentSubject(i, subject, checked) {
+    const teacher = document.getElementById('assignTeacher').value.trim();
+    const items = getTeacherAssignments(teacher);
+    if (!items[i]) return;
+    items[i].subjects = items[i].subjects || [];
+    const pos = items[i].subjects.indexOf(subject);
+    if (checked && pos === -1) items[i].subjects.push(subject);
+    if (!checked && pos !== -1) items[i].subjects.splice(pos, 1);
+    saveSchoolData();
 }
 
 // ============================================================
@@ -567,9 +708,24 @@ function loadTeacherCard() {
     }
     document.getElementById('teacherCard').style.display = 'block';
     document.getElementById('currentTeacherName').textContent = teacher;
+    autoFillWorkloadsFromAssignments(teacher);
     renderWorkloads(teacher);
     renderAvailabilityGrid(teacher);
     renderTeacherLoadStats(teacher);
+}
+
+// Автоподстановка нагрузок из назначений (вкладка «Предметы»), если их ещё нет
+function autoFillWorkloadsFromAssignments(teacher) {
+    if (schoolData.workloads.some(w => w.teacher === teacher)) return;
+    const items = (schoolData.teacherAssignments && schoolData.teacherAssignments[teacher]) || [];
+    let added = false;
+    items.forEach(it => {
+        (it.subjects || []).forEach(subj => {
+            schoolData.workloads.push({ teacher, subject: subj, grade: it.grade || '', classroom: '', hours: 1 });
+            added = true;
+        });
+    });
+    if (added) saveSchoolData();
 }
 
 function renderWorkloads(teacher) {
@@ -611,9 +767,18 @@ function renderWorkloads(teacher) {
 
 function showAutocomplete(input, type) {
     const list = input.nextElementSibling;
-    const items = type === 'subjects'
+    const names = new Set(type === 'subjects'
         ? schoolData.subjects.map(s => s.name)
-        : schoolData.classes.map(c => c.name);
+        : schoolData.classes.map(c => c.name));
+    // добавляем классы/предметы из назначений выбранного учителя
+    const teacherSelect = document.getElementById('teacherSelect');
+    const teacher = teacherSelect ? teacherSelect.value : '';
+    const assigns = (schoolData.teacherAssignments && schoolData.teacherAssignments[teacher]) || [];
+    assigns.forEach(a => {
+        if (type === 'classes' && a.grade) names.add(a.grade);
+        if (type === 'subjects') (a.subjects || []).forEach(s => names.add(s));
+    });
+    const items = [...names];
     const value = input.value.toLowerCase();
     list.innerHTML = '';
     items.filter(item => item.toLowerCase().includes(value)).forEach(item => {
@@ -1561,5 +1726,3 @@ window.loadFreshTimetableData = loadFreshTimetableData;
 window.saveTopicToDatabase = saveTopicToDatabase;
 window.renderTeacherLoadStats = renderTeacherLoadStats;
 window.renderGenerationStats = renderGenerationStats;
-window.undoLastAction = undoLastAction;
-window.updateUndoButtonState = updateUndoButtonState;

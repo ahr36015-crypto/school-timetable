@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (savedData) {
         try {
             schoolData = JSON.parse(savedData);
+            if (!schoolData.teacherAssignments) schoolData.teacherAssignments = {};
             restoreStep1Fields();
             renderClasses();
             renderTeachers();
@@ -13,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Ошибка парсинга schoolData:", e);
         }
     }
+    renderLessonTimeRows();
     if (getToken()) {
         showMainApp();
         loadSavedTimetables();
@@ -26,39 +28,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-function completeStep(step) {
-    if (step === 1) {
-        schoolData.name = document.getElementById('schoolName').value;
-        schoolData.days = parseInt(document.getElementById('daysPerWeek').value);
-        schoolData.lessonsPerDay = parseInt(document.getElementById('lessonsPerDay').value);
-        schoolData.lessonTimes = document.getElementById('lessonTimes').value.split(',').map(t => t.trim());
-    }
-    saveSchoolData();
-    goToStep(step + 1);
-}
-
-function restoreStep1Fields() {
-    if (!schoolData) return;
-    const nameField = document.getElementById('schoolName');
-    const daysField = document.getElementById('daysPerWeek');
-    const lessonsField = document.getElementById('lessonsPerDay');
-    const timesField = document.getElementById('lessonTimes');
-
-    if (nameField && schoolData.name) nameField.value = schoolData.name;
-    if (daysField && schoolData.days) daysField.value = schoolData.days;
-    if (lessonsField && schoolData.lessonsPerDay) lessonsField.value = schoolData.lessonsPerDay;
-    if (timesField && schoolData.lessonTimes && schoolData.lessonTimes.length > 0) {
-        timesField.value = schoolData.lessonTimes.join(', ');
-    }
-}
-
+window.renderLessonTimeRows = renderLessonTimeRows;
+window.loadAssignmentCard = loadAssignmentCard;
+window.addAssignmentClass = addAssignmentClass;
+window.removeAssignmentClass = removeAssignmentClass;
+window.updateAssignmentGrade = updateAssignmentGrade;
+window.toggleAssignmentSubject = toggleAssignmentSubject;
 window.showLogin = showLogin;
-window.showRegister = showRegister;
-window.login = login;
-window.register = register;
-window.logout = logout;
-window.goToStep = goToStep;
 window.completeStep = completeStep;
+window.goToStep = goToStep;
 window.showRefTab = showRefTab;
 window.addClass = addClass;
 window.removeClass = removeClass;

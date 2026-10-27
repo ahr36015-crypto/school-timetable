@@ -4,7 +4,8 @@
 let schoolData = {
     name: '', days: 5, lessonsPerDay: 7, lessonTimes: [],
     classes: [], teachers: [], subjects: [], classrooms: [],
-    workloads: [], availability: {}
+    workloads: [], availability: {},
+    teacherAssignments: {}
 };
 let currentResult = null;
 let currentTimetableId = null;
