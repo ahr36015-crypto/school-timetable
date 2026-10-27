@@ -86,3 +86,20 @@ def test_import_excel_requires_auth(client):
     r = client.post("/api/import-excel",
                     files={"file": ("x.xlsx", b"x", "application/octet-stream")})
     assert r.status_code in (401, 403)
+
+
+def test_import_template_download(client):
+    headers = _register(client)
+    r = client.get("/api/import-template", headers=headers)
+    assert r.status_code == 200, r.text
+    assert r.headers["content-type"].startswith(
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    assert r.content[:2] == b"PK"
+
+    from openpyxl import load_workbook
+    wb = load_workbook(io.BytesIO(r.content), data_only=True)
+    assert set(wb.sheetnames) == {"Классы", "Учителя", "Предметы", "Кабинеты"}
+
+
+def test_import_template_requires_auth(client):
+    assert client.get("/api/import-template").status_code in (401, 403)

@@ -573,6 +573,25 @@ function applyImportedReferences(data) {
     alert('✅ Импорт завершён.\n' + summary + (added ? '' : '\nНовых записей нет — всё уже было.'));
 }
 
+function downloadImportTemplate() {
+    fetch('/api/import-template', { headers: { 'Authorization': 'Bearer ' + getToken() } })
+        .then(res => {
+            if (!res.ok) throw new Error('Ошибка ' + res.status);
+            return res.blob();
+        })
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'shablon_importa.xlsx';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        })
+        .catch(e => alert('Не удалось скачать шаблон: ' + e.message));
+}
+
 function updateTeacherSelect() {
     const select = document.getElementById('teacherSelect');
     select.innerHTML = '<option value="">-- Выберите учителя --</option>' +

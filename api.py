@@ -1197,3 +1197,51 @@ async def import_excel(file: UploadFile = File(...), current_user: User = Depend
         raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Не удалось прочитать Excel: {e}")
+
+
+@app.get("/api/import-template")
+def import_template(current_user: User = Depends(get_current_user)):
+    """Скачать пустой шаблон Excel для импорта справочников."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment
+
+    wb = Workbook()
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="4F46E5", end_color="4F46E5", fill_type="solid")
+
+    def make_sheet(ws, title, headers, rows):
+        ws.title = title
+        ws.append(headers)
+        for c in range(1, len(headers) + 1):
+            cell = ws.cell(row=1, column=c)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = Alignment(horizontal="center")
+        for r in rows:
+            ws.append(r)
+        for col in ws.columns:
+            width = max((len(str(c.value)) for c in col if c.value is not None), default=10)
+            ws.column_dimensions[col[0].column_letter].width = max(14, width + 4)
+
+    ws1 = wb.active
+    make_sheet(ws1, "Классы", ["Класс"], [["5А"], ["6Б"]])
+
+    ws2 = wb.create_sheet()
+    make_sheet(ws2, "Учителя", ["Учитель"], [["Иванов И.И."], ["Петров С.П."]])
+
+    ws3 = wb.create_sheet()
+    make_sheet(ws3, "Предметы", ["Предмет", "Категория"],
+               [["Математика", "Основной"], ["Физика", "Факультатив"]])
+
+    ws4 = wb.create_sheet()
+    make_sheet(ws4, "Кабинеты", ["Кабинет", "Вместимость"], [["101", 30], ["205", 25]])
+
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=shablon_importa.xlsx"},
+    )
