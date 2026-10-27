@@ -10,7 +10,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from database import init_db, get_db, User, SavedTimetable
+from database import init_db, get_db, User, SavedTimetable, Substitution
 from auth import get_password_hash, verify_password, create_access_token, get_current_user
 from models import TimetableRequest, TimetableResponse, AIInputRequest
 from solver import validate_teachers, solve_timetable
@@ -982,3 +982,76 @@ def export_pdf(
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
+
+
+# ============================================================
+# ЗАМЕНЫ (общий журнал для всех пользователей)
+# ============================================================
+class SubstitutionCreate(BaseModel):
+    date: Optional[str] = None
+    slot: int = 1
+    grade: Optional[str] = None
+    absent: str
+    substitute: Optional[str] = None
+
+
+class SubstitutionUpdate(BaseModel):
+    substitute: Optional[str] = None
+
+
+def _substitution_to_dict(s: Substitution) -> Dict[str, Any]:
+    return {
+        "id": s.id,
+        "date": s.date,
+        "slot": s.slot,
+        "grade": s.grade,
+        "absent": s.absent,
+        "substitute": s.substitute or "",
+        "created_by_name": s.created_by_name,
+        "created_at": s.created_at.isoformat() if s.created_at else None,
+    }
+
+
+@app.get("/api/substitutions")
+def list_substitutions(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    items = db.query(Substitution).order_by(Substitution.date.desc(), Substitution.slot.asc()).all()
+    return [_substitution_to_dict(s) for s in items]
+
+
+@app.post("/api/substitutions")
+def create_substitution(payload: SubstitutionCreate, current_user: User = Depends(get_current_user),
+                        db: Session = Depends(get_db)):
+    s = Substitution(
+        date=(payload.date or None),
+        slot=payload.slot or 1,
+        grade=payload.grade,
+        absent=payload.absent,
+        substitute=payload.substitute or "",
+        created_by_name=current_user.full_name,
+    )
+    db.add(s)
+    db.commit()
+    db.refresh(s)
+    return _substitution_to_dict(s)
+
+
+@app.patch("/api/substitutions/{sub_id}")
+def update_substitution(sub_id: int, payload: SubstitutionUpdate,
+                        current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    s = db.query(Substitution).filter(Substitution.id == sub_id).first()
+    if not s:
+        raise HTTPException(status_code=404, detail="Замена не найдена")
+    s.substitute = payload.substitute or ""
+    db.commit()
+    db.refresh(s)
+    return _substitution_to_dict(s)
+
+
+@app.delete("/api/substitutions/{sub_id}")
+def delete_substitution(sub_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    s = db.query(Substitution).filter(Substitution.id == sub_id).first()
+    if not s:
+        raise HTTPException(status_code=404, detail="Замена не найдена")
+    db.delete(s)
+    db.commit()
+    return {"message": "Замена удалена"}

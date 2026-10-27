@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (getToken()) {
         showMainApp();
         loadSavedTimetables();
+        if (typeof loadSubstitutions === 'function') loadSubstitutions();
     }
     document.addEventListener('click', function (e) {
         if (!e.target.closest('.autocomplete-wrapper')) {

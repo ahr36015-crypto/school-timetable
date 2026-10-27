@@ -86,6 +86,20 @@ class SavedTimetable(Base):
     owner = relationship("User", back_populates="saved_timetables")
 
 
+class Substitution(Base):
+    """Журнал замен. Общий для всех пользователей (не привязан к владельцу)."""
+    __tablename__ = "substitutions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    date = Column(String(20), nullable=True)          # YYYY-MM-DD
+    slot = Column(Integer, nullable=False, default=1)  # номер урока
+    grade = Column(String(64), nullable=True)          # класс
+    absent = Column(String(255), nullable=False)       # отсутствующий учитель
+    substitute = Column(String(255), nullable=True)    # заменяющий ('' = нет замены)
+    created_by_name = Column(String(255), nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+
+
 def init_db():
     Base.metadata.create_all(bind=engine)
     print("✅ База данных PostgreSQL инициализирована")

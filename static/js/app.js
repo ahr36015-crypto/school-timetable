@@ -116,7 +116,7 @@ function updateDashboardCounts() {
         });
     }
     const plannedHours = (schoolData.workloads || []).reduce((s, w) => s + (parseInt(w.hours) || 0), 0);
-    const pending = (schoolData.substitutions || []).filter(s => !s.substitute).length;
+    const pending = _substitutionsCache.filter(s => !s.substitute).length;
     const freeRooms = Math.max(0, (schoolData.classrooms || []).length - usedRooms.size);
 
     _setText('dashLessons', totalLessons);
@@ -346,9 +346,37 @@ function togglePlanAssignment(itemId, checked) {
     updateDashboardCounts();
 }
 
-// ---------- Замены ----------
-function renderSubstitutions() {
-    _ensureData();
+// ---------- Замены (общий серверный журнал) ----------
+let _substitutionsCache = [];
+
+function _updateSubsBadge() {
+    const pending = _substitutionsCache.filter(s => !s.substitute).length;
+    const badge = document.getElementById('subsBadge');
+    if (badge) {
+        badge.textContent = pending;
+        badge.style.display = pending ? 'inline-block' : 'none';
+    }
+    _setText('dashSubs', pending);
+}
+
+async function loadSubstitutions() {
+    try {
+        const res = await fetch('/api/substitutions', {
+            headers: { 'Authorization': 'Bearer ' + getToken() }
+        });
+        if (res.ok) {
+            _substitutionsCache = await res.json();
+        } else {
+            console.error('Не удалось загрузить замены:', res.status);
+        }
+    } catch (e) {
+        console.error('Ошибка сети при загрузке замен:', e);
+    }
+    _updateSubsBadge();
+    return _substitutionsCache;
+}
+
+async function renderSubstitutions() {
     _fillSelect('subGrade', _classes(), 'Все');
     _fillSelect('subAbsent', _teachers(), '-- Выберите --');
     _fillSelect('subSubstitute', _teachers(), '— нет —');
@@ -358,13 +386,14 @@ function renderSubstitutions() {
         const now = new Date();
         dateEl.value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
     }
+    await loadSubstitutions();
     renderSubsTable();
 }
 
 function renderSubsTable() {
     const tbody = document.querySelector('#subsTable tbody');
     if (!tbody) return;
-    const subs = schoolData.substitutions || [];
+    const subs = _substitutionsCache || [];
     if (!subs.length) {
         tbody.innerHTML = '<tr><td colspan="7" class="muted">Замен пока нет</td></tr>';
         return;
@@ -398,8 +427,7 @@ function renderSubsTable() {
     }).join('');
 }
 
-function addSubstitution() {
-    _ensureData();
+async function addSubstitution() {
     const date = (document.getElementById('subDate') || {}).value || '';
     const slot = parseInt((document.getElementById('subSlot') || {}).value) || 1;
     const grade = (document.getElementById('subGrade') || {}).value || '';
@@ -407,37 +435,65 @@ function addSubstitution() {
     const substitute = (document.getElementById('subSubstitute') || {}).value || '';
     if (!absent) { alert('Выберите отсутствующего учителя'); return; }
 
-    schoolData.substitutions.push({ id: _uid(), date: date, slot: slot, grade: grade, absent: absent, substitute: substitute });
-    saveSchoolData();
-    renderSubsTable();
-    logActivity('Добавлена замена: ' + (grade || '') + ', урок ' + slot + ', ' + absent + (substitute ? ' → ' + substitute : ''));
-    updateDashboardCounts();
+    try {
+        const res = await fetch('/api/substitutions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+            body: JSON.stringify({ date: date, slot: slot, grade: grade, absent: absent, substitute: substitute })
+        });
+        if (!res.ok) throw new Error('Ошибка ' + res.status);
+        await loadSubstitutions();
+        renderSubsTable();
+        logActivity('Добавлена замена: ' + (grade || '') + ', урок ' + slot + ', ' + absent + (substitute ? ' → ' + substitute : ''));
+    } catch (e) {
+        alert('Не удалось добавить замену: ' + e.message);
+    }
 }
 
-function setSubstitute(id, value) {
-    const sub = (schoolData.substitutions || []).find(s => s.id === id);
-    if (!sub || !value) return;
-    sub.substitute = value;
-    saveSchoolData();
-    renderSubsTable();
-    logActivity('Назначена замена: ' + sub.absent + ' → ' + value + ' (' + (sub.grade || '') + ')');
-    updateDashboardCounts();
+async function setSubstitute(id, value) {
+    if (!value) return;
+    try {
+        const res = await fetch('/api/substitutions/' + id, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+            body: JSON.stringify({ substitute: value })
+        });
+        if (!res.ok) throw new Error('Ошибка ' + res.status);
+        await loadSubstitutions();
+        renderSubsTable();
+        logActivity('Назначена замена → ' + value);
+    } catch (e) {
+        alert('Не удалось назначить замену: ' + e.message);
+    }
 }
 
-function clearSubstitute(id) {
-    const sub = (schoolData.substitutions || []).find(s => s.id === id);
-    if (!sub) return;
-    sub.substitute = '';
-    saveSchoolData();
-    renderSubsTable();
-    updateDashboardCounts();
+async function clearSubstitute(id) {
+    try {
+        const res = await fetch('/api/substitutions/' + id, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+            body: JSON.stringify({ substitute: '' })
+        });
+        if (!res.ok) throw new Error('Ошибка ' + res.status);
+        await loadSubstitutions();
+        renderSubsTable();
+    } catch (e) {
+        alert('Не удалось снять замену: ' + e.message);
+    }
 }
 
-function removeSubstitution(id) {
-    schoolData.substitutions = (schoolData.substitutions || []).filter(s => s.id !== id);
-    saveSchoolData();
-    renderSubsTable();
-    updateDashboardCounts();
+async function removeSubstitution(id) {
+    try {
+        const res = await fetch('/api/substitutions/' + id, {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + getToken() }
+        });
+        if (!res.ok) throw new Error('Ошибка ' + res.status);
+        await loadSubstitutions();
+        renderSubsTable();
+    } catch (e) {
+        alert('Не удалось удалить запись: ' + e.message);
+    }
 }
 
 // ---------- Учёт часов ----------
