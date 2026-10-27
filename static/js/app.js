@@ -380,6 +380,7 @@ async function renderSubstitutions() {
     _fillSelect('subGrade', _classes(), 'Все');
     _fillSelect('subAbsent', _teachers(), '-- Выберите --');
     _fillSelect('subSubstitute', _teachers(), '— нет —');
+    onSubAbsentChange();
 
     const dateEl = document.getElementById('subDate');
     if (dateEl && !dateEl.value) {
@@ -388,6 +389,19 @@ async function renderSubstitutions() {
     }
     await loadSubstitutions();
     renderSubsTable();
+}
+
+// В списке «Замена» не должно быть отсутствующего учителя
+function onSubAbsentChange() {
+    const absentEl = document.getElementById('subAbsent');
+    const subEl = document.getElementById('subSubstitute');
+    if (!subEl) return;
+    const absent = absentEl ? absentEl.value : '';
+    const cur = subEl.value;
+    const options = _teachers().filter(t => t !== absent);
+    subEl.innerHTML = '<option value="">— нет —</option>' +
+        options.map(t => '<option value="' + _esc(t) + '">' + _esc(t) + '</option>').join('');
+    if (options.includes(cur)) subEl.value = cur;
 }
 
 function renderSubsTable() {
@@ -434,6 +448,10 @@ async function addSubstitution() {
     const absent = (document.getElementById('subAbsent') || {}).value || '';
     const substitute = (document.getElementById('subSubstitute') || {}).value || '';
     if (!absent) { alert('Выберите отсутствующего учителя'); return; }
+    if (substitute && substitute === absent) {
+        alert('Замена не может совпадать с отсутствующим учителем');
+        return;
+    }
 
     try {
         const res = await fetch('/api/substitutions', {

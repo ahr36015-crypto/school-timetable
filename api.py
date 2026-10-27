@@ -1021,6 +1021,8 @@ def list_substitutions(current_user: User = Depends(get_current_user), db: Sessi
 @app.post("/api/substitutions")
 def create_substitution(payload: SubstitutionCreate, current_user: User = Depends(get_current_user),
                         db: Session = Depends(get_db)):
+    if payload.substitute and payload.substitute.strip() == payload.absent.strip():
+        raise HTTPException(status_code=400, detail="Замена не может совпадать с отсутствующим учителем")
     s = Substitution(
         date=(payload.date or None),
         slot=payload.slot or 1,
@@ -1041,7 +1043,10 @@ def update_substitution(sub_id: int, payload: SubstitutionUpdate,
     s = db.query(Substitution).filter(Substitution.id == sub_id).first()
     if not s:
         raise HTTPException(status_code=404, detail="Замена не найдена")
-    s.substitute = payload.substitute or ""
+    sub_value = (payload.substitute or "").strip()
+    if sub_value and sub_value == (s.absent or "").strip():
+        raise HTTPException(status_code=400, detail="Замена не может совпадать с отсутствующим учителем")
+    s.substitute = sub_value
     db.commit()
     db.refresh(s)
     return _substitution_to_dict(s)

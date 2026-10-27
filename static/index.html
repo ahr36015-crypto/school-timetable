@@ -510,7 +510,7 @@
                             <div class="form-group"><label>Дата</label><input type="date" class="form-control" id="subDate"></div>
                             <div class="form-group"><label>Урок (№)</label><input type="number" class="form-control" id="subSlot" min="1" max="10" value="1"></div>
                             <div class="form-group"><label>Класс</label><select class="form-control" id="subGrade"></select></div>
-                            <div class="form-group"><label>Отсутствует</label><select class="form-control" id="subAbsent"></select></div>
+                            <div class="form-group"><label>Отсутствует</label><select class="form-control" id="subAbsent" onchange="onSubAbsentChange()"></select></div>
                             <div class="form-group"><label>Замена</label><select class="form-control" id="subSubstitute"></select></div>
                             <button class="btn" onclick="addSubstitution()">+ Добавить замену</button>
                         </div>
