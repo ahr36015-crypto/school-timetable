@@ -768,3 +768,25 @@ table.data-table tr:nth-child(even) { background: transparent; }
 .wizard-step.active .step-number, .wizard-step.completed .step-number { background: transparent !important; color: inherit !important; }
 .wizard-step .step-title { font-size: .82rem; }
 .wizard-content { background: #fff !important; border: 1px solid var(--border); border-radius: 12px !important; padding: 20px !important; box-shadow: none !important; }
+
+/* ============================================================
+   УЧЕБНЫЕ ПЛАНЫ И ЗАМЕНЫ
+   ============================================================ */
+.plan-add-form, .subs-form { display: grid; grid-template-columns: repeat(4, 1fr) auto; gap: 12px; align-items: end; margin-bottom: 16px; }
+.subs-form { grid-template-columns: repeat(6, 1fr) auto; }
+.plan-add-form .form-group, .subs-form .form-group { margin: 0; }
+.plan-assignments { display: flex; flex-direction: column; gap: 8px; }
+.plan-check { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; }
+.plan-check input { width: 16px !important; height: 16px; }
+.plan-check.checked { background: #eef2ff; border-color: #c7d2fe; }
+.plan-check .pc-subject { font-weight: 600; }
+.plan-check .pc-meta { color: var(--muted); font-size: .8rem; margin-left: auto; }
+.sub-select { min-width: 160px; }
+.week-red { color: var(--red-week); }
+.timetable th.today { background: #eef2ff; color: var(--primary); }
+
+@media (max-width: 900px) {
+    .plan-add-form, .subs-form { grid-template-columns: 1fr; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .reports-grid { grid-template-columns: 1fr; }
+}

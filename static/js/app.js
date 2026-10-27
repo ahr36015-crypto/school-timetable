@@ -11,6 +11,54 @@ const PAGE_TITLES = {
     reports: ['Отчёты', 'Управление / Отчёты'],
 };
 
+// ---------- Общие утилиты ----------
+function _setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+}
+
+function _uid() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+function _ensureData() {
+    if (!Array.isArray(schoolData.planItems)) schoolData.planItems = [];
+    if (!Array.isArray(schoolData.substitutions)) schoolData.substitutions = [];
+    if (!Array.isArray(schoolData.activityLog)) schoolData.activityLog = [];
+}
+
+function _subjects() { return (schoolData.subjects || []).map(s => s.name); }
+function _classes() { return (schoolData.classes || []).map(c => c.name); }
+function _teachers() { return (schoolData.teachers || []).map(t => t.full_name); }
+
+function _esc(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+}
+
+function _fillSelect(id, values, placeholder) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const cur = el.value;
+    const head = (placeholder !== undefined) ? `<option value="">${_esc(placeholder)}</option>` : '';
+    el.innerHTML = head + values.map(v => `<option value="${_esc(v)}">${_esc(v)}</option>`).join('');
+    if (values.includes(cur)) el.value = cur;
+}
+
+function logActivity(action) {
+    _ensureData();
+    const now = new Date();
+    schoolData.activityLog.unshift({
+        t: now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
+        user: localStorage.getItem('full_name') || 'Пользователь',
+        action: action,
+    });
+    schoolData.activityLog = schoolData.activityLog.slice(0, 20);
+    saveSchoolData();
+}
+
+// ---------- Навигация ----------
 function openPage(pageId, navElement) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     const page = document.getElementById('page-' + pageId);
@@ -29,6 +77,7 @@ function openPage(pageId, navElement) {
     if (pageId === 'dashboard') renderDashboard();
     if (pageId === 'schedule') renderSchedulePage();
     if (pageId === 'plans') renderPlans();
+    if (pageId === 'substitutions') renderSubstitutions();
     if (pageId === 'hours') renderHours();
 }
 
@@ -38,37 +87,73 @@ function openDirectories() {
     if (typeof goToStep === 'function') goToStep(2);
 }
 
-function _setText(id, value) {
-    const el = document.getElementById(id);
-    if (el) el.textContent = value;
+// ---------- Текущая неделя ----------
+function getCurrentWeekInfo() {
+    const now = new Date();
+    const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const week = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    const blue = week % 2 === 1;
+    return { week: week, blue: blue, label: blue ? 'Синяя (нечётная)' : 'Красная (чётная)' };
 }
 
 // ---------- Дашборд ----------
-function renderDashboard() {
+function updateDashboardCounts() {
+    _ensureData();
+
     let totalLessons = 0;
+    const usedRooms = new Set();
     if (currentResult && currentResult.teachers) {
-        currentResult.teachers.forEach(t => { totalLessons += t.total_lessons || 0; });
+        currentResult.teachers.forEach(t => {
+            totalLessons += t.total_lessons || 0;
+            Object.values(t.schedule || {}).forEach(bySlot => {
+                Object.values(bySlot).forEach(arr => (arr || []).forEach(l => {
+                    if (l.classroom) usedRooms.add(l.classroom);
+                }));
+            });
+        });
     }
     const plannedHours = (schoolData.workloads || []).reduce((s, w) => s + (parseInt(w.hours) || 0), 0);
+    const pending = (schoolData.substitutions || []).filter(s => !s.substitute).length;
+    const freeRooms = Math.max(0, (schoolData.classrooms || []).length - usedRooms.size);
+
     _setText('dashLessons', totalLessons);
     _setText('dashHours', plannedHours);
-    _setText('dashSubs', 0);
-    _setText('dashRooms', (schoolData.classrooms || []).length);
+    _setText('dashSubs', pending);
+    _setText('dashRooms', freeRooms);
+
+    const badge = document.getElementById('subsBadge');
+    if (badge) {
+        badge.textContent = pending;
+        badge.style.display = pending ? 'inline-block' : 'none';
+    }
+
+    const weekEl = document.getElementById('dashWeek');
+    if (weekEl) {
+        const wi = getCurrentWeekInfo();
+        weekEl.textContent = wi.label;
+        weekEl.classList.toggle('week-blue', wi.blue);
+        weekEl.classList.toggle('week-red', !wi.blue);
+    }
+    const hintEl = document.getElementById('dashWeekHint');
+    if (hintEl) {
+        const wi = getCurrentWeekInfo();
+        hintEl.textContent = 'На этой неделе действуют уроки с маркировкой «Каждую» и «' + (wi.blue ? 'Синяя' : 'Красная') + '».';
+    }
+}
+
+function renderDashboard() {
+    _ensureData();
+    updateDashboardCounts();
 
     const tbody = document.querySelector('#dashActions tbody');
-    if (tbody) {
-        const rows = [];
-        if (currentResult) {
-            rows.push(['—', 'Система', 'Сгенерировано расписание (' + (currentResult.status || '') + ')']);
-        }
-        if ((schoolData.teachers || []).length) {
-            rows.push(['—', localStorage.getItem('full_name') || 'Пользователь',
-                'В справочниках: ' + schoolData.teachers.length + ' учителей, ' + schoolData.classes.length + ' классов']);
-        }
-        tbody.innerHTML = rows.length
-            ? rows.map(r => '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td><td>' + r[2] + '</td></tr>').join('')
-            : '<tr><td colspan="3" class="muted">Пока нет действий</td></tr>';
-    }
+    if (!tbody) return;
+    const log = schoolData.activityLog || [];
+    tbody.innerHTML = log.length
+        ? log.slice(0, 10).map(e => '<tr><td>' + _esc(e.t) + '</td><td>' + _esc(e.user) + '</td><td>' + _esc(e.action) + '</td></tr>').join('')
+        : '<tr><td colspan="3" class="muted">Пока нет действий</td></tr>';
 }
 
 // ---------- Расписание ----------
@@ -92,7 +177,7 @@ function renderSchedulePage() {
     if (filterEl) {
         const cur = filterEl.value;
         filterEl.innerHTML = '<option value="">Все классы</option>' +
-            _collectGrades().map(g => '<option value="' + g + '">' + g + '</option>').join('');
+            _collectGrades().map(g => '<option value="' + _esc(g) + '">' + _esc(g) + '</option>').join('');
         filterEl.value = cur;
     }
     const grade = filterEl ? filterEl.value : '';
@@ -105,6 +190,7 @@ function renderSchedulePage() {
     const days = currentResult.days || ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница'];
     const slots = currentResult.slots || [1, 2, 3, 4, 5, 6, 7];
     const times = getLessonTimes();
+    const todayName = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'][new Date().getDay()];
 
     const map = {};
     currentResult.teachers.forEach(t => {
@@ -120,19 +206,19 @@ function renderSchedulePage() {
     });
 
     let html = '<table class="timetable"><thead><tr><th>Время</th>';
-    days.forEach(d => { html += '<th>' + d + '</th>'; });
+    days.forEach(d => { html += '<th class="' + (d === todayName ? 'today' : '') + '">' + _esc(d) + '</th>'; });
     html += '</tr></thead><tbody>';
     slots.forEach((slot, idx) => {
         const parts = (times[idx] || '').split('-');
-        html += '<tr><td>' + (parts[0] || '') + '<br>' + (parts[1] || '') + '</td>';
+        html += '<tr><td>' + _esc(parts[0] || '') + '<br>' + _esc(parts[1] || '') + '</td>';
         days.forEach(day => {
             const lessons = map[day + '|' + String(slot)] || [];
             html += '<td>';
             lessons.forEach(l => {
                 html += '<div class="lesson-card" data-week="every">' +
                     '<div class="marker"><span class="dot both"></span></div>' +
-                    '<div class="title">' + l.subject + '</div>' +
-                    '<div class="meta">' + l.grade + ' · ' + (l.classroom || '—') + ' · ' + l.teacher + '</div>' +
+                    '<div class="title">' + _esc(l.subject) + '</div>' +
+                    '<div class="meta">' + _esc(l.grade) + ' · ' + _esc(l.classroom || '—') + ' · ' + _esc(l.teacher) + '</div>' +
                     '</div>';
             });
             html += '</td>';
@@ -162,20 +248,196 @@ function filterScheduleWeek(type, btn) {
 
 // ---------- Учебные планы ----------
 function renderPlans() {
+    _ensureData();
+    _fillSelect('planSubject', _subjects());
+    _fillSelect('planGrade', _classes());
+    _fillSelect('planTeacher', _teachers(), '-- Выберите учителя --');
+    renderPlanItems();
+    renderPlanAssignments();
+}
+
+function renderPlanItems() {
     const tbody = document.querySelector('#plansTable tbody');
     if (!tbody) return;
-    const rows = schoolData.workloads || [];
-    if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="muted">Нагрузки не заданы</td></tr>';
+    const items = schoolData.planItems || [];
+    tbody.innerHTML = items.length
+        ? items.map(it => '<tr>' +
+            '<td>' + _esc(it.subject) + '</td>' +
+            '<td>' + _esc(it.grade) + '</td>' +
+            '<td>' + _esc(it.hours) + '</td>' +
+            '<td><button class="small danger" onclick="removePlanItem(\'' + it.id + '\')" title="Удалить из плана" aria-label="Удалить из плана">🗑</button></td>' +
+            '</tr>').join('')
+        : '<tr><td colspan="4" class="muted">План пуст</td></tr>';
+}
+
+function addPlanItem() {
+    _ensureData();
+    const subjectEl = document.getElementById('planSubject');
+    const gradeEl = document.getElementById('planGrade');
+    const hoursEl = document.getElementById('planHours');
+    const subject = subjectEl ? subjectEl.value : '';
+    const grade = gradeEl ? gradeEl.value : '';
+    const hours = hoursEl ? (parseInt(hoursEl.value) || 1) : 1;
+    if (!subject || !grade) { alert('Выберите предмет и класс'); return; }
+    if (schoolData.planItems.some(p => p.subject === subject && p.grade === grade)) {
+        alert('Такая позиция уже есть в плане');
         return;
     }
-    tbody.innerHTML = rows.map(w => '<tr>' +
-        '<td>' + w.teacher + '</td>' +
-        '<td>' + (w.subject || '—') + '</td>' +
-        '<td>' + (w.grade || '—') + '</td>' +
-        '<td>' + (parseInt(w.hours) || 0) + '</td>' +
-        '<td>Каждую неделю</td>' +
-        '</tr>').join('');
+    schoolData.planItems.push({ id: _uid(), subject: subject, grade: grade, hours: hours });
+    saveSchoolData();
+    renderPlanItems();
+    renderPlanAssignments();
+    logActivity('В план добавлено: ' + subject + ' · ' + grade + ' · ' + hours + ' ч');
+}
+
+function removePlanItem(id) {
+    schoolData.planItems = (schoolData.planItems || []).filter(p => p.id !== id);
+    saveSchoolData();
+    renderPlanItems();
+    renderPlanAssignments();
+}
+
+function renderPlanAssignments() {
+    const box = document.getElementById('planAssignments');
+    if (!box) return;
+    const teacherEl = document.getElementById('planTeacher');
+    const teacher = teacherEl ? teacherEl.value : '';
+    if (!teacher) {
+        box.innerHTML = '<p class="muted">Выберите учителя, чтобы отметить предметы галочками.</p>';
+        return;
+    }
+    const items = schoolData.planItems || [];
+    if (!items.length) {
+        box.innerHTML = '<p class="muted">Сначала добавьте предметы и часы в план выше.</p>';
+        return;
+    }
+    box.innerHTML = items.map(it => {
+        const checked = (schoolData.workloads || []).some(w =>
+            w.teacher === teacher && w.subject === it.subject && w.grade === it.grade);
+        return '<label class="plan-check ' + (checked ? 'checked' : '') + '">' +
+            '<input type="checkbox" ' + (checked ? 'checked' : '') +
+            ' onchange="togglePlanAssignment(\'' + it.id + '\', this.checked)">' +
+            '<span class="pc-subject">' + _esc(it.subject) + '</span>' +
+            '<span class="pc-meta">' + _esc(it.grade) + ' · ' + _esc(it.hours) + ' ч/нед</span>' +
+            '</label>';
+    }).join('');
+}
+
+function togglePlanAssignment(itemId, checked) {
+    _ensureData();
+    const teacherEl = document.getElementById('planTeacher');
+    const teacher = teacherEl ? teacherEl.value : '';
+    const item = (schoolData.planItems || []).find(p => p.id === itemId);
+    if (!teacher || !item) return;
+
+    if (checked) {
+        const exists = (schoolData.workloads || []).some(w =>
+            w.teacher === teacher && w.subject === item.subject && w.grade === item.grade);
+        if (!exists) {
+            schoolData.workloads.push({ teacher: teacher, subject: item.subject, grade: item.grade, classroom: '', hours: item.hours });
+            logActivity('Назначено: ' + teacher + ' — ' + item.subject + ' (' + item.grade + ')');
+        }
+    } else {
+        schoolData.workloads = (schoolData.workloads || []).filter(w =>
+            !(w.teacher === teacher && w.subject === item.subject && w.grade === item.grade));
+    }
+    saveSchoolData();
+    renderPlanAssignments();
+    updateDashboardCounts();
+}
+
+// ---------- Замены ----------
+function renderSubstitutions() {
+    _ensureData();
+    _fillSelect('subGrade', _classes(), 'Все');
+    _fillSelect('subAbsent', _teachers(), '-- Выберите --');
+    _fillSelect('subSubstitute', _teachers(), '— нет —');
+
+    const dateEl = document.getElementById('subDate');
+    if (dateEl && !dateEl.value) {
+        const now = new Date();
+        dateEl.value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+    }
+    renderSubsTable();
+}
+
+function renderSubsTable() {
+    const tbody = document.querySelector('#subsTable tbody');
+    if (!tbody) return;
+    const subs = schoolData.substitutions || [];
+    if (!subs.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="muted">Замен пока нет</td></tr>';
+        return;
+    }
+    tbody.innerHTML = subs.map(s => {
+        const replaced = !!s.substitute;
+        const status = '<span class="badge-status ' + (replaced ? 'badge-green' : 'badge-red') + '">' +
+            (replaced ? 'Заменён' : 'Нет замены') + '</span>';
+
+        let subCell;
+        if (replaced) {
+            subCell = _esc(s.substitute) +
+                ' <button class="small" onclick="clearSubstitute(\'' + s.id + '\')" title="Снять замену">✕</button>';
+        } else {
+            const options = _teachers().filter(t => t !== s.absent);
+            subCell = '<select class="form-control sub-select" onchange="setSubstitute(\'' + s.id + '\', this.value)">' +
+                '<option value="">— выбрать —</option>' +
+                options.map(t => '<option value="' + _esc(t) + '">' + _esc(t) + '</option>').join('') +
+                '</select>';
+        }
+
+        return '<tr>' +
+            '<td>' + _esc(s.date || '—') + '</td>' +
+            '<td>Урок ' + _esc(s.slot) + '</td>' +
+            '<td>' + _esc(s.grade || '—') + '</td>' +
+            '<td>' + _esc(s.absent || '—') + '</td>' +
+            '<td>' + subCell + '</td>' +
+            '<td>' + status + '</td>' +
+            '<td><button class="small danger" onclick="removeSubstitution(\'' + s.id + '\')" title="Удалить запись" aria-label="Удалить запись">🗑</button></td>' +
+            '</tr>';
+    }).join('');
+}
+
+function addSubstitution() {
+    _ensureData();
+    const date = (document.getElementById('subDate') || {}).value || '';
+    const slot = parseInt((document.getElementById('subSlot') || {}).value) || 1;
+    const grade = (document.getElementById('subGrade') || {}).value || '';
+    const absent = (document.getElementById('subAbsent') || {}).value || '';
+    const substitute = (document.getElementById('subSubstitute') || {}).value || '';
+    if (!absent) { alert('Выберите отсутствующего учителя'); return; }
+
+    schoolData.substitutions.push({ id: _uid(), date: date, slot: slot, grade: grade, absent: absent, substitute: substitute });
+    saveSchoolData();
+    renderSubsTable();
+    logActivity('Добавлена замена: ' + (grade || '') + ', урок ' + slot + ', ' + absent + (substitute ? ' → ' + substitute : ''));
+    updateDashboardCounts();
+}
+
+function setSubstitute(id, value) {
+    const sub = (schoolData.substitutions || []).find(s => s.id === id);
+    if (!sub || !value) return;
+    sub.substitute = value;
+    saveSchoolData();
+    renderSubsTable();
+    logActivity('Назначена замена: ' + sub.absent + ' → ' + value + ' (' + (sub.grade || '') + ')');
+    updateDashboardCounts();
+}
+
+function clearSubstitute(id) {
+    const sub = (schoolData.substitutions || []).find(s => s.id === id);
+    if (!sub) return;
+    sub.substitute = '';
+    saveSchoolData();
+    renderSubsTable();
+    updateDashboardCounts();
+}
+
+function removeSubstitution(id) {
+    schoolData.substitutions = (schoolData.substitutions || []).filter(s => s.id !== id);
+    saveSchoolData();
+    renderSubsTable();
+    updateDashboardCounts();
 }
 
 // ---------- Учёт часов ----------
@@ -206,9 +468,9 @@ function renderHours() {
         const diff = actual - planned;
         const cls = diff === 0 ? 'badge-green' : (diff < 0 ? 'badge-red' : 'badge-yellow');
         return '<tr>' +
-            '<td>' + w.teacher + '</td>' +
-            '<td>' + (w.subject || '—') + '</td>' +
-            '<td>' + (w.grade || '—') + '</td>' +
+            '<td>' + _esc(w.teacher) + '</td>' +
+            '<td>' + _esc(w.subject || '—') + '</td>' +
+            '<td>' + _esc(w.grade || '—') + '</td>' +
             '<td>' + planned + '</td>' +
             '<td>' + actual + '</td>' +
             '<td><span class="badge-status ' + cls + '">' + (diff > 0 ? '+' : '') + diff + '</span></td>' +

@@ -1207,6 +1207,8 @@ async function generateTimetable() {
         renderSchedule();
         loadSavedTimetables();
         renderGenerationStats();
+        if (typeof logActivity === 'function') logActivity('Сгенерировано расписание (' + currentResult.status + ')');
+        if (typeof updateDashboardCounts === 'function') updateDashboardCounts();
     } catch (e) {
         document.getElementById('progressOverlay').classList.remove('active');
         err.textContent = 'Ошибка: ' + e.message;

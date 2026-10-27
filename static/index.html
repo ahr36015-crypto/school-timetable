@@ -114,8 +114,8 @@
                         <div class="stat-box"><div class="label">Свободных кабинетов</div><div class="value" id="dashRooms">0</div></div>
                     </div>
                     <div class="card">
-                        <h3>Текущая неделя: <span class="week-blue">Синяя (нечётная)</span></h3>
-                        <p class="muted">На этой неделе действуют уроки с маркировкой «Каждую» и «Синяя».</p>
+                        <h3>Текущая неделя: <span id="dashWeek" class="week-blue">Синяя (нечётная)</span></h3>
+                        <p class="muted" id="dashWeekHint">На этой неделе действуют уроки с маркировкой «Каждую» и «Синяя».</p>
                     </div>
                     <div class="card">
                         <h3>Последние действия</h3>
@@ -474,14 +474,31 @@
                 <!-- СТРАНИЦА: УЧЕБНЫЕ ПЛАНЫ -->
                 <section class="page" id="page-plans">
                     <div class="card">
-                        <h3>Учебные планы и нагрузки</h3>
-                        <p class="muted">Назначение учителям предметов и часов.</p>
+                        <h3>Учебные планы: предметы и часы</h3>
+                        <p class="muted">Добавьте предмет, класс и количество часов в неделю. Затем выберите учителя и отметьте галочками, что он ведёт.</p>
+                        <div class="plan-add-form">
+                            <div class="form-group"><label>Предмет</label><select class="form-control" id="planSubject"></select></div>
+                            <div class="form-group"><label>Класс</label><select class="form-control" id="planGrade"></select></div>
+                            <div class="form-group"><label>Часов/нед</label><input type="number" class="form-control" id="planHours" min="1" max="40" value="1"></div>
+                            <button class="btn" onclick="addPlanItem()">+ Добавить в план</button>
+                        </div>
                         <div class="table-wrap">
                             <table class="data-table" id="plansTable">
-                                <thead><tr><th>Учитель</th><th>Предмет</th><th>Класс</th><th>Часов/нед</th><th>Периодичность</th></tr></thead>
-                                <tbody><tr><td colspan="5" class="muted">Нагрузки не заданы</td></tr></tbody>
+                                <thead><tr><th>Предмет</th><th>Класс</th><th>Часов/нед</th><th></th></tr></thead>
+                                <tbody><tr><td colspan="4" class="muted">План пуст</td></tr></tbody>
                             </table>
                         </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Назначение учителю</h3>
+                        <div class="form-group" style="max-width:340px">
+                            <label>Учитель</label>
+                            <select class="form-control" id="planTeacher" onchange="renderPlanAssignments()">
+                                <option value="">-- Выберите учителя --</option>
+                            </select>
+                        </div>
+                        <div id="planAssignments" class="plan-assignments"></div>
                     </div>
                 </section>
 
@@ -489,10 +506,18 @@
                 <section class="page" id="page-substitutions">
                     <div class="card">
                         <h3>Журнал замен</h3>
+                        <div class="subs-form">
+                            <div class="form-group"><label>Дата</label><input type="date" class="form-control" id="subDate"></div>
+                            <div class="form-group"><label>Урок (№)</label><input type="number" class="form-control" id="subSlot" min="1" max="10" value="1"></div>
+                            <div class="form-group"><label>Класс</label><select class="form-control" id="subGrade"></select></div>
+                            <div class="form-group"><label>Отсутствует</label><select class="form-control" id="subAbsent"></select></div>
+                            <div class="form-group"><label>Замена</label><select class="form-control" id="subSubstitute"></select></div>
+                            <button class="btn" onclick="addSubstitution()">+ Добавить замену</button>
+                        </div>
                         <div class="table-wrap">
                             <table class="data-table" id="subsTable">
-                                <thead><tr><th>Дата</th><th>Урок</th><th>Класс</th><th>Отсутствует</th><th>Замена</th><th>Статус</th></tr></thead>
-                                <tbody><tr><td colspan="6" class="muted">Замен пока нет</td></tr></tbody>
+                                <thead><tr><th>Дата</th><th>Урок</th><th>Класс</th><th>Отсутствует</th><th>Замена</th><th>Статус</th><th></th></tr></thead>
+                                <tbody><tr><td colspan="7" class="muted">Замен пока нет</td></tr></tbody>
                             </table>
                         </div>
                     </div>
