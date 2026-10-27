@@ -53,12 +53,101 @@
 
     <!-- Основное приложение -->
     <div id="mainApp" class="main-app">
-        <header class="app-header">
-            <div class="user-info" id="userInfo">Пользователь: Гость</div>
-            <button class="btn-danger" onclick="logout()">Выйти</button>
-        </header>
+        <!-- Боковая панель -->
+        <aside class="sidebar">
+            <div class="logo">
+                <div class="icon">📅</div>
+                <div class="text">
+                    <h1>Единый комплекс</h1>
+                    <p>АРМ Завуча</p>
+                </div>
+            </div>
 
-        <!-- Навигация по шагам -->
+            <div class="nav-group">
+                <div class="nav-title">Главное</div>
+                <a class="nav-item active" data-page="dashboard" onclick="openPage('dashboard', this)"><span>📊</span> Дашборд</a>
+                <a class="nav-item" data-page="schedule" onclick="openPage('schedule', this)"><span>🗓</span> Расписание</a>
+                <a class="nav-item" data-page="wizard" onclick="openPage('wizard', this)"><span>⚙️</span> Мастер настройки</a>
+            </div>
+
+            <div class="nav-group">
+                <div class="nav-title">Управление</div>
+                <a class="nav-item" data-page="plans" onclick="openPage('plans', this)"><span>📋</span> Учебные планы</a>
+                <a class="nav-item" data-page="substitutions" onclick="openPage('substitutions', this)"><span>🔄</span> Замены <span class="badge" id="subsBadge" style="display:none">0</span></a>
+                <a class="nav-item" data-page="hours" onclick="openPage('hours', this)"><span>⏱</span> Учёт часов</a>
+                <a class="nav-item" data-page="reports" onclick="openPage('reports', this)"><span>📤</span> Отчёты</a>
+            </div>
+
+            <div class="nav-group">
+                <div class="nav-title">Данные</div>
+                <a class="nav-item" data-page="directories" onclick="openDirectories(this)"><span>📚</span> Справочники</a>
+            </div>
+
+            <div class="user-footer">
+                <div class="avatar" id="sidebarAvatar">Г</div>
+                <div class="info">
+                    <div class="name" id="sidebarUserName">Гость</div>
+                    <div class="role" id="sidebarUserRole">Завуч</div>
+                </div>
+                <button class="logout-btn" title="Выйти" aria-label="Выйти" onclick="logout()">⎋</button>
+            </div>
+        </aside>
+
+        <!-- Контентная область -->
+        <div class="main-content">
+            <header class="header">
+                <div>
+                    <h2 id="page-title">Дашборд</h2>
+                    <div class="breadcrumbs" id="page-crumbs">Главная / Сводка</div>
+                </div>
+                <input type="text" class="header-search" id="globalSearch" placeholder="Поиск...">
+            </header>
+
+            <div class="content-area">
+
+                <!-- СТРАНИЦА: ДАШБОРД -->
+                <section class="page active" id="page-dashboard">
+                    <div class="stats-grid">
+                        <div class="stat-box"><div class="label">Всего уроков в неделю</div><div class="value" id="dashLessons">0</div></div>
+                        <div class="stat-box green"><div class="label">Выработано часов</div><div class="value" id="dashHours">0</div></div>
+                        <div class="stat-box red"><div class="label">Требуют замены</div><div class="value" id="dashSubs">0</div></div>
+                        <div class="stat-box"><div class="label">Свободных кабинетов</div><div class="value" id="dashRooms">0</div></div>
+                    </div>
+                    <div class="card">
+                        <h3>Текущая неделя: <span class="week-blue">Синяя (нечётная)</span></h3>
+                        <p class="muted">На этой неделе действуют уроки с маркировкой «Каждую» и «Синяя».</p>
+                    </div>
+                    <div class="card">
+                        <h3>Последние действия</h3>
+                        <table class="data-table" id="dashActions">
+                            <thead><tr><th>Время</th><th>Пользователь</th><th>Действие</th></tr></thead>
+                            <tbody><tr><td colspan="3" class="muted">Пока нет действий</td></tr></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- СТРАНИЦА: РАСПИСАНИЕ -->
+                <section class="page" id="page-schedule">
+                    <div class="card">
+                        <div class="card-head">
+                            <h3>Сетка расписания</h3>
+                            <div class="head-tools">
+                                <select class="form-control" id="scheduleClassFilter" onchange="renderSchedulePage()">
+                                    <option value="">Все классы</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="week-toggle">
+                            <button class="active" onclick="filterScheduleWeek('all', this)"><span class="dot both"></span> Все недели</button>
+                            <button onclick="filterScheduleWeek('blue', this)"><span class="dot blue"></span> Синяя</button>
+                            <button onclick="filterScheduleWeek('red', this)"><span class="dot red"></span> Красная</button>
+                        </div>
+                        <div class="schedule-grid-wrap" id="schedulePageGrid"></div>
+                    </div>
+                </section>
+
+                <!-- СТРАНИЦА: МАСТЕР НАСТРОЙКИ (пошаговый мастер) -->
+                <section class="page" id="page-wizard">
         <nav class="wizard-nav">
             <div class="wizard-step active" data-step="1">
                 <div class="step-number">1</div>
@@ -379,6 +468,75 @@
                 <button class="btn-secondary" onclick="exportToJournal()">📋 Экспорт в журнал</button>
             </div>
         </div>
+
+                </section>
+
+                <!-- СТРАНИЦА: УЧЕБНЫЕ ПЛАНЫ -->
+                <section class="page" id="page-plans">
+                    <div class="card">
+                        <h3>Учебные планы и нагрузки</h3>
+                        <p class="muted">Назначение учителям предметов и часов.</p>
+                        <div class="table-wrap">
+                            <table class="data-table" id="plansTable">
+                                <thead><tr><th>Учитель</th><th>Предмет</th><th>Класс</th><th>Часов/нед</th><th>Периодичность</th></tr></thead>
+                                <tbody><tr><td colspan="5" class="muted">Нагрузки не заданы</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- СТРАНИЦА: ЗАМЕНЫ -->
+                <section class="page" id="page-substitutions">
+                    <div class="card">
+                        <h3>Журнал замен</h3>
+                        <div class="table-wrap">
+                            <table class="data-table" id="subsTable">
+                                <thead><tr><th>Дата</th><th>Урок</th><th>Класс</th><th>Отсутствует</th><th>Замена</th><th>Статус</th></tr></thead>
+                                <tbody><tr><td colspan="6" class="muted">Замен пока нет</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- СТРАНИЦА: УЧЁТ ЧАСОВ -->
+                <section class="page" id="page-hours">
+                    <div class="card">
+                        <h3>Учёт выработанных часов</h3>
+                        <div class="table-wrap">
+                            <table class="data-table" id="hoursTable">
+                                <thead><tr><th>Учитель</th><th>Предмет</th><th>Класс</th><th>План (ч)</th><th>Факт (ч)</th><th>Разница</th></tr></thead>
+                                <tbody><tr><td colspan="6" class="muted">Нет данных о нагрузках</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- СТРАНИЦА: ОТЧЁТЫ -->
+                <section class="page" id="page-reports">
+                    <div class="card">
+                        <h3>Экспорт документов</h3>
+                        <div class="reports-grid">
+                            <div class="report-card">
+                                <div class="report-icon">📄</div>
+                                <div class="report-title">Расписание (учителя)</div>
+                                <button class="btn btn-outline" onclick="downloadPDF('teachers')">Скачать PDF</button>
+                            </div>
+                            <div class="report-card">
+                                <div class="report-icon">📄</div>
+                                <div class="report-title">Расписание (классы)</div>
+                                <button class="btn btn-outline" onclick="downloadPDF('classes')">Скачать PDF</button>
+                            </div>
+                            <div class="report-card">
+                                <div class="report-icon">📊</div>
+                                <div class="report-title">Табель (Excel)</div>
+                                <button class="btn btn-outline" onclick="downloadExcel('classes')">Скачать Excel</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </div>
     </div>
 
     <!-- Оверлей прогресса -->
@@ -391,6 +549,7 @@
     <script src="/static/js/subjects-dropdown.js"></script>
     <script src="/static/js/wizard.js"></script>
     <script src="/static/js/editor.js"></script>
+    <script src="/static/js/app.js"></script>
     <script src="/static/js/main.js"></script>
 </body>
 </html>

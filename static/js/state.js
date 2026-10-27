@@ -48,7 +48,12 @@ function showRegister() {
 function showMainApp() {
     document.getElementById('authContainer').style.display = 'none';
     document.getElementById('mainApp').classList.add('active');
-    document.getElementById('userInfo').textContent = 'Пользователь: ' + (localStorage.getItem('full_name') || 'Гость');
+    const name = localStorage.getItem('full_name') || 'Гость';
+    const nameEl = document.getElementById('sidebarUserName');
+    const avEl = document.getElementById('sidebarAvatar');
+    if (nameEl) nameEl.textContent = name;
+    if (avEl) avEl.textContent = (name.trim().charAt(0) || 'Г').toUpperCase();
+    if (typeof openPage === 'function') openPage('dashboard');
 }
 
 // Async запросы к API

@@ -57,6 +57,10 @@ function isCurrentStepComplete() {
 // НАВИГАЦИЯ ПО МАСТЕРУ
 // ============================================================
 async function goToStep(step) {
+    // показываем страницу мастера в новой оболочке
+    if (typeof openPage === 'function' && document.getElementById('page-wizard')) {
+        openPage('wizard');
+    }
     document.querySelectorAll('.wizard-content').forEach(c => c.classList.remove('active'));
     document.querySelectorAll('.wizard-step').forEach((s, i) => {
         s.classList.remove('active');
