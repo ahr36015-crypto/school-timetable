@@ -4,7 +4,7 @@ import re
 import copy
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
-from fastapi import FastAPI, HTTPException, Depends, Query
+from fastapi import FastAPI, HTTPException, Depends, Query, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -1060,3 +1060,140 @@ def delete_substitution(sub_id: int, current_user: User = Depends(get_current_us
     db.delete(s)
     db.commit()
     return {"message": "Замена удалена"}
+
+
+# ============================================================
+# ИМПОРТ СПРАВОЧНИКОВ ИЗ EXCEL
+# ============================================================
+_HEADER_WORDS = (
+    "класс", "class", "учит", "teacher", "фио", "предмет", "subject",
+    "кабинет", "room", "номер", "название", "категор", "вместим",
+)
+
+
+def _norm_cell(value) -> str:
+    return str(value).strip() if value is not None else ""
+
+
+def _looks_like_header(row) -> bool:
+    for cell in row:
+        s = _norm_cell(cell).lower()
+        if s and any(w in s for w in _HEADER_WORDS):
+            return True
+    return False
+
+
+def _sheet_target(title: str):
+    t = (title or "").lower()
+    if "класс" in t or "class" in t:
+        return "classes"
+    if "учит" in t or "teacher" in t:
+        return "teachers"
+    if "предмет" in t or "subject" in t:
+        return "subjects"
+    if "кабинет" in t or "room" in t:
+        return "classrooms"
+    return None
+
+
+def _parse_reference_workbook(wb) -> Dict[str, Any]:
+    """Разбирает книгу Excel в списки классов/учителей/предметов/кабинетов.
+
+    Поддерживаются два варианта:
+    1) отдельные листы «Классы», «Учителя», «Предметы», «Кабинеты»;
+    2) один лист с колонками, где заголовки содержат «Класс», «Учитель», «Предмет», «Кабинет».
+    """
+    result = {"classes": [], "teachers": [], "subjects": [], "classrooms": []}
+
+    for ws in wb.worksheets:
+        rows = list(ws.iter_rows(values_only=True))
+        if not rows:
+            continue
+        target = _sheet_target(ws.title)
+        if not target:
+            continue
+        start = 1 if _looks_like_header(rows[0]) else 0
+        for r in rows[start:]:
+            name = _norm_cell(r[0]) if len(r) > 0 else ""
+            if not name:
+                continue
+            if target == "subjects":
+                cat = _norm_cell(r[1]) if len(r) > 1 else ""
+                result["subjects"].append({"name": name, "category": cat or "Основной"})
+            elif target == "classrooms":
+                cap_raw = r[1] if len(r) > 1 else None
+                try:
+                    cap = int(cap_raw) if cap_raw not in (None, "") else None
+                except Exception:
+                    cap = None
+                result["classrooms"].append({"number": name, "capacity": cap})
+            else:
+                result[target].append(name)
+
+    if not any(result.values()) and wb.worksheets:
+        ws = wb.worksheets[0]
+        rows = list(ws.iter_rows(values_only=True))
+        if rows:
+            header = [_norm_cell(h).lower() for h in rows[0]]
+
+            def col(words):
+                for i, h in enumerate(header):
+                    if any(w in h for w in words):
+                        return i
+                return None
+
+            ci = col(["класс", "class"])
+            ti = col(["учит", "teacher", "фио"])
+            si = col(["предмет", "subject"])
+            ri = col(["кабинет", "room"])
+
+            for r in rows[1:]:
+                if ci is not None and ci < len(r) and _norm_cell(r[ci]):
+                    result["classes"].append(_norm_cell(r[ci]))
+                if ti is not None and ti < len(r) and _norm_cell(r[ti]):
+                    result["teachers"].append(_norm_cell(r[ti]))
+                if si is not None and si < len(r) and _norm_cell(r[si]):
+                    result["subjects"].append({"name": _norm_cell(r[si]), "category": "Основной"})
+                if ri is not None and ri < len(r) and _norm_cell(r[ri]):
+                    result["classrooms"].append({"number": _norm_cell(r[ri]), "capacity": None})
+
+    result["classes"] = list(dict.fromkeys(result["classes"]))
+    result["teachers"] = list(dict.fromkeys(result["teachers"]))
+
+    seen = set()
+    subs = []
+    for s in result["subjects"]:
+        if s["name"] not in seen:
+            seen.add(s["name"])
+            subs.append(s)
+    result["subjects"] = subs
+
+    seen = set()
+    rooms = []
+    for c in result["classrooms"]:
+        if c["number"] not in seen:
+            seen.add(c["number"])
+            rooms.append(c)
+    result["classrooms"] = rooms
+
+    return result
+
+
+@app.post("/api/import-excel")
+async def import_excel(file: UploadFile = File(...), current_user: User = Depends(get_current_user)):
+    """Импорт справочников из Excel: возвращает распознанные списки."""
+    try:
+        content = await file.read()
+        if not content:
+            raise HTTPException(status_code=400, detail="Пустой файл")
+        from openpyxl import load_workbook
+        wb = load_workbook(io.BytesIO(content), data_only=True, read_only=True)
+        try:
+            data = _parse_reference_workbook(wb)
+        finally:
+            wb.close()
+        return data
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Не удалось прочитать Excel: {e}")

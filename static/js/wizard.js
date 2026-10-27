@@ -480,19 +480,97 @@ function removeClassroom(i) {
 }
 
 function importFromExcel() {
-    alert('📥 Функция импорта из Excel:\n\nВ реальной версии здесь откроется диалог выбора файла.\nСейчас добавлены демонстрационные данные для теста.');
-    if (schoolData.teachers.length === 0) {
-        schoolData.teachers.push({ full_name: "Иванова М.П.", email: "", subjects: [] });
-        schoolData.teachers.push({ full_name: "Петров С.С.", email: "", subjects: [] });
-        renderTeachers();
-        updateTeacherDatalist();
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.xlsx,.xls';
+    input.style.display = 'none';
+    input.onchange = () => {
+        const file = input.files && input.files[0];
+        if (file) uploadExcel(file);
+        document.body.removeChild(input);
+    };
+    document.body.appendChild(input);
+    input.click();
+}
+
+async function uploadExcel(file) {
+    const form = new FormData();
+    form.append('file', file);
+    try {
+        const res = await fetch('/api/import-excel', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + getToken() },
+            body: form
+        });
+        if (!res.ok) {
+            let msg = 'Ошибка ' + res.status;
+            try {
+                const err = await res.json();
+                if (err && err.detail) msg = err.detail;
+            } catch (_) { /* ignore */ }
+            throw new Error(msg);
+        }
+        const data = await res.json();
+        applyImportedReferences(data);
+    } catch (e) {
+        alert('Не удалось импортировать: ' + e.message);
     }
-    if (schoolData.subjects.length === 0) {
-        schoolData.subjects.push({ name: "Математика", category: "Основной" });
-        schoolData.subjects.push({ name: "Русский язык", category: "Основной" });
-        renderSubjects();
-    }
+}
+
+function applyImportedReferences(data) {
+    let added = 0;
+
+    (data.classes || []).forEach(raw => {
+        const name = String(raw).trim();
+        if (!name) return;
+        if (schoolData.classes.some(c => c.name.toLowerCase() === name.toLowerCase())) return;
+        const match = name.match(/(\d+)([А-Яа-яA-Za-z]?)/);
+        schoolData.classes.push({ name: name, grade: match ? parseInt(match[1]) : 0, letter: match ? match[2] : '' });
+        added++;
+    });
+
+    (data.teachers || []).forEach(raw => {
+        const name = String(raw).trim();
+        if (!name) return;
+        if (schoolData.teachers.some(t => t.full_name.toLowerCase() === name.toLowerCase())) return;
+        schoolData.teachers.push({ full_name: name, email: '', subjects: [] });
+        added++;
+    });
+
+    (data.subjects || []).forEach(raw => {
+        const name = (typeof raw === 'string') ? raw.trim() : ((raw && raw.name) ? String(raw.name).trim() : '');
+        if (!name) return;
+        if (schoolData.subjects.some(s => s.name.toLowerCase() === name.toLowerCase())) return;
+        schoolData.subjects.push({ name: name, category: (raw && raw.category) || 'Основной' });
+        added++;
+    });
+
+    (data.classrooms || []).forEach(raw => {
+        const number = (typeof raw === 'string') ? raw.trim() : ((raw && raw.number) ? String(raw.number).trim() : '');
+        if (!number) return;
+        if (schoolData.classrooms.some(c => c.number.toLowerCase() === number.toLowerCase())) return;
+        schoolData.classrooms.push({ number: number, capacity: (raw && raw.capacity) || null });
+        added++;
+    });
+
     saveSchoolData();
+    renderClasses();
+    renderTeachers();
+    renderSubjects();
+    renderClassrooms();
+    updateTeacherDatalist();
+    updateTeacherSelect();
+
+    if (typeof logActivity === 'function') {
+        logActivity('Импорт из Excel: добавлено ' + added + ' записей');
+    }
+
+    const summary =
+        'Классы: ' + (data.classes || []).length +
+        ', учителя: ' + (data.teachers || []).length +
+        ', предметы: ' + (data.subjects || []).length +
+        ', кабинеты: ' + (data.classrooms || []).length;
+    alert('✅ Импорт завершён.\n' + summary + (added ? '' : '\nНовых записей нет — всё уже было.'));
 }
 
 function updateTeacherSelect() {

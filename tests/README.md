@@ -22,6 +22,7 @@
 | `test_move_lesson.py` | сквозной перенос урока через HTTP + реальная БД (SQLite) |
 | `test_topics.py` | сквозное сохранение тем уроков |
 | `test_substitutions.py` | журнал замен: CRUD + общий доступ для всех пользователей |
+| `test_import_excel.py` | импорт справочников из Excel (листы и один лист с колонками) |
 | `test_drag_and_drop.py` | реальный HTML5 drag-and-drop в headless Chrome (Playwright) |
 
 ## Требования

@@ -230,6 +230,7 @@
                 </div>
                 <div id="teacherDuplicateWarning" class="warning-message">⚠ Такой учитель уже существует!</div>
                 <button class="btn-primary" onclick="addTeacher()">+ Добавить учителя</button>
+                <button class="btn-secondary" onclick="importFromExcel()">📥 Импорт из Excel</button>
                 <table id="teachersTable" class="data-table"></table>
             </div>
             <div class="reference-content" id="ref-subjects">
@@ -248,6 +249,7 @@
                 </div>
                 <div id="subjectDuplicateWarning" class="warning-message">⚠ Такой предмет уже существует!</div>
                 <button class="btn-primary" onclick="addSubject()">+ Добавить предмет</button>
+                <button class="btn-secondary" onclick="importFromExcel()">📥 Импорт из Excel</button>
                 <table id="subjectsTable" class="data-table"></table>
 
                 <hr style="margin:25px 0; border:none; border-top:1px solid #eee;">
@@ -275,6 +277,7 @@
                 </div>
                 <div id="classroomDuplicateWarning" class="warning-message">⚠ Такой кабинет уже существует!</div>
                 <button class="btn-primary" onclick="addClassroom()">+ Добавить кабинет</button>
+                <button class="btn-secondary" onclick="importFromExcel()">📥 Импорт из Excel</button>
                 <table id="classroomsTable" class="data-table"></table>
             </div>
             <button class="btn-primary" onclick="completeStep(2)">💾 Далее →</button>
