@@ -23,6 +23,7 @@
 | `test_topics.py` | сквозное сохранение тем уроков |
 | `test_substitutions.py` | журнал замен: CRUD + общий доступ для всех пользователей |
 | `test_import_excel.py` | импорт справочников из Excel (листы и один лист с колонками) |
+| `test_generate_validation.py` | пустые/None часы не вызывают 422 при генерации |
 | `test_drag_and_drop.py` | реальный HTML5 drag-and-drop в headless Chrome (Playwright) |
 
 ## Требования

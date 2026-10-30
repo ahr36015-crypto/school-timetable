@@ -704,9 +704,14 @@ function toggleAssignmentSubject(i, subject, checked) {
 // ============================================================
 // КОНТРОЛЬ НАГРУЗКИ УЧИТЕЛЯ (ШАГ 3)
 // ============================================================
+function safeHours(value) {
+    const n = parseInt(value, 10);
+    return (Number.isFinite(n) && n > 0) ? n : 1;
+}
+
 function getPlannedHours(teacherName) {
     const workloads = schoolData.workloads.filter(w => w.teacher === teacherName);
-    return workloads.reduce((sum, w) => sum + (parseInt(w.hours) || 0), 0);
+    return workloads.reduce((sum, w) => sum + safeHours(w.hours), 0);
 }
 
 function getActualHours(teacherName) {
@@ -857,7 +862,7 @@ function renderWorkloads(teacher) {
             </div>
             <div class="form-group hours-group">
                 <label>Часов в неделю</label>
-                <input type="number" class="workload-hours" value="${w.hours}"
+                <input type="number" class="workload-hours" value="${safeHours(w.hours)}"
                        data-idx="${i}" data-field="hours" min="1" max="40"
                        onchange="updateWorkloadFromInput(this)">
             </div>
@@ -908,7 +913,12 @@ function updateWorkloadFromInput(input) {
     const teacher = document.getElementById('teacherSelect').value;
     const workloads = schoolData.workloads.filter(w => w.teacher === teacher);
     if (workloads[idx]) {
-        workloads[idx][field] = field === 'hours' ? parseInt(input.value) : input.value;
+        if (field === 'hours') {
+            workloads[idx][field] = safeHours(input.value);
+            input.value = workloads[idx][field];
+        } else {
+            workloads[idx][field] = input.value;
+        }
         saveSchoolData();
         renderTeacherLoadStats(teacher);
     }
@@ -1228,8 +1238,22 @@ async function generateTimetable() {
     schoolData.teachers.forEach(t => {
         const workloads = schoolData.workloads.filter(w => w.teacher === t.full_name);
         if (workloads.length === 0) return;
+
+        // Санитизация перед отправкой: часы -> целое >= 1 (защита от NaN/null),
+        // строки -> строки; некорректные позиции без предмета/класса отбрасываем
+        const lessons = workloads
+            .map(w => ({
+                subject: String(w.subject || '').trim(),
+                grade: String(w.grade || '').trim(),
+                hours: safeHours(w.hours),
+                classroom: w.classroom || ''
+            }))
+            .filter(l => l.subject && l.grade);
+
+        if (lessons.length === 0) return;
+
         teachers[t.full_name] = {
-            lessons: workloads.map(w => ({ subject: w.subject, grade: w.grade, hours: w.hours, classroom: w.classroom })),
+            lessons: lessons,
             availability: schoolData.availability[t.full_name] || {},
             max_days_per_week: 5
         };

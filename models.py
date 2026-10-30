@@ -1,13 +1,30 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Dict, List, Optional, Any
 from enum import Enum
 
 
 class Lesson(BaseModel):
-    subject: str
-    grade: str
-    hours: int
-    classroom: Optional[str] = None  # <-- ДОБАВЛЕНО: кабинет для этой нагрузки
+    subject: str = ""
+    grade: str = ""
+    hours: int = Field(default=1, ge=1)
+    classroom: Optional[str] = None
+
+    @field_validator("subject", "grade", mode="before")
+    @classmethod
+    def _coerce_str(cls, v):
+        return "" if v is None else str(v).strip()
+
+    @field_validator("hours", mode="before")
+    @classmethod
+    def _coerce_hours(cls, v):
+        """Не падаем с 422, если часы пустые/None/NaN — приводим к >= 1."""
+        if v is None or v == "":
+            return 1
+        try:
+            n = int(float(v))
+        except (TypeError, ValueError):
+            return 1
+        return n if n >= 1 else 1
 
 
 class Teacher(BaseModel):
