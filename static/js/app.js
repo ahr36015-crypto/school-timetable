@@ -25,6 +25,8 @@ function _ensureData() {
     if (!Array.isArray(schoolData.planItems)) schoolData.planItems = [];
     if (!Array.isArray(schoolData.substitutions)) schoolData.substitutions = [];
     if (!Array.isArray(schoolData.activityLog)) schoolData.activityLog = [];
+    if (!Array.isArray(schoolData.holidays)) schoolData.holidays = [];
+    if (!Array.isArray(schoolData.transfers)) schoolData.transfers = [];
 }
 
 function _subjects() { return (schoolData.subjects || []).map(s => s.name); }
@@ -75,7 +77,13 @@ function openPage(pageId, navElement) {
     if (crumbsEl) crumbsEl.textContent = meta[1];
 
     if (pageId === 'dashboard') renderDashboard();
-    if (pageId === 'schedule') renderSchedulePage();
+    if (pageId === 'schedule') {
+        renderSchedulePage();
+        renderCalendarLists();
+        if (typeof loadSubstitutions === 'function') {
+            loadSubstitutions().then(() => renderSchedulePage());
+        }
+    }
     if (pageId === 'plans') renderPlans();
     if (pageId === 'substitutions') renderSubstitutions();
     if (pageId === 'hours') renderHours();
@@ -122,6 +130,22 @@ function _mondayOf(date) {
     const dow = (d.getDay() + 6) % 7; // Пн=0
     d.setDate(d.getDate() - dow);
     return d;
+}
+
+function _isoLocal(d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+function _currentWeekDates() {
+    const names = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
+    const mon = _mondayOf(new Date());
+    const map = {};
+    names.forEach((n, i) => {
+        const d = new Date(mon.getTime());
+        d.setDate(mon.getDate() + i);
+        map[n] = _isoLocal(d);
+    });
+    return map;
 }
 
 function getCurrentWeekInfo() {
@@ -234,6 +258,11 @@ function renderSchedulePage() {
     const slots = currentResult.slots || [1, 2, 3, 4, 5, 6, 7];
     const times = getLessonTimes();
     const todayName = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'][new Date().getDay()];
+    const weekDates = _currentWeekDates();
+    const todayStr = _isoLocal(new Date());
+    const holidays = schoolData.holidays || [];
+    const transfers = schoolData.transfers || [];
+    const subsToday = (_substitutionsCache || []).filter(s => s.date === todayStr);
 
     const map = {};
     currentResult.teachers.forEach(t => {
@@ -242,14 +271,22 @@ function renderSchedulePage() {
                 (lessons || []).forEach(l => {
                     if (grade && l.grade !== grade) return;
                     const key = day + '|' + slot;
-                    (map[key] = map[key] || []).push({ subject: l.subject, grade: l.grade, classroom: l.classroom, teacher: t.teacher, week_index: _normWeek(l.week_index) });
+                    (map[key] = map[key] || []).push({ subject: l.subject, grade: l.grade, classroom: l.classroom, teacher: t.teacher, week_index: _normWeek(l.week_index), half: l.half === true });
                 });
             });
         });
     });
 
     let html = '<table class="timetable"><thead><tr><th>Время</th>';
-    days.forEach(d => { html += '<th class="' + (d === todayName ? 'today' : '') + '">' + _esc(d) + '</th>'; });
+    days.forEach(d => {
+        const date = weekDates[d];
+        const isHoliday = date && holidays.includes(date);
+        const tr = date ? transfers.find(x => x.date === date) : null;
+        let extra = '';
+        if (isHoliday) extra = ' <small>(праздник)</small>';
+        else if (tr) extra = ' <small>(перенос: ' + _esc(tr.toDay) + ')</small>';
+        html += '<th class="' + (d === todayName ? 'today ' : '') + (isHoliday ? 'holiday' : '') + '">' + _esc(d) + extra + '</th>';
+    });
     html += '</tr></thead><tbody>';
     slots.forEach((slot, idx) => {
         const parts = (times[idx] || '').split('-');
@@ -261,10 +298,26 @@ function renderSchedulePage() {
                 const wi = _normWeek(l.week_index);
                 const wk = wi === 0 ? 'blue' : (wi === 1 ? 'red' : 'every');
                 const dot = wk === 'every' ? 'both' : wk;
-                html += '<div class="lesson-card" data-week="' + wk + '">' +
+                const halfTxt = (l.half === true) ? ' <small>(0,5 ч)</small>' : '';
+
+                // учёт замен на сегодня
+                let teacherName = l.teacher;
+                let wasSub = false;
+                let noSub = false;
+                if (day === todayName) {
+                    const sub = subsToday.find(s => String(s.grade) === String(l.grade) && String(s.slot) === String(slot));
+                    if (sub) {
+                        if (sub.substitute) { teacherName = sub.substitute; wasSub = true; }
+                        else { teacherName = sub.absent || l.teacher; noSub = true; }
+                    }
+                }
+
+                const cls = 'lesson-card' + (l.half ? ' half' : '') + (wasSub ? ' substituted' : '');
+                html += '<div class="' + cls + '" data-week="' + wk + '">' +
                     '<div class="marker"><span class="dot ' + dot + '"></span></div>' +
-                    '<div class="title">' + _esc(l.subject) + (wi === null ? '' : ' <small>(' + weekShortText(wi) + ')</small>') + '</div>' +
-                    '<div class="meta">' + _esc(l.grade) + ' · ' + _esc(l.classroom || '—') + ' · ' + _esc(l.teacher) + '</div>' +
+                    '<div class="title">' + _esc(l.subject) + halfTxt + (wi === null ? '' : ' <small>(' + weekShortText(wi) + ')</small>') + '</div>' +
+                    '<div class="meta">' + _esc(l.grade) + ' · ' + _esc(l.classroom || '—') + ' · ' + _esc(teacherName) + '</div>' +
+                    (wasSub ? '<div class="sub-note">замена</div>' : (noSub ? '<div class="sub-note">нет замены</div>' : '')) +
                     '</div>';
             });
             html += '</td>';
@@ -290,6 +343,71 @@ function filterScheduleWeek(type, btn) {
         else if (type === 'red') show = week !== 'blue';
         card.style.display = show ? '' : 'none';
     });
+}
+
+// ---------- Календарь исключений (праздники и переносы) ----------
+function renderCalendarLists() {
+    _ensureData();
+
+    const hl = document.getElementById('holidaysList');
+    if (hl) {
+        const hs = [...schoolData.holidays].sort();
+        hl.innerHTML = hs.length
+            ? hs.map(d => '<span class="tag">' + _esc(d) + ' <button type="button" onclick="removeHoliday(\'' + d + '\')" title="Удалить" aria-label="Удалить">×</button></span>').join('')
+            : '<span class="muted">Праздников нет</span>';
+    }
+
+    const tl = document.getElementById('transfersList');
+    if (tl) {
+        const trs = schoolData.transfers || [];
+        tl.innerHTML = trs.length
+            ? trs.map((t, i) => '<span class="tag">' + _esc(t.date) + ' → ' + _esc(t.toDay) + ' <button type="button" onclick="removeTransfer(' + i + ')" title="Удалить" aria-label="Удалить">×</button></span>').join('')
+            : '<span class="muted">Переносов нет</span>';
+    }
+}
+
+function addHoliday() {
+    _ensureData();
+    const el = document.getElementById('holidayDate');
+    const date = el ? el.value : '';
+    if (!date) { alert('Укажите дату праздника'); return; }
+    if (!schoolData.holidays.includes(date)) schoolData.holidays.push(date);
+    saveSchoolData();
+    renderCalendarLists();
+    renderSchedulePage();
+    logActivity('Праздник: ' + date);
+}
+
+function removeHoliday(date) {
+    _ensureData();
+    schoolData.holidays = schoolData.holidays.filter(d => d !== date);
+    saveSchoolData();
+    renderCalendarLists();
+    renderSchedulePage();
+}
+
+function addTransfer() {
+    _ensureData();
+    const dateEl = document.getElementById('transferDate');
+    const dayEl = document.getElementById('transferToDay');
+    const date = dateEl ? dateEl.value : '';
+    const toDay = dayEl ? dayEl.value : '';
+    if (!date || !toDay) { alert('Укажите дату и день'); return; }
+    if (!schoolData.transfers.some(t => t.date === date)) {
+        schoolData.transfers.push({ date: date, toDay: toDay });
+    }
+    saveSchoolData();
+    renderCalendarLists();
+    renderSchedulePage();
+    logActivity('Перенос: ' + date + ' → ' + toDay);
+}
+
+function removeTransfer(i) {
+    _ensureData();
+    schoolData.transfers = schoolData.transfers.filter((_, idx) => idx !== i);
+    saveSchoolData();
+    renderCalendarLists();
+    renderSchedulePage();
 }
 
 // ---------- Учебные планы ----------

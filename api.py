@@ -109,7 +109,8 @@ def response_to_dict(result: TimetableResponse, request: TimetableRequest) -> Di
                             "teacher": a.teacher,
                             "classroom": a.classroom,
                             "topic": "",
-                            "week_index": a.week_index
+                            "week_index": a.week_index,
+                            "half": a.half
                         }
                         for a in assignments
                     ]
@@ -633,7 +634,8 @@ def move_lesson(
                 'teacher': move_data['teacher'],
                 'classroom': move_data.get('classroom', ''),
                 'topic': '',
-                'week_index': req_week_index
+                'week_index': req_week_index,
+                'half': bool(move_data.get('half', False))
             }
             schedule[actual_to_day][to_slot].append(new_lesson)
             print(

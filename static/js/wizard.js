@@ -718,8 +718,9 @@ function toggleAssignmentSubject(i, subject, checked) {
 // КОНТРОЛЬ НАГРУЗКИ УЧИТЕЛЯ (ШАГ 3)
 // ============================================================
 function safeHours(value) {
-    const n = parseInt(value, 10);
-    return (Number.isFinite(n) && n > 0) ? n : 1;
+    const n = parseFloat(value);
+    if (!Number.isFinite(n) || n <= 0) return 1;
+    return Math.max(0.5, Math.round(n * 2) / 2);
 }
 
 function getPlannedHours(teacherName) {
@@ -883,7 +884,7 @@ function renderWorkloads(teacher) {
             <div class="form-group hours-group">
                 <label>Часов в неделю</label>
                 <input type="number" class="workload-hours" value="${safeHours(w.hours)}"
-                       data-idx="${i}" data-field="hours" min="1" max="40"
+                       data-idx="${i}" data-field="hours" min="0.5" step="0.5" max="40"
                        onchange="updateWorkloadFromInput(this)">
             </div>
             <div class="form-group">

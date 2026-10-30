@@ -144,6 +144,31 @@
                         </div>
                         <div class="schedule-grid-wrap" id="schedulePageGrid"></div>
                     </div>
+
+                    <div class="card">
+                        <h3>Календарь исключений (праздники и переносы)</h3>
+                        <div class="exceptions-form">
+                            <div class="form-group"><label>Праздник (дата)</label><input type="date" class="form-control" id="holidayDate"></div>
+                            <button class="btn" onclick="addHoliday()">+ Праздник</button>
+                        </div>
+                        <div id="holidaysList" class="tag-list"></div>
+                        <hr class="sep">
+                        <div class="exceptions-form">
+                            <div class="form-group"><label>Перенос (дата)</label><input type="date" class="form-control" id="transferDate"></div>
+                            <div class="form-group"><label>Занимать день</label>
+                                <select class="form-control" id="transferToDay">
+                                    <option>Понедельник</option>
+                                    <option>Вторник</option>
+                                    <option>Среда</option>
+                                    <option>Четверг</option>
+                                    <option>Пятница</option>
+                                    <option>Суббота</option>
+                                </select>
+                            </div>
+                            <button class="btn" onclick="addTransfer()">+ Перенос</button>
+                        </div>
+                        <div id="transfersList" class="tag-list"></div>
+                    </div>
                 </section>
 
                 <!-- СТРАНИЦА: МАСТЕР НАСТРОЙКИ (пошаговый мастер) -->

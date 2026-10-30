@@ -7,6 +7,7 @@ let schoolData = {
     workloads: [], availability: {},
     teacherAssignments: {},
     planItems: [], substitutions: [], activityLog: [],
+    holidays: [], transfers: [],
     weekConfig: { anchorDate: '', anchorIsBlue: true }
 };
 let currentResult = null;

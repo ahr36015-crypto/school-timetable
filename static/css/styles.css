@@ -790,3 +790,18 @@ table.data-table tr:nth-child(even) { background: transparent; }
     .stats-grid { grid-template-columns: repeat(2, 1fr); }
     .reports-grid { grid-template-columns: 1fr; }
 }
+
+/* ============================================================
+   КАЛЕНДАРЬ ИСКЛЮЧЕНИЙ И ПОЛОВИНКА ПАРЫ
+   ============================================================ */
+.exceptions-form { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; margin-bottom: 10px; }
+.exceptions-form .form-group { margin: 0; min-width: 180px; }
+hr.sep { margin: 16px 0; border: none; border-top: 1px solid var(--border); }
+.tag-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.tag { display: inline-flex; align-items: center; gap: 8px; background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 16px; padding: 4px 10px; font-size: .8rem; color: #374151; }
+.tag button { background: none !important; border: none !important; color: #64748b; cursor: pointer; padding: 0 2px !important; font-size: 1rem; line-height: 1; }
+.tag button:hover { color: #ef4444; }
+.timetable th.holiday { background: #fee2e2; color: #991b1b; }
+.lesson-card.half { background: #fef9c3; border-left-color: #eab308; }
+.lesson-card.substituted { background: #dcfce7; border-left-color: #16a34a; }
+.lesson-card .sub-note { font-size: .65rem; color: #16a34a; margin-top: 2px; font-weight: 600; }

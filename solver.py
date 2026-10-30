@@ -63,20 +63,24 @@ def solve_timetable(request: TimetableRequest) -> TimetableResponse:
     slots = request.slots
     teachers = request.teachers
 
-    # Собираем все уроки (с признаком чётности недели)
+    # Собираем занятия. Часы кратны 0.5; каждое «полное» занятие = 2 единицы,
+    # «половинка» = 1 единица. Вместимость одного слота — 2 единицы.
     all_lessons = []
     for teacher_name, teacher_data in teachers.items():
         for lesson in teacher_data.lessons:
             week_index = getattr(lesson, "week_index", None)
-            for hour_idx in range(lesson.hours):
+            units_left = max(1, int(round(float(lesson.hours) * 2)))
+            while units_left > 0:
+                chunk = 2 if units_left >= 2 else 1
                 all_lessons.append({
                     "teacher": teacher_name,
                     "subject": lesson.subject,
                     "grade": lesson.grade,
                     "classroom": lesson.classroom,
                     "week_index": week_index,
-                    "hour_idx": hour_idx,
+                    "units": chunk,
                 })
+                units_left -= chunk
 
     if not all_lessons:
         return TimetableResponse(
@@ -137,7 +141,7 @@ def solve_timetable(request: TimetableRequest) -> TimetableResponse:
                 if b is None:
                     continue
                 lesson = lv["lesson"]
-                entry = (b, lesson.get("week_index"))
+                entry = (b, lesson.get("week_index"), lesson.get("units", 2))
                 by_teacher[lesson["teacher"]].append(entry)
                 by_grade[lesson["grade"]].append(entry)
                 if lesson.get("classroom"):
@@ -146,9 +150,10 @@ def solve_timetable(request: TimetableRequest) -> TimetableResponse:
             for group in (by_teacher, by_grade, by_classroom):
                 for _, entries in group.items():
                     for week in range(CYCLE_WEEKS):
-                        active = [b for (b, wi) in entries if wi is None or wi == week]
+                        active = [(b, u) for (b, wi, u) in entries if wi is None or wi == week]
                         if len(active) > 1:
-                            model.AddAtMostOne(active)
+                            # вместимость слота = 2 половинки (1 полная пара)
+                            model.Add(sum(u * b for (b, u) in active) <= 2)
 
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = 30.0
@@ -223,6 +228,7 @@ def solve_timetable(request: TimetableRequest) -> TimetableResponse:
                 teacher=teacher_name,
                 classroom=lesson.get("classroom", ""),
                 week_index=lesson.get("week_index"),
+                half=(lesson.get("units") == 1),
             )
         )
 

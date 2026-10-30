@@ -104,3 +104,37 @@ def test_everyweek_lessons_conflict_in_same_slot():
     )
     result = solve_timetable(request)
     assert result.status == "INFEASIBLE"
+
+
+def test_two_half_lessons_share_slot():
+    # Две «половинки» одного класса помещаются в один слот (0.5 + 0.5 = 1)
+    request = TimetableRequest(
+        days=["Понедельник"], slots=[1],
+        teachers={
+            "T1": Teacher(lessons=[Lesson(subject="Ритмика", grade="5А", hours=0.5)],
+                          availability={"Понедельник": [1]}),
+            "T2": Teacher(lessons=[Lesson(subject="Музыка", grade="5А", hours=0.5)],
+                          availability={"Понедельник": [1]}),
+        },
+    )
+    result = solve_timetable(request)
+    assert result.status in ("OPTIMAL", "FEASIBLE"), result.validation_errors
+    placed = [l for t in result.teachers for slots in t.schedule.values()
+              for lessons in slots.values() for l in lessons]
+    assert len(placed) == 2
+    assert all(l.half for l in placed)
+
+
+def test_full_and_half_conflict_in_slot():
+    # Полная (1) + половинка (0.5) в одном слоте невозможны
+    request = TimetableRequest(
+        days=["Понедельник"], slots=[1],
+        teachers={
+            "T1": Teacher(lessons=[Lesson(subject="Математика", grade="5А", hours=1)],
+                          availability={"Понедельник": [1]}),
+            "T2": Teacher(lessons=[Lesson(subject="Музыка", grade="5А", hours=0.5)],
+                          availability={"Понедельник": [1]}),
+        },
+    )
+    result = solve_timetable(request)
+    assert result.status == "INFEASIBLE"

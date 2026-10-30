@@ -172,10 +172,11 @@ function renderGlobalEditor() {
                              data-grade="${l.grade}"
                              data-classroom="${l.classroom || ''}"
                              data-week-index="${l.week_index == null ? '' : l.week_index}"
+                             data-half="${l.half ? '1' : ''}"
                              data-day="${day}"
                              data-slot="${slot}">
                             <span class="subj">${l.subject}</span>
-                            <span class="meta">${l.grade} кл${classroom}</span>
+                            <span class="meta">${l.grade} кл${classroom}${l.half ? ' · 0,5ч' : ''}</span>
                         </div>
                     `;
                 });
@@ -240,6 +241,7 @@ function handleGlobalDragStart(e, chipId) {
         grade: chip.dataset.grade,
         classroom: chip.dataset.classroom || '',
         weekIndex: (chip.dataset.weekIndex === '' || chip.dataset.weekIndex == null) ? null : parseInt(chip.dataset.weekIndex, 10),
+        half: chip.dataset.half === '1',
         fromDay: chip.dataset.day,
         fromSlot: parseInt(chip.dataset.slot)
     };
@@ -439,6 +441,7 @@ async function handleGlobalDrop(e) {
                 grade: draggedLessonData.grade,
                 classroom: draggedLessonData.classroom,
                 week_index: draggedLessonData.weekIndex,
+                half: draggedLessonData.half,
                 from_day: draggedLessonData.fromDay,
                 from_slot: draggedLessonData.fromSlot,
                 to_day: toDay,

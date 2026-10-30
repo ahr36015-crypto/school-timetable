@@ -6,7 +6,8 @@ from enum import Enum
 class Lesson(BaseModel):
     subject: str = ""
     grade: str = ""
-    hours: int = Field(default=1, ge=1)
+    # академические часы в неделю; допускается 0.5 (половина пары ~22-25 мин)
+    hours: float = Field(default=1, ge=0.5)
     classroom: Optional[str] = None
     # Чётность недели в двухнедельном цикле: None — каждую неделю, 0 — синяя, 1 — красная
     week_index: Optional[int] = Field(default=None, alias="weekIndex")
@@ -21,14 +22,17 @@ class Lesson(BaseModel):
     @field_validator("hours", mode="before")
     @classmethod
     def _coerce_hours(cls, v):
-        """Не падаем с 422, если часы пустые/None/NaN — приводим к >= 1."""
+        """Приводим часы к кратному 0.5 (минимум 0.5); None/''/NaN -> 1."""
         if v is None or v == "":
             return 1
         try:
-            n = int(float(v))
+            n = float(v)
         except (TypeError, ValueError):
             return 1
-        return n if n >= 1 else 1
+        if n <= 0:
+            return 1
+        n = round(n * 2) / 2
+        return max(0.5, n)
 
 
 class Teacher(BaseModel):
@@ -52,6 +56,7 @@ class LessonAssignment(BaseModel):
     teacher: str
     classroom: Optional[str] = None
     week_index: Optional[int] = None
+    half: bool = False
 
 
 class TeacherSchedule(BaseModel):
