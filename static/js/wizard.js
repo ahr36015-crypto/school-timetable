@@ -856,7 +856,7 @@ function renderWorkloads(teacher) {
                 </select>
             </div>
             <div class="form-group hours-group">
-                <label>Часы</label>
+                <label>Часов в неделю</label>
                 <input type="number" class="workload-hours" value="${w.hours}"
                        data-idx="${i}" data-field="hours" min="1" max="40"
                        onchange="updateWorkloadFromInput(this)">
@@ -1001,7 +1001,23 @@ function toggleAvailability(teacher, day, slot) {
 
 function selectTemplate(card, type) {
     document.querySelectorAll('.template-card').forEach(c => c.classList.remove('selected'));
-    card.classList.add('selected');
+    if (card) card.classList.add('selected');
+
+    // показываем форму и нужный шаблон
+    const form = document.getElementById('templateForm');
+    if (form) form.style.display = 'block';
+
+    const map = { time: 'timeTemplate', days: 'daysTemplate', exclude: 'excludeTemplate' };
+    const nameMap = { time: 'tmpl_name', days: 'tmpl_name2', exclude: 'tmpl_name3' };
+    Object.keys(map).forEach(key => {
+        const el = document.getElementById(map[key]);
+        if (el) el.style.display = (key === type) ? 'block' : 'none';
+    });
+
+    // подставляем выбранного учителя, если поле пустое
+    const nameEl = document.getElementById(nameMap[type]);
+    const teacher = (document.getElementById('teacherSelect') || {}).value;
+    if (nameEl && !nameEl.value && teacher) nameEl.value = teacher;
 }
 
 function getSelectedDays(selector) {
