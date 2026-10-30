@@ -198,6 +198,17 @@
                 <label>Время уроков</label>
                 <div id="lessonTimesContainer" class="lesson-times"></div>
             </div>
+            <div class="form-group">
+                <label>Начало цикла (понедельник опорной недели)</label>
+                <input type="date" id="weekAnchorDate">
+            </div>
+            <div class="form-group">
+                <label>Опорная неделя</label>
+                <select id="weekAnchorIsBlue">
+                    <option value="blue">Синяя</option>
+                    <option value="red">Красная</option>
+                </select>
+            </div>
             <button class="btn-primary" onclick="completeStep(1)">💾 Далее →</button>
         </div>
 
@@ -487,12 +498,19 @@
                             <div class="form-group"><label>Предмет</label><select class="form-control" id="planSubject"></select></div>
                             <div class="form-group"><label>Класс</label><select class="form-control" id="planGrade"></select></div>
                             <div class="form-group"><label>Часов/нед</label><input type="number" class="form-control" id="planHours" min="1" max="40" value="1"></div>
+                            <div class="form-group"><label>Периодичность</label>
+                                <select class="form-control" id="planWeek">
+                                    <option value="">Каждую неделю</option>
+                                    <option value="0">Только синяя</option>
+                                    <option value="1">Только красная</option>
+                                </select>
+                            </div>
                             <button class="btn" onclick="addPlanItem()">+ Добавить в план</button>
                         </div>
                         <div class="table-wrap">
                             <table class="data-table" id="plansTable">
-                                <thead><tr><th>Предмет</th><th>Класс</th><th>Часов/нед</th><th></th></tr></thead>
-                                <tbody><tr><td colspan="4" class="muted">План пуст</td></tr></tbody>
+                                <thead><tr><th>Предмет</th><th>Класс</th><th>Часов/нед</th><th>Периодичность</th><th></th></tr></thead>
+                                <tbody><tr><td colspan="5" class="muted">План пуст</td></tr></tbody>
                             </table>
                         </div>
                     </div>

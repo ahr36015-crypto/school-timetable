@@ -66,3 +66,41 @@ def test_solver_infeasible_reports_reason():
     assert result.status == "INFEASIBLE"
     # сообщение должно содержать конкретную причину, а не только общую фразу
     assert any("Класс 5А" in e for e in result.validation_errors)
+
+
+def test_parity_lessons_can_share_slot():
+    # 5А: Физика только в синюю неделю и Химия только в красную — могут стоять
+    # в один и тот же слот (в одну неделю бывает только одна из них).
+    request = TimetableRequest(
+        days=["Понедельник"], slots=[1],
+        teachers={
+            "T1": Teacher(lessons=[Lesson(subject="Физика", grade="5А", hours=1, weekIndex=0)],
+                          availability={"Понедельник": [1]}),
+            "T2": Teacher(lessons=[Lesson(subject="Химия", grade="5А", hours=1, weekIndex=1)],
+                          availability={"Понедельник": [1]}),
+        },
+    )
+    result = solve_timetable(request)
+    assert result.status in ("OPTIMAL", "FEASIBLE"), result.validation_errors
+    placed = []
+    for t in result.teachers:
+        for slots in t.schedule.values():
+            for lessons in slots.values():
+                placed.extend(lessons)
+    assert len(placed) == 2
+    assert {l.week_index for l in placed} == {0, 1}
+
+
+def test_everyweek_lessons_conflict_in_same_slot():
+    # Без чётности два урока одного класса в одном слоте невозможны
+    request = TimetableRequest(
+        days=["Понедельник"], slots=[1],
+        teachers={
+            "T1": Teacher(lessons=[Lesson(subject="Физика", grade="5А", hours=1)],
+                          availability={"Понедельник": [1]}),
+            "T2": Teacher(lessons=[Lesson(subject="Химия", grade="5А", hours=1)],
+                          availability={"Понедельник": [1]}),
+        },
+    )
+    result = solve_timetable(request)
+    assert result.status == "INFEASIBLE"

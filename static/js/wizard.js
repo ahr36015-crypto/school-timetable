@@ -214,6 +214,12 @@ function completeStep(step) {
         schoolData.days = parseInt(document.getElementById('daysPerWeek').value);
         schoolData.lessonsPerDay = parseInt(document.getElementById('lessonsPerDay').value);
         schoolData.lessonTimes = collectLessonTimes();
+        const anchorEl = document.getElementById('weekAnchorDate');
+        const anchorWeekEl = document.getElementById('weekAnchorIsBlue');
+        schoolData.weekConfig = {
+            anchorDate: anchorEl ? anchorEl.value : '',
+            anchorIsBlue: (anchorWeekEl ? anchorWeekEl.value : 'blue') !== 'red'
+        };
     }
     saveSchoolData();
     goToStep(step + 1);
@@ -228,6 +234,13 @@ function restoreStep1Fields() {
     if (nameField && schoolData.name) nameField.value = schoolData.name;
     if (daysField && schoolData.days) daysField.value = schoolData.days;
     if (lessonsField && schoolData.lessonsPerDay) lessonsField.value = schoolData.lessonsPerDay;
+
+    const cfg = schoolData.weekConfig || {};
+    const anchorEl = document.getElementById('weekAnchorDate');
+    const anchorWeekEl = document.getElementById('weekAnchorIsBlue');
+    if (anchorEl && cfg.anchorDate) anchorEl.value = cfg.anchorDate;
+    if (anchorWeekEl) anchorWeekEl.value = (cfg.anchorIsBlue === false) ? 'red' : 'blue';
+
     renderLessonTimeRows();
 }
 
@@ -711,7 +724,12 @@ function safeHours(value) {
 
 function getPlannedHours(teacherName) {
     const workloads = schoolData.workloads.filter(w => w.teacher === teacherName);
-    return workloads.reduce((sum, w) => sum + safeHours(w.hours), 0);
+    // Для занятий «через неделю» среднее в неделю = часы / 2
+    return workloads.reduce((sum, w) => {
+        const h = safeHours(w.hours);
+        const wi = (w.weekIndex === 0 || w.weekIndex === 1) ? w.weekIndex : null;
+        return sum + (wi === null ? h : h / 2);
+    }, 0);
 }
 
 function getActualHours(teacherName) {
@@ -767,11 +785,13 @@ function renderTeacherLoadStats(teacherName) {
                 }
             }
             const detailStatus = getLoadStatus(planned, actual);
+            const wi = (w.weekIndex === 0 || w.weekIndex === 1) ? w.weekIndex : null;
+            const perSuffix = wi === null ? '' : ' / 2 нед';
             detailsHtml += `
                 <div class="load-detail-row">
-                    <span class="load-detail-subject">${w.subject} (${w.grade} кл)</span>
+                    <span class="load-detail-subject">${w.subject} (${w.grade} кл)${wi === null ? '' : ' · ' + (wi === 0 ? 'синяя' : 'красная')}</span>
                     <span class="load-detail-hours">
-                        План: <strong>${planned}</strong> ч
+                        План: <strong>${planned}</strong> ч${perSuffix}
                         ${actual !== null ? `| Факт: <strong>${actual}</strong> ч` : '| Факт: —'}
                     </span>
                     <span class="load-detail-status ${detailStatus.class}">${detailStatus.icon} ${detailStatus.text}</span>
@@ -866,6 +886,14 @@ function renderWorkloads(teacher) {
                        data-idx="${i}" data-field="hours" min="1" max="40"
                        onchange="updateWorkloadFromInput(this)">
             </div>
+            <div class="form-group">
+                <label>Периодичность</label>
+                <select class="workload-week" data-idx="${i}" data-field="weekIndex" onchange="updateWorkloadFromInput(this)">
+                    <option value="" ${(w.weekIndex === 0 || w.weekIndex === 1) ? '' : 'selected'}>Каждую неделю</option>
+                    <option value="0" ${(w.weekIndex === 0) ? 'selected' : ''}>Только синяя</option>
+                    <option value="1" ${(w.weekIndex === 1) ? 'selected' : ''}>Только красная</option>
+                </select>
+            </div>
             <button class="small danger" onclick="removeWorkload(${i})" style="margin-top: 24px;" title="Удалить нагрузку" aria-label="Удалить нагрузку">🗑</button>
         </div>
     `).join('');
@@ -916,6 +944,8 @@ function updateWorkloadFromInput(input) {
         if (field === 'hours') {
             workloads[idx][field] = safeHours(input.value);
             input.value = workloads[idx][field];
+        } else if (field === 'weekIndex') {
+            workloads[idx][field] = (input.value === '') ? null : parseInt(input.value, 10);
         } else {
             workloads[idx][field] = input.value;
         }
@@ -1326,7 +1356,8 @@ async function generateTimetable(isRetry = false) {
                 subject: String(w.subject || '').trim(),
                 grade: String(w.grade || '').trim(),
                 hours: safeHours(w.hours),
-                classroom: w.classroom || ''
+                classroom: w.classroom || '',
+                weekIndex: (w.weekIndex === 0 || w.weekIndex === 1) ? w.weekIndex : null
             }))
             .filter(l => l.subject && l.grade);
 

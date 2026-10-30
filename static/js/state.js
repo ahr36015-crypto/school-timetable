@@ -6,7 +6,8 @@ let schoolData = {
     classes: [], teachers: [], subjects: [], classrooms: [],
     workloads: [], availability: {},
     teacherAssignments: {},
-    planItems: [], substitutions: [], activityLog: []
+    planItems: [], substitutions: [], activityLog: [],
+    weekConfig: { anchorDate: '', anchorIsBlue: true }
 };
 let currentResult = null;
 let currentTimetableId = null;

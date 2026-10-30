@@ -772,7 +772,7 @@ table.data-table tr:nth-child(even) { background: transparent; }
 /* ============================================================
    УЧЕБНЫЕ ПЛАНЫ И ЗАМЕНЫ
    ============================================================ */
-.plan-add-form, .subs-form { display: grid; grid-template-columns: repeat(4, 1fr) auto; gap: 12px; align-items: end; margin-bottom: 16px; }
+.plan-add-form, .subs-form { display: grid; grid-template-columns: repeat(5, 1fr) auto; gap: 12px; align-items: end; margin-bottom: 16px; }
 .subs-form { grid-template-columns: repeat(6, 1fr) auto; }
 .plan-add-form .form-group, .subs-form .form-group { margin: 0; }
 .plan-assignments { display: flex; flex-direction: column; gap: 8px; }

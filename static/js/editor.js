@@ -171,6 +171,7 @@ function renderGlobalEditor() {
                              data-subject="${l.subject}"
                              data-grade="${l.grade}"
                              data-classroom="${l.classroom || ''}"
+                             data-week-index="${l.week_index == null ? '' : l.week_index}"
                              data-day="${day}"
                              data-slot="${slot}">
                             <span class="subj">${l.subject}</span>
@@ -238,6 +239,7 @@ function handleGlobalDragStart(e, chipId) {
         subject: chip.dataset.subject,
         grade: chip.dataset.grade,
         classroom: chip.dataset.classroom || '',
+        weekIndex: (chip.dataset.weekIndex === '' || chip.dataset.weekIndex == null) ? null : parseInt(chip.dataset.weekIndex, 10),
         fromDay: chip.dataset.day,
         fromSlot: parseInt(chip.dataset.slot)
     };
@@ -436,6 +438,7 @@ async function handleGlobalDrop(e) {
                 subject: draggedLessonData.subject,
                 grade: draggedLessonData.grade,
                 classroom: draggedLessonData.classroom,
+                week_index: draggedLessonData.weekIndex,
                 from_day: draggedLessonData.fromDay,
                 from_slot: draggedLessonData.fromSlot,
                 to_day: toDay,

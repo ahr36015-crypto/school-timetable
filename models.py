@@ -8,6 +8,10 @@ class Lesson(BaseModel):
     grade: str = ""
     hours: int = Field(default=1, ge=1)
     classroom: Optional[str] = None
+    # Чётность недели в двухнедельном цикле: None — каждую неделю, 0 — синяя, 1 — красная
+    week_index: Optional[int] = Field(default=None, alias="weekIndex")
+
+    model_config = {"populate_by_name": True}
 
     @field_validator("subject", "grade", mode="before")
     @classmethod
@@ -47,6 +51,7 @@ class LessonAssignment(BaseModel):
     grade: str
     teacher: str
     classroom: Optional[str] = None
+    week_index: Optional[int] = None
 
 
 class TeacherSchedule(BaseModel):

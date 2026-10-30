@@ -108,7 +108,8 @@ def response_to_dict(result: TimetableResponse, request: TimetableRequest) -> Di
                             "grade": a.grade,
                             "teacher": a.teacher,
                             "classroom": a.classroom,
-                            "topic": ""
+                            "topic": "",
+                            "week_index": a.week_index
                         }
                         for a in assignments
                     ]
@@ -491,6 +492,12 @@ def move_lesson(
         req_subject = move_data['subject'].strip().lower()
         req_grade = str(move_data['grade']).strip()
         req_classroom = move_data.get('classroom', '').strip()
+        req_week_index = move_data.get('week_index', None)
+        if req_week_index is not None:
+            try:
+                req_week_index = int(req_week_index)
+            except (TypeError, ValueError):
+                req_week_index = None
         from_day = move_data['from_day']
         from_slot = str(move_data['from_slot'])  # ключи слотов в JSON — строки
         to_day = move_data['to_day']
@@ -625,7 +632,8 @@ def move_lesson(
                 'grade': move_data['grade'],
                 'teacher': move_data['teacher'],
                 'classroom': move_data.get('classroom', ''),
-                'topic': ''
+                'topic': '',
+                'week_index': req_week_index
             }
             schedule[actual_to_day][to_slot].append(new_lesson)
             print(

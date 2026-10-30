@@ -87,16 +87,55 @@ function openDirectories() {
     if (typeof goToStep === 'function') goToStep(2);
 }
 
-// ---------- Текущая неделя ----------
+// ---------- Текущая неделя (двухнедельный цикл) ----------
+function _normWeek(v) {
+    return (v === 0 || v === 1) ? v : null;
+}
+
+function weekLabelText(wi) {
+    if (wi === 0) return 'Синяя неделя';
+    if (wi === 1) return 'Красная неделя';
+    return 'Каждую неделю';
+}
+
+function weekShortText(wi) {
+    if (wi === 0) return 'синяя';
+    if (wi === 1) return 'красная';
+    return 'каждую';
+}
+
+function getWeekConfig() {
+    const cfg = schoolData.weekConfig || {};
+    let anchor = cfg.anchorDate;
+    if (!anchor) {
+        const now = new Date();
+        const d = new Date(now.getFullYear(), 8, 1); // 1 сентября
+        const dow = (d.getDay() + 6) % 7; // Пн=0
+        d.setDate(d.getDate() + ((7 - dow) % 7));
+        anchor = d.toISOString().slice(0, 10);
+    }
+    return { anchorDate: anchor, anchorIsBlue: cfg.anchorIsBlue !== false };
+}
+
+function _mondayOf(date) {
+    const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const dow = (d.getDay() + 6) % 7; // Пн=0
+    d.setDate(d.getDate() - dow);
+    return d;
+}
+
 function getCurrentWeekInfo() {
-    const now = new Date();
-    const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
-    const dayNum = d.getUTCDay() || 7;
-    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    const week = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-    const blue = week % 2 === 1;
-    return { week: week, blue: blue, label: blue ? 'Синяя (нечётная)' : 'Красная (чётная)' };
+    const cfg = getWeekConfig();
+    const anchor = _mondayOf(new Date(cfg.anchorDate + 'T00:00:00'));
+    const today = _mondayOf(new Date());
+    const diffWeeks = Math.round((today - anchor) / (7 * 24 * 3600 * 1000));
+    const blue = (diffWeeks % 2 === 0) ? cfg.anchorIsBlue : !cfg.anchorIsBlue;
+    return {
+        weekNumber: diffWeeks,
+        weekIndex: blue ? 0 : 1,
+        blue: blue,
+        label: (blue ? 'Синяя' : 'Красная') + ' неделя'
+    };
 }
 
 // ---------- Дашборд ----------
@@ -115,7 +154,11 @@ function updateDashboardCounts() {
             });
         });
     }
-    const plannedHours = (schoolData.workloads || []).reduce((s, w) => s + (parseInt(w.hours) || 0), 0);
+    const plannedHours = Math.round((schoolData.workloads || []).reduce((s, w) => {
+        const h = parseInt(w.hours) || 1;
+        const wi = _normWeek(w.weekIndex);
+        return s + (wi === null ? h : h / 2);
+    }, 0) * 10) / 10;
     const pending = _substitutionsCache.filter(s => !s.substitute).length;
     const freeRooms = Math.max(0, (schoolData.classrooms || []).length - usedRooms.size);
 
@@ -199,7 +242,7 @@ function renderSchedulePage() {
                 (lessons || []).forEach(l => {
                     if (grade && l.grade !== grade) return;
                     const key = day + '|' + slot;
-                    (map[key] = map[key] || []).push({ subject: l.subject, grade: l.grade, classroom: l.classroom, teacher: t.teacher });
+                    (map[key] = map[key] || []).push({ subject: l.subject, grade: l.grade, classroom: l.classroom, teacher: t.teacher, week_index: _normWeek(l.week_index) });
                 });
             });
         });
@@ -215,9 +258,12 @@ function renderSchedulePage() {
             const lessons = map[day + '|' + String(slot)] || [];
             html += '<td>';
             lessons.forEach(l => {
-                html += '<div class="lesson-card" data-week="every">' +
-                    '<div class="marker"><span class="dot both"></span></div>' +
-                    '<div class="title">' + _esc(l.subject) + '</div>' +
+                const wi = _normWeek(l.week_index);
+                const wk = wi === 0 ? 'blue' : (wi === 1 ? 'red' : 'every');
+                const dot = wk === 'every' ? 'both' : wk;
+                html += '<div class="lesson-card" data-week="' + wk + '">' +
+                    '<div class="marker"><span class="dot ' + dot + '"></span></div>' +
+                    '<div class="title">' + _esc(l.subject) + (wi === null ? '' : ' <small>(' + weekShortText(wi) + ')</small>') + '</div>' +
                     '<div class="meta">' + _esc(l.grade) + ' · ' + _esc(l.classroom || '—') + ' · ' + _esc(l.teacher) + '</div>' +
                     '</div>';
             });
@@ -261,13 +307,18 @@ function renderPlanItems() {
     if (!tbody) return;
     const items = schoolData.planItems || [];
     tbody.innerHTML = items.length
-        ? items.map(it => '<tr>' +
-            '<td>' + _esc(it.subject) + '</td>' +
-            '<td>' + _esc(it.grade) + '</td>' +
-            '<td>' + _esc(it.hours) + '</td>' +
-            '<td><button class="small danger" onclick="removePlanItem(\'' + it.id + '\')" title="Удалить из плана" aria-label="Удалить из плана">🗑</button></td>' +
-            '</tr>').join('')
-        : '<tr><td colspan="4" class="muted">План пуст</td></tr>';
+        ? items.map(it => {
+            const wi = _normWeek(it.weekIndex);
+            const per = (wi === null) ? (it.hours + ' ч/нед') : (it.hours + ' ч / 2 нед');
+            return '<tr>' +
+                '<td>' + _esc(it.subject) + '</td>' +
+                '<td>' + _esc(it.grade) + '</td>' +
+                '<td>' + _esc(per) + '</td>' +
+                '<td>' + _esc(weekLabelText(wi)) + '</td>' +
+                '<td><button class="small danger" onclick="removePlanItem(\'' + it.id + '\')" title="Удалить из плана" aria-label="Удалить из плана">🗑</button></td>' +
+                '</tr>';
+        }).join('')
+        : '<tr><td colspan="5" class="muted">План пуст</td></tr>';
 }
 
 function addPlanItem() {
@@ -275,19 +326,21 @@ function addPlanItem() {
     const subjectEl = document.getElementById('planSubject');
     const gradeEl = document.getElementById('planGrade');
     const hoursEl = document.getElementById('planHours');
+    const weekEl = document.getElementById('planWeek');
     const subject = subjectEl ? subjectEl.value : '';
     const grade = gradeEl ? gradeEl.value : '';
     const hours = hoursEl ? (parseInt(hoursEl.value) || 1) : 1;
+    const weekIndex = _normWeek(weekEl ? parseInt(weekEl.value, 10) : null);
     if (!subject || !grade) { alert('Выберите предмет и класс'); return; }
-    if (schoolData.planItems.some(p => p.subject === subject && p.grade === grade)) {
+    if (schoolData.planItems.some(p => p.subject === subject && p.grade === grade && _normWeek(p.weekIndex) === weekIndex)) {
         alert('Такая позиция уже есть в плане');
         return;
     }
-    schoolData.planItems.push({ id: _uid(), subject: subject, grade: grade, hours: hours });
+    schoolData.planItems.push({ id: _uid(), subject: subject, grade: grade, hours: hours, weekIndex: weekIndex });
     saveSchoolData();
     renderPlanItems();
     renderPlanAssignments();
-    logActivity('В план добавлено: ' + subject + ' · ' + grade + ' · ' + hours + ' ч');
+    logActivity('В план добавлено: ' + subject + ' · ' + grade + ' · ' + hours + ' ч · ' + weekShortText(weekIndex));
 }
 
 function removePlanItem(id) {
@@ -312,13 +365,15 @@ function renderPlanAssignments() {
         return;
     }
     box.innerHTML = items.map(it => {
+        const wi = _normWeek(it.weekIndex);
         const checked = (schoolData.workloads || []).some(w =>
-            w.teacher === teacher && w.subject === it.subject && w.grade === it.grade);
+            w.teacher === teacher && w.subject === it.subject && w.grade === it.grade && _normWeek(w.weekIndex) === wi);
+        const per = (wi === null) ? (it.hours + ' ч/нед') : (it.hours + ' ч / 2 нед (' + weekShortText(wi) + ')');
         return '<label class="plan-check ' + (checked ? 'checked' : '') + '">' +
             '<input type="checkbox" ' + (checked ? 'checked' : '') +
             ' onchange="togglePlanAssignment(\'' + it.id + '\', this.checked)">' +
             '<span class="pc-subject">' + _esc(it.subject) + '</span>' +
-            '<span class="pc-meta">' + _esc(it.grade) + ' · ' + _esc(it.hours) + ' ч/нед</span>' +
+            '<span class="pc-meta">' + _esc(it.grade) + ' · ' + _esc(per) + '</span>' +
             '</label>';
     }).join('');
 }
@@ -330,16 +385,17 @@ function togglePlanAssignment(itemId, checked) {
     const item = (schoolData.planItems || []).find(p => p.id === itemId);
     if (!teacher || !item) return;
 
+    const wi = _normWeek(item.weekIndex);
     if (checked) {
         const exists = (schoolData.workloads || []).some(w =>
-            w.teacher === teacher && w.subject === item.subject && w.grade === item.grade);
+            w.teacher === teacher && w.subject === item.subject && w.grade === item.grade && _normWeek(w.weekIndex) === wi);
         if (!exists) {
-            schoolData.workloads.push({ teacher: teacher, subject: item.subject, grade: item.grade, classroom: '', hours: item.hours });
-            logActivity('Назначено: ' + teacher + ' — ' + item.subject + ' (' + item.grade + ')');
+            schoolData.workloads.push({ teacher: teacher, subject: item.subject, grade: item.grade, classroom: '', hours: item.hours, weekIndex: wi });
+            logActivity('Назначено: ' + teacher + ' — ' + item.subject + ' (' + item.grade + ', ' + weekShortText(wi) + ')');
         }
     } else {
         schoolData.workloads = (schoolData.workloads || []).filter(w =>
-            !(w.teacher === teacher && w.subject === item.subject && w.grade === item.grade));
+            !(w.teacher === teacher && w.subject === item.subject && w.grade === item.grade && _normWeek(w.weekIndex) === wi));
     }
     saveSchoolData();
     renderPlanAssignments();
