@@ -135,12 +135,38 @@ def solve_timetable(request: TimetableRequest) -> TimetableResponse:
     status = solver.Solve(model)
 
     if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+        # Формируем конкретные причины, а не общую фразу
+        errors = []
+        capacity = len(days) * len(slots)
+
+        grade_hours = defaultdict(int)
+        for tdata in teachers.values():
+            for lesson in tdata.lessons:
+                grade_hours[lesson.grade] += lesson.hours
+        for grade, hours in grade_hours.items():
+            if hours > capacity:
+                errors.append(
+                    f"Класс {grade}: нагрузка {hours} ч при {capacity} доступных слотах — увеличьте дни/уроки"
+                )
+
+        for tname, tdata in teachers.items():
+            total = sum(l.hours for l in tdata.lessons)
+            avail = sum(len(v) for v in tdata.availability.values())
+            if total > avail:
+                errors.append(
+                    f"Учитель {tname}: нагрузка {total} ч при {avail} доступных слотах"
+                )
+
+        if not errors:
+            errors.append(
+                "Не удалось составить расписание. Проверьте нагрузку, доступность учителей и конфликты кабинетов."
+            )
+
         return TimetableResponse(
             status="INFEASIBLE",
             solution_time=solver.WallTime(),
             teachers=[],
-            validation_errors=[
-                "Не удалось составить расписание. Проверьте нагрузку, доступность учителей и конфликты кабинетов."]
+            validation_errors=errors,
         )
 
     # Собираем результат

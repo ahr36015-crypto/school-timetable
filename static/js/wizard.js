@@ -1228,8 +1228,88 @@ function renderGenerationStats() {
     `;
 }
 
-async function generateTimetable() {
+let _relaxationTried = false;
+
+function _availabilityCount(avail) {
+    if (!avail) return 0;
+    return Object.values(avail).reduce((s, arr) => s + (Array.isArray(arr) ? arr.length : 0), 0);
+}
+
+function _fullAvailability(days, slots) {
+    const full = {};
+    days.forEach(d => { full[d] = [...slots]; });
+    return full;
+}
+
+// Расширяет доступность всех учителей до всех слотов (запасной авто-фикс)
+function relaxAllAvailability(days, slots) {
+    (schoolData.teachers || []).forEach(t => {
+        schoolData.availability[t.full_name] = _fullAvailability(days, slots);
+    });
+}
+
+// Предварительный анализ и авто-исправление конфликтов с подтверждением.
+// Возвращает { changes, blocking }.
+function autoResolveGenerationConflicts(teachers, days, slots) {
+    let changes = 0;
+    const blocking = [];
+    const names = Object.keys(teachers);
+    const after = days.length * slots.length;
+
+    names.forEach(name => {
+        const t = teachers[name];
+        const total = t.lessons.reduce((s, l) => s + l.hours, 0);
+        const avail = _availabilityCount(t.availability);
+        if (total === 0) return;
+
+        if (avail === 0 || total > avail) {
+            const reason = avail === 0
+                ? 'доступность не задана'
+                : 'нагрузка ' + total + ' ч, а доступно только ' + avail + ' слотов';
+            const ok = confirm(
+                'Конфликт доступности\n\n' +
+                'Учитель: ' + name + '\n' +
+                'Причина: ' + reason + '.\n\n' +
+                'Будет применено: открыть все слоты (' + days.length + ' дн. × ' + slots.length + ' ур.) — станет ' + after + ' слотов.\n\n' +
+                'Применить и продолжить?'
+            );
+            if (ok) {
+                const full = _fullAvailability(days, slots);
+                schoolData.availability[name] = full;
+                t.availability = full;
+                changes++;
+            }
+        }
+    });
+
+    // Ёмкость по классам — авто-исправить нельзя (нужны больше дни/уроки)
+    const gradeHours = {};
+    names.forEach(name => teachers[name].lessons.forEach(l => {
+        gradeHours[l.grade] = (gradeHours[l.grade] || 0) + l.hours;
+    }));
+    Object.keys(gradeHours).forEach(g => {
+        if (gradeHours[g] > after) {
+            blocking.push('Класс ' + g + ': нагрузка ' + gradeHours[g] + ' ч при ' + after + ' доступных слотах.');
+        }
+    });
+
+    if (blocking.length) {
+        alert('Невозможно составить расписание:\n\n' + blocking.join('\n') +
+            '\n\nУвеличьте «Уроков в день» или «Дней в неделе» на шаге 1.');
+    }
+
+    if (changes > 0) {
+        saveSchoolData();
+        if (typeof logActivity === 'function') {
+            logActivity('Авто-исправление: расширена доступность (' + changes + ' уч.)');
+        }
+    }
+    return { changes: changes, blocking: blocking };
+}
+
+async function generateTimetable(isRetry = false) {
     if (!checkAuth()) return;
+    if (!isRetry) _relaxationTried = false;
     const err = document.getElementById('genError');
     const succ = document.getElementById('genSuccess');
     const btn = document.getElementById('generateBtn');
@@ -1267,6 +1347,10 @@ async function generateTimetable() {
 
     const days = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"].slice(0, schoolData.days);
     const slots = Array.from({ length: schoolData.lessonsPerDay }, (_, i) => i + 1);
+
+    // Авто-исправление конфликтов (с подтверждением пользователя)
+    const preflight = autoResolveGenerationConflicts(teachers, days, slots);
+
     const requestData = { days, slots, teachers, lessonTimes: schoolData.lessonTimes || [] };
 
     err.classList.remove('show');
@@ -1306,8 +1390,28 @@ async function generateTimetable() {
         document.getElementById('progressOverlay').classList.remove('active');
 
         if (data.status === 'INVALID' || (data.validation_errors && data.validation_errors.length > 0)) {
-            err.textContent = data.errors ? data.errors.join('; ') : data.validation_errors.join('; ');
+            const details = data.errors ? data.errors.join('\n') : (data.validation_errors || []).join('\n');
+            err.textContent = details;
             err.classList.add('show');
+
+            // Если расписание не составить из-за доступности — предлагаем авто-расширение и повтор
+            const canRelax = data.status === 'INFEASIBLE' && !isRetry && !_relaxationTried &&
+                (!preflight.blocking || preflight.blocking.length === 0);
+            if (canRelax) {
+                const ok = confirm(
+                    'Расписание не удалось составить.\n\n' + details +
+                    '\n\nРасширить доступность ВСЕХ учителей до всех слотов и попробовать снова?'
+                );
+                if (ok) {
+                    _relaxationTried = true;
+                    relaxAllAvailability(days, slots);
+                    saveSchoolData();
+                    if (typeof logActivity === 'function') {
+                        logActivity('Авто-исправление: доступность всех учителей расширена');
+                    }
+                    return await generateTimetable(true);
+                }
+            }
             return;
         }
 
@@ -1346,6 +1450,7 @@ async function generateTimetable() {
         renderGenerationStats();
         if (typeof logActivity === 'function') logActivity('Сгенерировано расписание (' + currentResult.status + ')');
         if (typeof updateDashboardCounts === 'function') updateDashboardCounts();
+        _relaxationTried = false;
     } catch (e) {
         document.getElementById('progressOverlay').classList.remove('active');
         err.textContent = 'Ошибка: ' + e.message;

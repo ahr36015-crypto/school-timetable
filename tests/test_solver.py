@@ -49,3 +49,20 @@ def test_solver_produces_conflict_free_schedule():
                         classroom_slot[(l.classroom, key)] = t.teacher
 
     assert total == 3 + 3 + 3 + 3 + 2 + 2
+
+
+def test_solver_infeasible_reports_reason():
+    request = TimetableRequest(
+        days=["Понедельник"],
+        slots=[1],
+        teachers={
+            "А": Teacher(
+                lessons=[Lesson(subject="Математика", grade="5А", hours=2)],
+                availability={"Понедельник": [1]},
+            )
+        },
+    )
+    result = solve_timetable(request)
+    assert result.status == "INFEASIBLE"
+    # сообщение должно содержать конкретную причину, а не только общую фразу
+    assert any("Класс 5А" in e for e in result.validation_errors)
