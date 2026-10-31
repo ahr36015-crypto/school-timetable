@@ -155,6 +155,50 @@ def solve_timetable(request: TimetableRequest) -> TimetableResponse:
                             # вместимость слота = 2 половинки (1 полная пара)
                             model.Add(sum(u * b for (b, u) in active) <= 2)
 
+    # Мягкая цель: минимизировать «дыры» в расписании классов.
+    # Для каждого (класс, день, урок) считаем present, затем число «начал»
+    # блоков занятий: start[s] = present[s] и не present[s-1] (для s>=2).
+    # Минимизируя number of starts, уплотняем занятия класса с первого урока.
+    grade_lessons = defaultdict(list)
+    for i, lv in lesson_vars.items():
+        grade_lessons[lv["lesson"]["grade"]].append(i)
+
+    objective = []
+    for grade, idxs in grade_lessons.items():
+        for day in days:
+            present = {}
+            for slot in slots:
+                bools = []
+                for i in idxs:
+                    b = lesson_at.get((i, day, slot))
+                    if b is not None:
+                        bools.append(b)
+                if not bools:
+                    present[slot] = None
+                    continue
+                p = model.NewBoolVar(f"pres_{grade}_{day}_{slot}")
+                for b in bools:
+                    model.Add(p >= b)
+                model.Add(p <= sum(bools))
+                present[slot] = p
+
+            for k in range(1, len(slots)):
+                slot = slots[k]
+                prev = slots[k - 1]
+                pc = present.get(slot)
+                if pc is None:
+                    continue
+                start = model.NewBoolVar(f"start_{grade}_{day}_{slot}")
+                pp = present.get(prev)
+                if pp is None:
+                    model.Add(start >= pc)
+                else:
+                    model.Add(start >= pc - pp)
+                objective.append(start)
+
+    if objective:
+        model.Minimize(sum(objective))
+
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = 30.0
 

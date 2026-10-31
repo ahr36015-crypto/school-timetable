@@ -138,3 +138,21 @@ def test_full_and_half_conflict_in_slot():
     )
     result = solve_timetable(request)
     assert result.status == "INFEASIBLE"
+
+
+def test_no_gaps_in_class_day():
+    # 2 часа при 3 слотах должны встать компактно с первого урока (1,2), без дыры
+    request = TimetableRequest(
+        days=["Понедельник"], slots=[1, 2, 3],
+        teachers={
+            "T1": Teacher(lessons=[Lesson(subject="Математика", grade="5А", hours=2)],
+                          availability={"Понедельник": [1, 2, 3]}),
+        },
+    )
+    result = solve_timetable(request)
+    assert result.status in ("OPTIMAL", "FEASIBLE"), result.validation_errors
+    used = set()
+    for t in result.teachers:
+        for by_slot in t.schedule.values():
+            used.update(int(s) for s in by_slot.keys())
+    assert used == {1, 2}, f"ожидались слоты 1,2 без разрыва, получено {used}"
