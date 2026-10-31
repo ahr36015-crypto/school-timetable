@@ -199,7 +199,18 @@ def solve_timetable(request: TimetableRequest) -> TimetableResponse:
         grade_lessons[lv["lesson"]["grade"]].append(i)
         teacher_lessons[lv["lesson"]["teacher"]].append(i)
 
-    objective = _gap_penalties(grade_lessons, "g") + _gap_penalties(teacher_lessons, "t")
+    gap_terms = _gap_penalties(grade_lessons, "g") + _gap_penalties(teacher_lessons, "t")
+
+    # Дополнительно тянем занятия в ранние дни и ранние уроки — это уплотняет
+    # расписание (урок за уроком) и убирает пустые «окна» внутри дня.
+    day_pos = {d: i for i, d in enumerate(days)}
+    slot_pos = {s: i for i, s in enumerate(slots)}
+    pos_terms = []
+    for i, lv in lesson_vars.items():
+        for (day, slot) in lv["possible_slots"]:
+            pos_terms.append(lesson_at[(i, day, slot)] * (day_pos[day] * (len(slots) + 1) + slot_pos[slot]))
+
+    objective = [t * 100 for t in gap_terms] + pos_terms
     if objective:
         model.Minimize(sum(objective))
 
