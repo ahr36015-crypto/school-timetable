@@ -1588,6 +1588,7 @@ async function loadSavedTimetables() {
                         <button class="small primary" onclick="window.loadSavedTimetable(${t.id})" title="Открыть расписание в редакторе"> Открыть</button>
                         <button class="small outline" onclick="window.downloadSavedPDF(${t.id},'teachers')" title="Скачать PDF по учителям">PDF (уч.)</button>
                         <button class="small outline" onclick="window.downloadSavedPDF(${t.id},'classes')" title="Скачать PDF по классам">PDF (кл.)</button>
+                        <button class="small outline" onclick="window.downloadSavedExcel(${t.id})" title="Скачать расписание в Excel">📊 Excel</button>
                         <button class="small danger" onclick="window.deleteSavedTimetable(${t.id})" title="Удалить расписание" aria-label="Удалить расписание">🗑</button>
                     </div>
                 </div>
@@ -1656,6 +1657,25 @@ window.downloadSavedPDF = async function (id, format) {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
     } catch (e) { alert('Ошибка скачивания'); }
+};
+
+window.downloadSavedExcel = async function (id) {
+    if (!checkAuth()) return;
+    try {
+        const res = await fetch(`/timetables/${id}/export/excel?format=classes`, {
+            headers: { 'Authorization': 'Bearer ' + getToken() }
+        });
+        if (!res.ok) throw new Error('Ошибка');
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `raspisanie_${id}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+    } catch (e) { alert('Ошибка скачивания Excel'); }
 };
 
 function downloadPDF(format) {
