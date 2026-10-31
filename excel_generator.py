@@ -90,6 +90,15 @@ def generate_class_template_excel(data):
         ws.cell(row=1, column=1, value="Нет данных о классах")
         return wb
 
+    # Убираем дни без занятий и хвостовые уроки, где ни у кого нет занятия
+    used_days = [d for d in days if any(k[1] == d for k in lesson_map)]
+    if used_days:
+        days = used_days
+    used_slots = {k[2] for k in lesson_map}
+    if used_slots:
+        max_slot = max(used_slots)
+        slots = [s for s in slots if s <= max_slot]
+
     sorted_grades = sorted(grades, key=lambda g: (_grade_number(g), str(g)))
     primary = [g for g in sorted_grades if _grade_number(g) <= 4]
     secondary = [g for g in sorted_grades if _grade_number(g) > 4]

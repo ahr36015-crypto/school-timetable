@@ -30,7 +30,9 @@ function updateEditorClassFilter() {
                     Object.values(dayObj).forEach(slotLessons => {
                         if (Array.isArray(slotLessons)) {
                             slotLessons.forEach(l => {
-                                if (l && l.grade) grades.add(l.grade);
+                                if (l && l.grade !== undefined && l.grade !== null && String(l.grade).trim()) {
+                                    grades.add(String(l.grade).trim());
+                                }
                             });
                         }
                     });
@@ -147,7 +149,7 @@ function renderGlobalEditor() {
         if (filterGrade) {
             const teachesThisGrade = Object.values(teacher.schedule || {}).some(bySlot =>
                 Object.values(bySlot || {}).some(arr =>
-                    (arr || []).some(l => l && l.grade === filterGrade)));
+                    (arr || []).some(l => l && String(l.grade).trim() === String(filterGrade).trim())));
             if (!teachesThisGrade) return;
         }
         html += `<tr><td class="teacher-header">${teacher.teacher}</td>`;
@@ -159,7 +161,7 @@ function renderGlobalEditor() {
                     lessons = teacher.schedule[day][slotKey];
                 }
 
-                const visibleLessons = filterGrade ? lessons.filter(l => l && l.grade === filterGrade) : lessons;
+                const visibleLessons = filterGrade ? lessons.filter(l => l && String(l.grade).trim() === String(filterGrade).trim()) : lessons;
 
                 let cellContent = '';
                 visibleLessons.forEach(l => {

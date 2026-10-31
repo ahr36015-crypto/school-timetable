@@ -1512,7 +1512,11 @@ function renderSchedule() {
     currentResult.teachers.forEach(t => {
         Object.values(t.schedule || {}).forEach(dayObj => {
             Object.values(dayObj).forEach(slotLessons => {
-                slotLessons.forEach(l => { if (l.grade) allGrades.add(l.grade); });
+                slotLessons.forEach(l => {
+                    if (l && l.grade !== undefined && l.grade !== null && String(l.grade).trim()) {
+                        allGrades.add(String(l.grade).trim());
+                    }
+                });
             });
         });
     });
@@ -1529,8 +1533,16 @@ function renderSchedule() {
     html += '</tr></thead><tbody>';
 
     days.forEach(day => {
-        html += `<tr><td class="sched-day" colspan="${sortedGrades.length + 2}">${day}</td></tr>`;
+        // Считаем, какие уроки в этот день реально есть (по всем классам)
+        let maxSlotIdx = -1;
         slots.forEach((slot, sIdx) => {
+            const any = currentResult.teachers.some(t => (t.schedule?.[day]?.[String(slot)] || []).length > 0);
+            if (any) maxSlotIdx = sIdx;
+        });
+        if (maxSlotIdx < 0) return; // день без занятий — не показываем пустые блоки
+
+        html += `<tr><td class="sched-day" colspan="${sortedGrades.length + 2}">${day}</td></tr>`;
+        slots.slice(0, maxSlotIdx + 1).forEach((slot, sIdx) => {
             const timeStr = times[sIdx] || `Урок ${slot}`;
             const lessonLabel = `Урок ${slot}`;
             const params = [
@@ -1550,7 +1562,7 @@ function renderSchedule() {
                     for (const t of currentResult.teachers) {
                         const s = t.schedule?.[day]?.[String(slot)];
                         if (s) {
-                            const found = s.find(l => l.grade === grade);
+                            const found = s.find(l => String(l.grade).trim() === grade);
                             if (found) { val = found[p.key] || "-"; break; }
                         }
                     }

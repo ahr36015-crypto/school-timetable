@@ -229,7 +229,7 @@ function _collectGrades() {
     if (currentResult && currentResult.teachers) {
         currentResult.teachers.forEach(t => {
             Object.values(t.schedule || {}).forEach(bySlot => {
-                Object.values(bySlot).forEach(arr => (arr || []).forEach(l => l && l.grade && grades.add(l.grade)));
+                Object.values(bySlot).forEach(arr => (arr || []).forEach(l => l && l.grade && grades.add(String(l.grade).trim())));
             });
         });
     }
@@ -269,7 +269,7 @@ function renderSchedulePage() {
         Object.entries(t.schedule || {}).forEach(([day, bySlot]) => {
             Object.entries(bySlot || {}).forEach(([slot, lessons]) => {
                 (lessons || []).forEach(l => {
-                    if (grade && l.grade !== grade) return;
+                    if (grade && String(l.grade).trim() !== grade) return;
                     const key = day + '|' + slot;
                     (map[key] = map[key] || []).push({ subject: l.subject, grade: l.grade, classroom: l.classroom, teacher: t.teacher, week_index: _normWeek(l.week_index), half: l.half === true });
                 });
@@ -277,8 +277,20 @@ function renderSchedulePage() {
         });
     });
 
+    const daysToRender = days.filter(d => slots.some(s => (map[d + '|' + String(s)] || []).length > 0));
+    const renderDays = daysToRender.length ? daysToRender : days;
+    let maxUsedIdx = -1;
+    slots.forEach((slot, idx) => {
+        if (renderDays.some(d => (map[d + '|' + String(slot)] || []).length > 0)) maxUsedIdx = idx;
+    });
+    const renderSlots = maxUsedIdx >= 0 ? slots.slice(0, maxUsedIdx + 1) : [];
+    if (!renderSlots.length) {
+        wrap.innerHTML = '<p class="muted" style="padding:20px">Занятий нет.</p>';
+        return;
+    }
+
     let html = '<table class="timetable"><thead><tr><th>Время</th>';
-    days.forEach(d => {
+    renderDays.forEach(d => {
         const date = weekDates[d];
         const isHoliday = date && holidays.includes(date);
         const tr = date ? transfers.find(x => x.date === date) : null;
@@ -288,10 +300,10 @@ function renderSchedulePage() {
         html += '<th class="' + (d === todayName ? 'today ' : '') + (isHoliday ? 'holiday' : '') + '">' + _esc(d) + extra + '</th>';
     });
     html += '</tr></thead><tbody>';
-    slots.forEach((slot, idx) => {
+    renderSlots.forEach((slot, idx) => {
         const parts = (times[idx] || '').split('-');
         html += '<tr><td>' + _esc(parts[0] || '') + '<br>' + _esc(parts[1] || '') + '</td>';
-        days.forEach(day => {
+        renderDays.forEach(day => {
             const lessons = map[day + '|' + String(slot)] || [];
             const emptyTitle = 'Свободно: у класса нет урока в это время (нет нагрузки или учитель недоступен)';
             html += lessons.length ? '<td>' : '<td class="empty" title="' + emptyTitle + '">';
