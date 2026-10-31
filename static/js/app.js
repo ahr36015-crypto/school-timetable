@@ -691,17 +691,21 @@ async function removeSubstitution(id) {
 }
 
 // ---------- Учёт часов ----------
-function _actualHoursFor(teacher, subject, grade) {
+function _actualHoursFor(w) {
     if (!currentResult || !currentResult.teachers) return 0;
-    const t = currentResult.teachers.find(x => x.teacher === teacher);
+    const t = currentResult.teachers.find(x => x.teacher === w.teacher);
     if (!t || !t.schedule) return 0;
-    let n = 0;
+    const wi = _normWeek(w.weekIndex);
+    let sum = 0;
     Object.values(t.schedule).forEach(bySlot => {
-        Object.values(bySlot).forEach(arr => (arr || []).forEach(l => {
-            if (l.subject === subject && String(l.grade) === String(grade)) n++;
+        Object.values(bySlot || {}).forEach(arr => (arr || []).forEach(l => {
+            const lwi = _normWeek(l.week_index);
+            if (l.subject === w.subject && String(l.grade) === String(w.grade) && lwi === wi) {
+                sum += (l.half === true) ? 0.5 : 1;
+            }
         }));
     });
-    return n;
+    return Math.round(sum * 100) / 100;
 }
 
 function renderHours() {
@@ -713,9 +717,9 @@ function renderHours() {
         return;
     }
     tbody.innerHTML = rows.map(w => {
-        const planned = parseInt(w.hours) || 0;
-        const actual = _actualHoursFor(w.teacher, w.subject, w.grade);
-        const diff = actual - planned;
+        const planned = safeHours(w.hours);
+        const actual = _actualHoursFor(w);
+        const diff = Math.round((actual - planned) * 100) / 100;
         const cls = diff === 0 ? 'badge-green' : (diff < 0 ? 'badge-red' : 'badge-yellow');
         return '<tr>' +
             '<td>' + _esc(w.teacher) + '</td>' +

@@ -725,26 +725,51 @@ function safeHours(value) {
 
 function getPlannedHours(teacherName) {
     const workloads = schoolData.workloads.filter(w => w.teacher === teacherName);
-    // Для занятий «через неделю» среднее в неделю = часы / 2
-    return workloads.reduce((sum, w) => {
-        const h = safeHours(w.hours);
-        const wi = (w.weekIndex === 0 || w.weekIndex === 1) ? w.weekIndex : null;
-        return sum + (wi === null ? h : h / 2);
-    }, 0);
+    // План — в «часах за активную неделю» (те же единицы, что и факт)
+    return Math.round(workloads.reduce((sum, w) => sum + safeHours(w.hours), 0) * 100) / 100;
 }
 
+// Вес одного занятия в часах (половина = 0.5)
+function _lessonWeight(l) {
+    return (l.half === true) ? 0.5 : 1;
+}
+
+// Факт по учителю — сумма часов поставленных занятий (те же единицы, что и план)
 function getActualHours(teacherName) {
     if (!currentResult || !currentResult.teachers) return null;
     const teacher = currentResult.teachers.find(t => t.teacher === teacherName);
     if (!teacher) return 0;
-    return teacher.total_lessons || 0;
+    let sum = 0;
+    Object.values(teacher.schedule || {}).forEach(bySlot => {
+        Object.values(bySlot || {}).forEach(arr => (arr || []).forEach(l => { sum += _lessonWeight(l); }));
+    });
+    return Math.round(sum * 100) / 100;
+}
+
+// Факт по конкретной нагрузке (предмет + класс + чётность)
+function _workloadActual(teacherName, w) {
+    if (!currentResult || !currentResult.teachers) return 0;
+    const teacher = currentResult.teachers.find(t => t.teacher === teacherName);
+    if (!teacher || !teacher.schedule) return 0;
+    const wi = (w.weekIndex === 0 || w.weekIndex === 1) ? w.weekIndex : null;
+    let sum = 0;
+    Object.values(teacher.schedule).forEach(bySlot => {
+        Object.values(bySlot || {}).forEach(arr => (arr || []).forEach(l => {
+            const lwi = (l.week_index === 0 || l.week_index === 1) ? l.week_index : null;
+            if (l.subject === w.subject && String(l.grade) === String(w.grade) && lwi === wi) {
+                sum += _lessonWeight(l);
+            }
+        }));
+    });
+    return Math.round(sum * 100) / 100;
 }
 
 function getLoadStatus(planned, actual) {
     if (actual === null) return { text: 'Нет данных', class: 'load-unknown', icon: '⏳' };
     if (actual === 0 && planned > 0) return { text: 'Не назначено', class: 'load-under', icon: '⚠️' };
-    if (actual < planned) return { text: 'Недогруз', class: 'load-under', icon: '⚠️' };
-    if (actual > planned) return { text: 'Перегруз', class: 'load-over', icon: '❌' };
+    const diff = Math.round((actual - planned) * 100) / 100;
+    if (diff < 0) return { text: 'Недогруз', class: 'load-under', icon: '⚠️' };
+    if (diff > 0) return { text: 'Перегруз', class: 'load-over', icon: '❌' };
     return { text: 'Норма', class: 'load-ok', icon: '✅' };
 }
 
@@ -767,26 +792,10 @@ function renderTeacherLoadStats(teacherName) {
     if (workloads.length > 0) {
         detailsHtml = '<div class="load-details">';
         workloads.forEach(w => {
-            const planned = parseInt(w.hours) || 0;
-            let actual = 0;
-            if (currentResult && currentResult.teachers) {
-                const teacher = currentResult.teachers.find(t => t.teacher === teacherName);
-                if (teacher && teacher.schedule) {
-                    Object.values(teacher.schedule).forEach(dayObj => {
-                        Object.values(dayObj).forEach(lessons => {
-                            if (Array.isArray(lessons)) {
-                                lessons.forEach(l => {
-                                    if (l.subject === w.subject && l.grade === w.grade) {
-                                        actual++;
-                                    }
-                                });
-                            }
-                        });
-                    });
-                }
-            }
-            const detailStatus = getLoadStatus(planned, actual);
             const wi = (w.weekIndex === 0 || w.weekIndex === 1) ? w.weekIndex : null;
+            const planned = safeHours(w.hours);
+            const actual = _workloadActual(teacherName, w);
+            const detailStatus = getLoadStatus(planned, actual);
             const perSuffix = wi === null ? '' : ' / 2 нед';
             detailsHtml += `
                 <div class="load-detail-row">
