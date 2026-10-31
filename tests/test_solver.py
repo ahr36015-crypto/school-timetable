@@ -156,3 +156,25 @@ def test_no_gaps_in_class_day():
         for by_slot in t.schedule.values():
             used.update(int(s) for s in by_slot.keys())
     assert used == {1, 2}, f"ожидались слоты 1,2 без разрыва, получено {used}"
+
+
+def test_no_gaps_for_teacher():
+    # У учителя 4 часа в 5 слотах — должны идти подряд с первого урока
+    request = TimetableRequest(
+        days=["Понедельник"], slots=[1, 2, 3, 4, 5],
+        teachers={
+            "T": Teacher(
+                lessons=[
+                    Lesson(subject="Математика", grade="5А", hours=2),
+                    Lesson(subject="Физика", grade="6Б", hours=2),
+                ],
+                availability={"Понедельник": [1, 2, 3, 4, 5]},
+            ),
+        },
+    )
+    result = solve_timetable(request)
+    assert result.status in ("OPTIMAL", "FEASIBLE"), result.validation_errors
+    used = set()
+    for by_slot in result.teachers[0].schedule.values():
+        used.update(int(s) for s in by_slot.keys())
+    assert used == {1, 2, 3, 4}, f"у учителя разрыв в расписании: {used}"

@@ -293,7 +293,9 @@ function renderSchedulePage() {
         html += '<tr><td>' + _esc(parts[0] || '') + '<br>' + _esc(parts[1] || '') + '</td>';
         days.forEach(day => {
             const lessons = map[day + '|' + String(slot)] || [];
-            html += '<td>';
+            const emptyTitle = 'Свободно: у класса нет урока в это время (нет нагрузки или учитель недоступен)';
+            html += lessons.length ? '<td>' : '<td class="empty" title="' + emptyTitle + '">';
+            if (!lessons.length) html += '<span class="cell-empty">—</span>';
             lessons.forEach(l => {
                 const wi = _normWeek(l.week_index);
                 const wk = wi === 0 ? 'blue' : (wi === 1 ? 'red' : 'every');

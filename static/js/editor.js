@@ -143,6 +143,13 @@ function renderGlobalEditor() {
     html += '</tr></thead><tbody>';
 
     currentResult.teachers.forEach(teacher => {
+        // при фильтре по классу показываем только учителей, которые его ведут
+        if (filterGrade) {
+            const teachesThisGrade = Object.values(teacher.schedule || {}).some(bySlot =>
+                Object.values(bySlot || {}).some(arr =>
+                    (arr || []).some(l => l && l.grade === filterGrade)));
+            if (!teachesThisGrade) return;
+        }
         html += `<tr><td class="teacher-header">${teacher.teacher}</td>`;
         days.forEach(day => {
             slots.forEach(slot => {

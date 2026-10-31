@@ -805,3 +805,8 @@ hr.sep { margin: 16px 0; border: none; border-top: 1px solid var(--border); }
 .lesson-card.half { background: #fef9c3; border-left-color: #eab308; }
 .lesson-card.substituted { background: #dcfce7; border-left-color: #16a34a; }
 .lesson-card .sub-note { font-size: .65rem; color: #16a34a; margin-top: 2px; font-weight: 600; }
+
+/* Пустые ячейки расписания */
+.schedule-legend { margin-top: 10px; }
+.timetable td.empty { background: #fafbfd; }
+.cell-empty { color: #cbd5e1; }

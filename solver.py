@@ -1,3 +1,4 @@
+import re
 from ortools.sat.python import cp_model
 from models import TimetableRequest, TimetableResponse, TeacherSchedule, LessonAssignment
 from typing import List, Dict, Tuple
@@ -155,47 +156,50 @@ def solve_timetable(request: TimetableRequest) -> TimetableResponse:
                             # вместимость слота = 2 половинки (1 полная пара)
                             model.Add(sum(u * b for (b, u) in active) <= 2)
 
-    # Мягкая цель: минимизировать «дыры» в расписании классов.
-    # Для каждого (класс, день, урок) считаем present, затем число «начал»
-    # блоков занятий: start[s] = present[s] и не present[s-1] (для s>=2).
-    # Минимизируя number of starts, уплотняем занятия класса с первого урока.
+    # Мягкая цель: минимизировать «дыры» в расписании классов и учителей.
+    # Для каждой группы (класс или учитель, день, урок) считаем present, затем
+    # число «начал» блоков занятий: start[s] = present[s] и не present[s-1].
+    # Минимизация числа starts уплотняет занятия с первого урока.
+    def _gap_penalties(group_map, prefix):
+        terms = []
+        for key, idxs in group_map.items():
+            safe_key = re.sub(r"[^0-9A-Za-zА-Яа-я_]+", "_", str(key))[:40]
+            for day in days:
+                day_safe = re.sub(r"[^0-9A-Za-zА-Яа-я_]+", "_", str(day))[:20]
+                present = {}
+                for slot in slots:
+                    bools = [lesson_at[(i, day, slot)] for i in idxs if (i, day, slot) in lesson_at]
+                    if not bools:
+                        present[slot] = None
+                        continue
+                    p = model.NewBoolVar(f"pres_{prefix}_{safe_key}_{day_safe}_{slot}")
+                    for b in bools:
+                        model.Add(p >= b)
+                    model.Add(p <= sum(bools))
+                    present[slot] = p
+
+                for k in range(1, len(slots)):
+                    slot = slots[k]
+                    prev = slots[k - 1]
+                    pc = present.get(slot)
+                    if pc is None:
+                        continue
+                    start = model.NewBoolVar(f"start_{prefix}_{safe_key}_{day_safe}_{slot}")
+                    pp = present.get(prev)
+                    if pp is None:
+                        model.Add(start >= pc)
+                    else:
+                        model.Add(start >= pc - pp)
+                    terms.append(start)
+        return terms
+
     grade_lessons = defaultdict(list)
+    teacher_lessons = defaultdict(list)
     for i, lv in lesson_vars.items():
         grade_lessons[lv["lesson"]["grade"]].append(i)
+        teacher_lessons[lv["lesson"]["teacher"]].append(i)
 
-    objective = []
-    for grade, idxs in grade_lessons.items():
-        for day in days:
-            present = {}
-            for slot in slots:
-                bools = []
-                for i in idxs:
-                    b = lesson_at.get((i, day, slot))
-                    if b is not None:
-                        bools.append(b)
-                if not bools:
-                    present[slot] = None
-                    continue
-                p = model.NewBoolVar(f"pres_{grade}_{day}_{slot}")
-                for b in bools:
-                    model.Add(p >= b)
-                model.Add(p <= sum(bools))
-                present[slot] = p
-
-            for k in range(1, len(slots)):
-                slot = slots[k]
-                prev = slots[k - 1]
-                pc = present.get(slot)
-                if pc is None:
-                    continue
-                start = model.NewBoolVar(f"start_{grade}_{day}_{slot}")
-                pp = present.get(prev)
-                if pp is None:
-                    model.Add(start >= pc)
-                else:
-                    model.Add(start >= pc - pp)
-                objective.append(start)
-
+    objective = _gap_penalties(grade_lessons, "g") + _gap_penalties(teacher_lessons, "t")
     if objective:
         model.Minimize(sum(objective))
 

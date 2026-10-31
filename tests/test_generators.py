@@ -28,12 +28,17 @@ DATA = {
 
 def test_excel_generator_returns_workbook():
     wb = generate_class_template_excel(DATA)
-    assert "Расписание занятий" in wb.sheetnames
+    # один лист на день
+    assert "Понедельник" in wb.sheetnames
+    ws = wb["Понедельник"]
+    values = [str(c.value) for row in ws.iter_rows() for c in row if c.value]
+    assert any("Расписание" in v for v in values)
+    assert any("Математика" in v for v in values)
 
 
 def test_excel_generator_handles_empty_data():
     wb = generate_class_template_excel({"teachers": []})
-    assert wb.active is not None
+    assert "Расписание" in wb.sheetnames
 
 
 def test_teachers_pdf_is_valid():
