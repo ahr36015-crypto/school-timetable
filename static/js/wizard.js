@@ -44,9 +44,14 @@ function isCurrentStepComplete() {
             return schoolData.classes.length > 0 && schoolData.teachers.length > 0;
         case 3:
             return schoolData.workloads.length > 0;
+        // Шаг 4 (Совмещённые занятия): не обязателен — можно перейти без правил
         case 4:
-            return currentResult !== null;
+            return true;
+        // Шаг 5 (бывший шаг 4: Генерация): нужен результат
         case 5:
+            return currentResult !== null;
+        // Шаг 6 (бывший шаг 5: Редактор)
+        case 6:
             return true;
         default:
             return false;
@@ -93,14 +98,23 @@ async function goToStep(step) {
             renderTeacherLoadStats(selectedTeacher);
         }
     }
+    // Шаг 4: Совмещённые занятия — загружаем данные и заполняем формы
     if (step === 4) {
+        populateSubjectDropdown();
+        populateTeacherDropdown();
+        renderCombinedLessonClassCheckboxes();
+        loadCombinedLessonsFromAPI();
+    }
+    // Шаг 5: Генерация (бывший шаг 4)
+    if (step === 5) {
         loadSavedTimetables();
         if (currentResult && currentResult.teachers) {
             renderGenerationStats();
         }
     }
 
-    if (step === 5) {
+    // Шаг 6: Редактор (бывший шаг 5)
+    if (step === 6) {
         console.log("🔍 Проверка данных для редактора...");
         if (!currentResult || !currentResult.teachers || !currentTimetableId) {
             console.warn("⚠ Данные или ID отсутствуют. Загружаю последнее расписание...");
@@ -1392,7 +1406,18 @@ async function generateTimetable(isRetry = false) {
     // Авто-исправление конфликтов (с подтверждением пользователя)
     const preflight = autoResolveGenerationConflicts(teachers, days, slots);
 
-    const requestData = { days, slots, teachers, lessonTimes: schoolData.lessonTimes || [] };
+    // Получаем правила совмещённых занятий из модуля combined-lessons
+    const combinedLessonsList = (typeof getCombinedLessonsForGeneration === 'function')
+        ? getCombinedLessonsForGeneration()
+        : [];
+
+    const requestData = {
+        days,
+        slots,
+        teachers,
+        lessonTimes: schoolData.lessonTimes || [],
+        combined_lessons: combinedLessonsList   // передаём правила в генератор
+    };
 
     err.classList.remove('show');
     succ.classList.remove('show');

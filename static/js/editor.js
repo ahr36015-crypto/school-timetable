@@ -5,6 +5,46 @@
 // ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
 // ============================================================
 let _isDragging = false;
+
+// ============================================================
+// ПОДСВЕТКА СОВМЕЩЁННЫХ ЗАНЯТИЙ
+// ============================================================
+
+/** Проверяет, относится ли урок к какому-либо правилу совмещённых занятий.
+ * @param {object} l - объект урока
+ * @returns {{isCombined: boolean, ruleName?: string}} */
+function checkLessonIsCombined(l) {
+    if (!l || !l.subject || typeof getCombinedLessonsForGeneration !== 'function') {
+        return { isCombined: false };
+    }
+    const rules = getCombinedLessonsForGeneration();
+    for (const rule of rules) {
+        // Проверяем: предмет совпадает + класс входит в список классов правила
+        if (
+            l.subject === rule.subject &&
+            String(l.grade).trim() &&
+            (rule.classes || []).includes(String(l.grade).trim())
+        ) {
+            return { isCombined: true, ruleName: rule.name };
+        }
+    }
+    return { isCombined: false };
+}
+
+/** Возвращает CSS-класс для чипа совмещённого урока */
+function getCombinedChipClass(extra) {
+    let cls = 'lesson-chip';
+    if (extra.isCombined) {
+        cls += ' combined-lesson';
+    }
+    return cls;
+}
+
+/** Создаёт tooltip с информацией о совмещённом уроке */
+function getCombinedTooltip(extra) {
+    if (!extra.isCombined || !extra.ruleName) return '';
+    return '\n                            data-combined-rule="' + escapeAttr(extra.ruleName) + '"\n                            onmouseenter="showCombinedTooltip(event, \'' + escapeAttr(extra.ruleName) + '\')"\n                            onmouseleave="hideCombinedTooltip()"
+                        ';
 let _draggedChipId = null;
 let _originalParent = null;
 
@@ -166,26 +206,34 @@ function renderGlobalEditor() {
                 let cellContent = '';
                 visibleLessons.forEach(l => {
                     if (!l) return;
+
+                    // Проверка на совмещённый урок
+                    const combinedInfo = checkLessonIsCombined(l);
+                    const extraClass = getCombinedChipClass(combinedInfo);
+                    const tooltipAttr = getCombinedTooltip(combinedInfo);
+                    const combinedLabel = combinedInfo.isCombined ? ' <span class="combined-badge">совм.</span>' : '';
+
                     const classroom = l.classroom ? `<br><small>${l.classroom}</small>` : '';
                     const chipId = `chip-${day}-${teacher.teacher}-${slot}-${l.subject}-${l.grade}`.replace(/\s+/g, '-');
-                    const chipTitle = `Перетащите, чтобы изменить время: ${l.subject}, ${l.grade} кл`;
+                    const chipTitle = `Перетащите, чтобы изменить время: ${l.subject}, ${l.grade} кл${combinedLabel}`;
 
                     cellContent += `
-                        <div id="${chipId}" class="lesson-chip"
+                        <div id="${chipId}" class="${extraClass}"
                              draggable="true"
                              title="${chipTitle}"
-                             aria-label="${chipTitle}"
+                             aria-label="${escapeAttr(chipTitle)}"
+                             ${tooltipAttr}
                              ondragstart="handleGlobalDragStart(event, '${chipId}')"
                              data-teacher="${teacher.teacher}"
-                             data-subject="${l.subject}"
+                             data-subject="${escapeAttr(l.subject)}"
                              data-grade="${l.grade}"
                              data-classroom="${l.classroom || ''}"
                              data-week-index="${l.week_index == null ? '' : l.week_index}"
                              data-half="${l.half ? '1' : ''}"
                              data-day="${day}"
                              data-slot="${slot}">
-                            <span class="subj">${l.subject}</span>
-                            <span class="meta">${l.grade} кл${classroom}${l.half ? ' · 0,5ч' : ''}</span>
+                            <span class="subj">${escapeHtml(l.subject)}${combinedLabel}</span>
+                            <span class="meta">${escapeHtml(l.grade)} кл${classroom}${l.half ? ' · 0,5ч' : ''}</span>
                         </div>
                     `;
                 });
@@ -523,6 +571,30 @@ function validateTimetable() {
     alert('✅ Проверка завершена');
 }
 
+// ============================================================
+// TOOLTIP ДЛЯ СОВМЕЩЁННЫХ ЗАНЯТИЙ
+// ============================================================
+
+/** Показывает всплывающую подсказку с названием правила совмещённого занятия */
+function showCombinedTooltip(event, ruleName) {
+    hideCombinedTooltip(); // очищаем старую
+    const tip = document.createElement('div');
+    tip.className = 'combined-tooltip';
+    tip.textContent = '🔗 ' + ruleName;
+    tip.id = 'combinedTooltip';
+
+    const rect = event.target.getBoundingClientRect();
+    tip.style.left = rect.left + 'px';
+    tip.style.top = (rect.bottom + 6) + 'px';
+    document.body.appendChild(tip);
+}
+
+/** Скрывает tooltip совмещённого занятия */
+function hideCombinedTooltip() {
+    const existing = document.getElementById('combinedTooltip');
+    if (existing) existing.remove();
+}
+
 // Экспорт функций в глобальную область
 window.updateEditorClassFilter = updateEditorClassFilter;
 window.renderGlobalEditor = renderGlobalEditor;
@@ -533,3 +605,6 @@ window.handleGlobalDrop = handleGlobalDrop;
 window.validateTimetable = validateTimetable;
 window.undoLastAction = undoLastAction;
 window.updateUndoButtonState = updateUndoButtonState;
+window.showCombinedTooltip = showCombinedTooltip;
+window.hideCombinedTooltip = hideCombinedTooltip;
+window.checkLessonIsCombined = checkLessonIsCombined;

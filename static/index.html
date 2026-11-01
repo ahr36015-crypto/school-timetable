@@ -189,14 +189,18 @@
             </div>
             <div class="wizard-step" data-step="4">
                 <div class="step-number">4</div>
-                <div class="step-title">Генерация</div>
+                <div class="step-title">Совмещённые</div>
             </div>
             <div class="wizard-step" data-step="5">
                 <div class="step-number">5</div>
-                <div class="step-title">Редактор</div>
+                <div class="step-title">Генерация</div>
             </div>
             <div class="wizard-step" data-step="6">
                 <div class="step-number">6</div>
+                <div class="step-title">Редактор</div>
+            </div>
+            <div class="wizard-step" data-step="7">
+                <div class="step-number">7</div>
                 <div class="step-title">Публикация</div>
             </div>
         </nav>
@@ -434,8 +438,85 @@
         </div>
 
         <!-- Шаг 4: Генерация -->
+        <!-- Шаг 4: Совмещённые занятия -->
         <div class="wizard-content" id="step4">
-            <h2> Шаг 4: Генерация</h2>
+            <h2>🔗 Шаг 4: Совмещённые занятия</h2>
+            <p class="step-hint">Создайте правила совмещённых занятий — когда два и более класса занимаются вместе по одному предмету</p>
+
+            <!-- Форма добавления/редактирования -->
+            <div class="card" id="combinedFormCard">
+                <h3>➕ Новое правило</h3>
+                <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:16px;">
+                    <div class="form-group">
+                        <label>Название правила</label>
+                        <input type="text" id="combinedName" placeholder="Например: Музыка 1-е классы">
+                    </div>
+                    <div class="form-group">
+                        <label>Предмет</label>
+                        <select id="combinedSubject" onchange="onCombinedSubjectChange()">
+                            <option value="">-- Выберите предмет --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Учитель</label>
+                        <select id="combinedTeacher">
+                            <option value="">-- Выберите учителя --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Кабинет</label>
+                        <input type="text" id="combinedClassroom" placeholder="Например: муз.зал">
+                    </div>
+                    <div class="form-group">
+                        <label>Часов в неделю</label>
+                        <input type="number" id="combinedHours" min="0.5" step="0.5" max="40" value="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Неделя</label>
+                        <select id="combinedWeek">
+                            <option value="">Каждую неделю</option>
+                            <option value="0">Только чётная</option>
+                            <option value="1">Только нечётная</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Классы (выберите несколько)</label>
+                    <div id="combinedClassChecks" class="checkbox-group">
+                        <span style="color:#999;font-size:13px">Загрузка...</span>
+                    </div>
+                </div>
+                <div style="display:flex;gap:10px;align-items:center">
+                    <button class="btn-primary" id="combinedSaveBtn" onclick="saveCombinedLesson()">➕ Добавить правило</button>
+                    <button class="btn-secondary" id="combinedCancelEditBtn" style="display:none" onclick="resetCombinedLessonForm()">Отмена редактирования</button>
+                </div>
+            </div>
+
+            <!-- Таблица правил -->
+            <div class="card">
+                <h3>📋 Список правил совмещённых занятий</h3>
+                <table class="data-table" id="combinedLessonsTable">
+                    <thead>
+                        <tr>
+                            <th>Название</th>
+                            <th>Предмет</th>
+                            <th>Учитель</th>
+                            <th>Классы</th>
+                            <th>Часы</th>
+                            <th>Неделя</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="combinedLessonsTableBody">
+                        <tr><td colspan="7" class="muted">Загрузка...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Шаг 5: Генерация (был шаг 4) -->
+        <div class="wizard-content" id="step5">
+            <h2>🚀 Шаг 5: Генерация</h2>
             <p class="step-hint">Алгоритм автоматически составит оптимальное расписание на основе ваших данных</p>
             <button class="btn-primary btn-large" id="generateBtn" onclick="generateTimetable()">Сгенерировать расписание</button>
             <div id="genError" class="error-message"></div>
@@ -467,12 +548,12 @@
                 <h3>📋 Сохранённые расписания</h3>
                 <div id="savedTimetablesList"></div>
             </div>
-            <button class="btn-primary" onclick="completeStep(4)">💾 Далее →</button>
+            <button class="btn-primary" onclick="completeStep(5)">💾 Далее →</button>
         </div>
 
-        <!-- Шаг 5: Редактор -->
-        <div class="wizard-content" id="step5">
-            <h2>✏ Шаг 5: Редактор</h2>
+        <!-- Шаг 6: Редактор (бывший шаг 5) -->
+        <div class="wizard-content" id="step6">
+            <h2>✏ Шаг 6: Редактор</h2>
             <p class="step-hint">Вручную скорректируйте расписание: перемещайте уроки, исправляйте конфликты</p>
             <div class="editor-tabs">
                 <button class="mode-btn active" data-mode="editor" onclick="switchEditorMode('editor')">✏ Drag-and-Drop редактор</button>
@@ -498,12 +579,12 @@
             <div id="topicsEditorContainer" style="display:none">
                 <div id="topicsEditorContent"></div>
             </div>
-            <button class="btn-primary" onclick="completeStep(5)">💾 Далее →</button>
+            <button class="btn-primary" onclick="completeStep(6)">💾 Далее →</button>
         </div>
 
-        <!-- Шаг 6: Публикация -->
-        <div class="wizard-content" id="step6">
-            <h2> Шаг 6: Публикация</h2>
+        <!-- Шаг 7: Публикация (бывший шаг 6) -->
+        <div class="wizard-content" id="step7">
+            <h2>📤 Шаг 7: Публикация</h2>
             <p class="step-hint">Экспортируйте расписание в Excel/PDF или отправьте учителям</p>
             <div class="publish-actions">
                 <button class="btn-primary" onclick="downloadPDF('teachers')"> PDF (учителя)</button>
@@ -625,6 +706,7 @@
 
     <script src="/static/js/state.js"></script>
     <script src="/static/js/subjects-dropdown.js"></script>
+    <script src="/static/js/combined-lessons.js"></script>
     <script src="/static/js/wizard.js"></script>
     <script src="/static/js/editor.js"></script>
     <script src="/static/js/app.js"></script>

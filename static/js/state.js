@@ -1,6 +1,6 @@
 // static/js/state.js
 
-// Глобальное состояние приложения
+// Глогальное состояние приложения
 let schoolData = {
     name: '', days: 5, lessonsPerDay: 7, lessonTimes: [],
     classes: [], teachers: [], subjects: [], classrooms: [],
@@ -8,7 +8,8 @@ let schoolData = {
     teacherAssignments: {},
     planItems: [], substitutions: [], activityLog: [],
     holidays: [], transfers: [],
-    weekConfig: { anchorDate: '', anchorIsBlue: true }
+    weekConfig: { anchorDate: '', anchorIsBlue: true },
+    combined_lessons: [] // правила совмещённых занятий
 };
 let currentResult = null;
 let currentTimetableId = null;
