@@ -1047,8 +1047,6 @@ def create_combined_lesson(
 ):
     """Создать новое правило совмещённого урока."""
     school_id = current_user.schools[0].id if current_user.schools else None
-    if not school_id:
-        raise HTTPException(status_code=400, detail="У пользователя нет привязанной школы")
     rule = CombinedLessonRule(
         school_id=school_id,
         name=payload.name,
@@ -1075,12 +1073,12 @@ def update_combined_lesson(
 ):
     """Обновить существующее правило совмещённого урока."""
     school_id = current_user.schools[0].id if current_user.schools else None
-    if not school_id:
-        raise HTTPException(status_code=400, detail="У пользователя нет привязанной школы")
-    rule = db.query(CombinedLessonRule).filter(
-        CombinedLessonRule.id == rule_id,
-        CombinedLessonRule.school_id == school_id,
-    ).first()
+    query = CombinedLessonRule.id == rule_id
+    if school_id:
+        query = query & (CombinedLessonRule.school_id == school_id)
+    else:
+        query = query & (CombinedLessonRule.school_id == None)
+    rule = db.query(CombinedLessonRule).filter(query).first()
     if not rule:
         raise HTTPException(status_code=404, detail="Правило не найдено")
     rule.name = payload.name
@@ -1104,12 +1102,12 @@ def delete_combined_lesson(
 ):
     """Удалить правило совмещённого урока."""
     school_id = current_user.schools[0].id if current_user.schools else None
-    if not school_id:
-        raise HTTPException(status_code=400, detail="У пользователя нет привязанной школы")
-    rule = db.query(CombinedLessonRule).filter(
-        CombinedLessonRule.id == rule_id,
-        CombinedLessonRule.school_id == school_id,
-    ).first()
+    query = CombinedLessonRule.id == rule_id
+    if school_id:
+        query = query & (CombinedLessonRule.school_id == school_id)
+    else:
+        query = query & (CombinedLessonRule.school_id == None)
+    rule = db.query(CombinedLessonRule).filter(query).first()
     if not rule:
         raise HTTPException(status_code=404, detail="Правило не найдено")
     db.delete(rule)
