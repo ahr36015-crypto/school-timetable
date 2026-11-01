@@ -4,6 +4,11 @@
 // API: /api/combined-lessons (GET/POST/PUT/DELETE)
 // ============================================================
 
+// Фоллбэк: showToast может быть определён в editor.js, который загружается позже
+if (typeof showToast !== 'function') {
+    window.showToast = function(msg) { alert(msg); };
+}
+
 // ---------- ПЕРЕМЕННЫЕ СОСТОЯНИЯ ----------
 
 /** @type {Array<{id?: number, name: string, subject: string, teacher: string, classroom: string, classes: string[], hours: number, weekIndex: number|null}>} Список правил совмещённых занятий */
