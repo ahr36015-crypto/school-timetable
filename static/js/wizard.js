@@ -104,6 +104,10 @@ async function goToStep(step) {
         populateTeacherDropdown();
         renderCombinedLessonClassCheckboxes();
         loadCombinedLessonsFromAPI();
+        // Инициализация教室.dropdown из schoolData.classrooms
+        _initClassroomDropdown();
+        // Обновление состояния валидации формы
+        validateCombinedForm();
     }
     // Шаг 5: Генерация (бывший шаг 4)
     if (step === 5) {

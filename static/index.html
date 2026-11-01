@@ -475,8 +475,8 @@
                         <label>Неделя</label>
                         <select id="combinedWeek">
                             <option value="">Каждую неделю</option>
-                            <option value="0">Только чётная</option>
-                            <option value="1">Только нечётная</option>
+                            <option value="1">Красная неделя</option>
+                            <option value="0">Синяя неделя</option>
                         </select>
                     </div>
                 </div>
@@ -490,6 +490,7 @@
                     <button class="btn-primary" id="combinedSaveBtn" onclick="saveCombinedLesson()">➕ Добавить правило</button>
                     <button class="btn-secondary" id="combinedCancelEditBtn" style="display:none" onclick="resetCombinedLessonForm()">Отмена редактирования</button>
                 </div>
+                <div id="combinedFormHint" style="margin-top:8px;font-size:13px;color:#999">⚠ Выберите предмет, учителя и минимум 2 класса</div>
             </div>
 
             <!-- Таблица правил -->
@@ -610,8 +611,8 @@
                             <div class="form-group"><label>Периодичность</label>
                                 <select class="form-control" id="planWeek">
                                     <option value="">Каждую неделю</option>
-                                    <option value="0">Только синяя</option>
-                                    <option value="1">Только красная</option>
+                                    <option value="0">Синяя неделя</option>
+                                    <option value="1">Красная неделя</option>
                                 </select>
                             </div>
                             <button class="btn" onclick="addPlanItem()">+ Добавить в план</button>
