@@ -100,13 +100,12 @@ async function goToStep(step) {
     }
     // Шаг 4: Совмещённые занятия — загружаем данные и заполняем формы
     if (step === 4) {
+        console.log('[wizard] Step 4: rendering combined lessons. schoolData.classes:', (schoolData.classes||[]).length, 'subjects:', (schoolData.subjects||[]).length, 'teachers:', (schoolData.teachers||[]).length, 'classrooms:', (schoolData.classrooms||[]).length);
         populateSubjectDropdown();
         populateTeacherDropdown();
         renderCombinedLessonClassCheckboxes();
         loadCombinedLessonsFromAPI();
-        // Инициализация教室.dropdown из schoolData.classrooms
-        _initClassroomDropdown();
-        // Обновление состояния валидации формы
+        initClassroomDropdown();
         validateCombinedForm();
     }
     // Шаг 5: Генерация (бывший шаг 4)
@@ -349,17 +348,22 @@ function sdSubjectName(s) {
 function getSubjectCatalog() {
     const names = new Set();
     const catalog = schoolData.subjects || [];
+    console.log('[wizard] getSubjectCatalog called: schoolData.subjects count:', catalog.length, 'subjects:', catalog.map(s => s.name));
     catalog.forEach(s => {
         const name = sdSubjectName(s);
         if (name) names.add(name);
     });
+    const tSubjCount = (schoolData.teachers || []).reduce((sum, t) => sum + (t.subjects || []).length, 0);
+    console.log('[wizard] getSubjectCatalog: teachers with subject lists:', tSubjCount);
     (schoolData.teachers || []).forEach(t => {
         (t.subjects || []).forEach(s => {
             const name = sdSubjectName(s);
             if (name) names.add(name);
         });
     });
-    return [...names].sort((a, b) => a.localeCompare(b, 'ru'));
+    const result = [...names].sort((a, b) => a.localeCompare(b, 'ru'));
+    console.log('[wizard] getSubjectCatalog result:', result.length, 'subjects:', result);
+    return result;
 }
 
 function subjectsButtonHtml(teacher, teacherIndex) {
