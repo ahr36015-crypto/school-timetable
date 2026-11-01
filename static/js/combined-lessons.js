@@ -16,8 +16,8 @@ let editingCombinedLessonId = null;
 
 // Текстовое представление выбора недели
 function weekSelectLabel(wi) {
-    if (wi === 0) return 'Красная неделя';
-    if (wi === 1) return 'Синяя неделя';
+    if (wi === 0) return 'Синяя неделя';
+    if (wi === 1) return 'Красная неделя';
     return 'Каждую неделю';
 }
 
@@ -250,9 +250,10 @@ async function saveCombinedLesson() {
         classroom,
         classes,
         hours,
-        weekIndex,
-        is_active: true
+        week_index: weekIndex,
     };
+
+    console.log('Sending combined lesson data:', JSON.stringify(payload, null, 2));
 
     try {
         const res = await fetch(url, {
@@ -264,7 +265,11 @@ async function saveCombinedLesson() {
             body: JSON.stringify(payload)
         });
 
-        if (!res.ok) throw new Error(`Ошибка ${res.status}`);
+        if (!res.ok) {
+            let detail = `Ошибка ${res.status}`;
+            try { const err = await res.json(); if (err.detail) detail = typeof err.detail === 'string' ? err.detail : JSON.stringify(err.detail); } catch(_){}
+            throw new Error(detail);
+        }
         const saved = await res.json();
 
         // Обновляем локальный список
@@ -322,9 +327,10 @@ function editCombinedLesson(id) {
     document.getElementById('combinedClassroom').value = rule.classroom || '';
     document.getElementById('combinedHours').value = rule.hours;
 
-    // Неделя
+    // Неделя (бэкенд возвращает week_index)
     const weekEl = document.getElementById('combinedWeek');
-    weekEl.value = rule.weekIndex != null ? rule.weekIndex : '';
+    const wi = rule.week_index ?? rule.weekIndex;
+    weekEl.value = wi != null ? wi : '';
 
     // Классы — выбираем чекбоксы
     setTimeout(() => {
@@ -434,7 +440,7 @@ function renderCombinedLessonsTable() {
 
     tbody.innerHTML = combinedLessons.map(rule => {
         const classesText = (rule.classes || []).join(', ');       
-        const weekText = weekSelectLabel(rule.weekIndex);
+        const weekText = weekSelectLabel(rule.week_index ?? rule.weekIndex);
         return `
             <tr>
                 <td><strong>${sdEscapeAttr(rule.name)}</strong></td>
@@ -468,7 +474,7 @@ function getCombinedLessonsForGeneration() {
         classroom: r.classroom || '',
         classes: r.classes,
         hours: r.hours,
-        week_index: r.weekIndex,
+        week_index: r.week_index ?? r.weekIndex,
         is_active: r.is_active !== false
     }));
 }
