@@ -78,15 +78,18 @@ function populateTeacherDropdown() {
     const select = document.getElementById('combinedTeacher');
     if (!select) { console.warn('[combined-lessons] populateTeacherDropdown: select not found'); return; }
     console.log('[combined-lessons] populateTeacherDropdown: schoolData.teachers:', schoolData.teachers.length, schoolData.teachers.map(t => t.full_name));
+    // Отладка: выводим структуру каждого учителя
+    schoolData.teachers.forEach(t => console.log('[combined-lessons] Teacher object:', t));
     select.innerHTML = '<option value="">-- Выберите учителя --</option>' +
         schoolData.teachers
             .sort((a, b) => a.full_name.localeCompare(b.full_name, 'ru'))
             .map(t => `<option value="${sdEscapeAttr(t.full_name)}">${sdEscapeAttr(t.full_name)}</option>`).join('');
-    console.log('[combined-lessons] populateTeacherDropdown: rendered', schoolData.teachers.length, 'teachers');
+    console.log('[combined-lessons] populateTeacherDropdown: rendered', schoolData.teachers.length, 'teachers, select options:', select.options.length);
 }
 
 /** При изменении предмета автоматически фильтрует учителей по предмету.
- * Если учитель имеет указанный предмет в списке subjects — он показывается. */
+ * Если учитель имеет указанный предмет в списке subjects — он показывается.
+ * Если у учителя НЕТ subjects (пустой массив или undefined) — он показывается всегда. */
 function onCombinedSubjectChange() {
     const subject = document.getElementById('combinedSubject').value;
     const teacherSelect = document.getElementById('combinedTeacher');
@@ -100,10 +103,21 @@ function onCombinedSubjectChange() {
     }
 
     // Фильтруем учителей, которые преподают выбранный предмет
+    // Если у учителя нет subjects (пусто/undefined) — показываем его всегда
     const filtered = schoolData.teachers.filter(t => {
         const tSubjects = (t.subjects || []).map(sdSubjectName).filter(Boolean);
-        return tSubjects.includes(subject);
+        // Если subjects пустой/undefined — показываем учителя (не фильтруем)
+        if (tSubjects.length === 0) {
+            console.log('[combined-lessons] Teacher', t.full_name, 'has no subjects, showing always');
+            return true;
+        }
+        // Если subjects есть — фильтруем по выбранному предмету
+        const match = tSubjects.includes(subject);
+        console.log('[combined-lessons] Teacher', t.full_name, 'subjects:', tSubjects, 'match:', match);
+        return match;
     });
+
+    console.log('[combined-lessons] onCombinedSubjectChange: filtered teachers:', filtered.length, 'of', schoolData.teachers.length, 'for subject:', subject);
 
     teacherSelect.innerHTML = '<option value="">-- Выберите учителя --</option>' +
         filtered
@@ -149,35 +163,41 @@ async function loadCombinedLessonsFromAPI() {
  * ВЫЗЫВАЕТСЯ при инициализации и при каждом переходе на шаг 4 */
 function initClassroomDropdown() {
     const el = document.getElementById('combinedClassroom');
-    if (!el) return;
+    if (!el) {
+        console.warn('[combined-lessons] initClassroomDropdown: element #combinedClassroom not found');
+        return;
+    }
 
     const classrooms = schoolData.classrooms || [];
-    console.log('[combined-lessons] initClassroomDropdown, classrooms:', classrooms.length, classrooms);
+    console.log('[combined-lessons] initClassroomDropdown: found element, tag:', el.tagName, 'classrooms:', classrooms.length, classrooms);
 
     const isSelect = el.tagName === 'SELECT';
     const currentVal = isSelect ? el.value : el.value;
 
     // Если это INPUT — заменяем на SELECT (один раз)
     if (!isSelect) {
-        el.remove();
+        console.log('[combined-lessons] initClassroomDropdown: replacing INPUT with SELECT');
+        const parent = el.parentElement;
+        if (!parent) {
+            console.error('[combined-lessons] initClassroomDropdown: no parent element');
+            return;
+        }
+        
         const select = document.createElement('select');
         select.id = 'combinedClassroom';
+        select.className = el.className || '';
         select.innerHTML = '<option value="">-- Выберите кабинет --</option>' +
             classrooms.map(c => `<option value="${sdEscapeAttr(c.number)}"${currentVal === c.number ? ' selected' : ''}>${sdEscapeAttr(c.number)}${c.capacity ? ' (вм. ' + c.capacity + ')' : ''}</option>`).join('');
-        const container = el.parentElement || el.parentNode;
-        if (container) {
-            const inputs = container.querySelectorAll('input[type=submit], button');
-            if (inputs[0]) container.insertBefore(select, inputs[0]);
-            else container.appendChild(select);
-        }
-        console.log('[combined-lessons] Created classroom select with', classrooms.length, 'options');
+        
+        parent.replaceChild(select, el);
+        console.log('[combined-lessons] initClassroomDropdown: replaced input with select,', classrooms.length, 'options');
         return;
     }
 
     // Если это уже SELECT — обновляем опции
     el.innerHTML = '<option value="">-- Выберите кабинет --</option>' +
         classrooms.map(c => `<option value="${sdEscapeAttr(c.number)}"${currentVal === c.number ? ' selected' : ''}>${sdEscapeAttr(c.number)}${c.capacity ? ' (вм. ' + c.capacity + ')' : ''}</option>`).join('');
-    console.log('[combined-lessons] Updated classroom select with', classrooms.length, 'options');
+    console.log('[combined-lessons] initClassroomDropdown: updated select with', classrooms.length, 'options');
 }
 
 // Запускаем однужды при загрузке страницы (для первичной инициализации)
