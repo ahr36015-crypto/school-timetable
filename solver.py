@@ -1,7 +1,10 @@
 import re
 from ortools.sat.python import cp_model
-from models import TimetableRequest, TimetableResponse, TeacherSchedule, LessonAssignment
-from typing import List, Dict, Tuple
+from models import (
+    TimetableRequest, TimetableResponse, TeacherSchedule, LessonAssignment,
+    CombinedLesson,
+)
+from typing import List, Dict, Tuple, Set, Optional
 from collections import defaultdict
 
 # Двухнедельный цикл: недели 0 (синяя) и 1 (красная)
@@ -128,6 +131,70 @@ def solve_timetable(request: TimetableRequest) -> TimetableResponse:
             model.Add(lv["var"] == p).OnlyEnforceIf(b)
             model.Add(lv["var"] != p).OnlyEnforceIf(b.Not())
 
+    # ================================================================
+    # СОВМЕЩЁННЫЕ УРОКИ
+    # ================================================================
+    # Для каждого правила combined_lessons сопоставляем чанки уроков с
+    # одинаковым учителем и предметом.  Все чанки группы получают
+    # constraint: их IntVar-ы равны => один и тот же слот.
+    # Также заполняем lesson_meta для выдачи результата.
+    lesson_meta: Dict[int, Dict[str, Any]] = {}
+    combined_groups: List[List[int]] = []
+    combined_chunk_indices: Set[int] = set()
+
+    cl_rules = getattr(request, "combined_lessons", None) or []
+    for rule in cl_rules:
+        cls_list = [str(c).strip() for c in rule.classes]
+        if len(cls_list) < 2:
+            continue
+        rule_teacher = str(rule.teacher).strip()
+        rule_subject = str(rule.subject).strip()
+        rule_wi = getattr(rule, "week_index", None)
+        rule_hours = float(rule.hours or 0)
+
+        # Проверяем, есть ли учитель в расписании
+        if rule_teacher not in teachers:
+            continue
+
+        # Находим все чанки этого учителя с данным предметом/неделёй
+        matched_indices: List[int] = []
+        for i, lesson in enumerate(all_lessons):
+            if (
+                lesson["teacher"] == rule_teacher
+                and lesson["subject"] == rule_subject
+                and _weeks_active(getattr(lesson, "week_index", None))
+                    == _weeks_active(rule_wi)
+                and abs(float(lesson.get("units", 2)) - int(round(float(rule_hours) * 2))) <= 0
+            ):
+                # Чанк подходит — проверяем что его grade входит в правило
+                grade_str = str(lesson.get("grade", "")).strip()
+                if grade_str in cls_list:
+                    matched_indices.append(i)
+
+        if len(matched_indices) >= 2:
+            # Создаём group_id и ставим равенство индексов слотов
+            group_id = f"{rule_teacher}|{rule_subject}|{'-'.join(cls_list)}"
+            for idx in matched_indices:
+                lesson_meta[idx] = {
+                    "combined_group_id": group_id,
+                    "classes_in_group": cls_list,
+                }
+                combined_chunk_indices.add(idx)
+            combined_groups.append(matched_indices)
+            # Constraint: все переменные выбирают одинаковый индекс слота
+            for a in range(len(matched_indices) - 1):
+                i_a = matched_indices[a]
+                i_b = matched_indices[a + 1]
+                model.Add(lesson_vars[i_a]["var"] == lesson_vars[i_b]["var"])
+
+    # Добавляем penalty за «дыры» только для классов БЕЗ комбинирования
+    # (для комбинированных классов дыры считаются по общему учителю)
+    # 
+    # ВАЖНО: combined-group чанки НЕ участвуют в teacher-constraint,
+    # потому что они принудительно равны через Equal и должны занимать
+    # один слот для одного учителя. Иначе constraint sum(units*b)<=2
+    # блокирует их (2+2 > 2). Классовые constraint оставляем как есть.
+
     # Ограничения по каждой неделе цикла отдельно:
     # в один момент времени у учителя/класса/кабинета — не более одного урока.
     # Занятия из разных недель цикла могут делить один и тот же слот.
@@ -143,7 +210,11 @@ def solve_timetable(request: TimetableRequest) -> TimetableResponse:
                     continue
                 lesson = lv["lesson"]
                 entry = (b, lesson.get("week_index"), lesson.get("units", 2))
-                by_teacher[lesson["teacher"]].append(entry)
+                # Combined-group chunks skip teacher constraint — they're
+                # forced equal and represent ONE physical lesson for the
+                # teacher, not multiple independent lessons.
+                if i not in combined_chunk_indices:
+                    by_teacher[lesson["teacher"]].append(entry)
                 by_grade[lesson["grade"]].append(entry)
                 if lesson.get("classroom"):
                     by_classroom[lesson["classroom"]].append(entry)
@@ -280,6 +351,7 @@ def solve_timetable(request: TimetableRequest) -> TimetableResponse:
         if slot not in teacher_schedules[teacher_name].schedule[day]:
             teacher_schedules[teacher_name].schedule[day][slot] = []
 
+        meta = lesson_meta.get(i, {})
         teacher_schedules[teacher_name].schedule[day][slot].append(
             LessonAssignment(
                 subject=lesson["subject"],
@@ -288,6 +360,7 @@ def solve_timetable(request: TimetableRequest) -> TimetableResponse:
                 classroom=lesson.get("classroom", ""),
                 week_index=lesson.get("week_index"),
                 half=(lesson.get("units") == 1),
+                combined_group_id=meta.get("combined_group_id"),
             )
         )
 

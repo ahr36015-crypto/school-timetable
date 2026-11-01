@@ -100,6 +100,36 @@ class Substitution(Base):
     created_at = Column(DateTime, server_default=func.now())
 
 
+class CombinedLessonRule(Base):
+    """Постоянное правило совмещённого урока.
+
+    Хранит конфигурацию: какой предмет, учитель, кабинет и какие классы
+    должны учиться одновременно.
+    """
+
+    __tablename__ = "combined_lesson_rules"
+
+    id = Column(Integer, primary_key=True, index=True)
+    school_id = Column(
+        Integer,
+        ForeignKey("schools.id", ondelete="CASCADE"),
+        nullable=True,
+    )  # None = глобальное правило
+    name = Column(String(255), default="")  # человеко-читаемое название
+    subject = Column(String(255), nullable=False)  # предмет
+    teacher = Column(String(255), nullable=False)  # ФИО учителя
+    classroom = Column(String(255), nullable=True)  # общий кабинет
+    classes = Column(JSON, nullable=False)  # ["1А", "1Б"]
+    hours = Column(Float, nullable=False, default=1)  # часов на каждый класс
+    week_index = Column(Integer, nullable=True)  # 0/1 или NULL
+    days = Column(JSON, nullable=True)  # ["Понедельник", ...] или NULL
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+
 def init_db():
     Base.metadata.create_all(bind=engine)
     print("✅ База данных PostgreSQL инициализирована")

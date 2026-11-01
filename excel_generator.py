@@ -28,7 +28,10 @@ def _parse_range(value):
 
 
 def _format_cell(lessons):
-    """Текст ячейки: предмет (+метки), затем учитель и кабинет мелкой строкой."""
+    """Текст ячейки: предмет (+метки), затем учитель и кабинет мелкой строкой.
+
+    Для совмещённых уроков показывает все классы-участники.
+    """
     parts = []
     for l in lessons:
         subject = str(l.get("subject") or "").strip()
@@ -40,6 +43,12 @@ def _format_cell(lessons):
             marks.append("син.")
         elif wi == 1:
             marks.append("кр.")
+
+        # Показываем метку совмещения
+        cgid = l.get("combined_group_id")
+        if cgid:
+            marks.append("совм.")
+
         if marks:
             subject = f"{subject} ({', '.join(marks)})"
 

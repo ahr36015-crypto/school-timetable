@@ -10,9 +10,9 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from database import init_db, get_db, User, SavedTimetable, Substitution
+from database import init_db, get_db, User, SavedTimetable, Substitution, CombinedLessonRule
 from auth import get_password_hash, verify_password, create_access_token, get_current_user
-from models import TimetableRequest, TimetableResponse, AIInputRequest
+from models import TimetableRequest, TimetableResponse, AIInputRequest, CombinedLesson
 from solver import validate_teachers, solve_timetable
 from excel_generator import generate_class_template_excel
 from pdf_generator import generate_teachers_pdf, generate_classes_pdf
@@ -992,6 +992,118 @@ def export_pdf(
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
+
+
+# ============================================================
+# СОВМЕЩЁННЫЕ УРОКИ — CRUD
+# ============================================================
+class CombinedLessonCreate(BaseModel):
+    """Создание / обновление правила совмещённого урока."""
+    name: str = ""
+    subject: str
+    teacher: str
+    classroom: Optional[str] = None
+    classes: List[str]
+    hours: float = 1.0
+    week_index: Optional[int] = None  # None / 0 / 1
+    days: Optional[List[str]] = None  # ["Понедельник", ...] или None
+
+
+def _to_dict(r: CombinedLessonRule) -> Dict[str, Any]:
+    return {
+        "id": r.id,
+        "name": r.name,
+        "subject": r.subject,
+        "teacher": r.teacher,
+        "classroom": r.classroom,
+        "classes": r.classes,
+        "hours": r.hours,
+        "week_index": r.week_index,
+        "days": r.days,
+        "is_active": r.is_active,
+        "created_at": r.created_at.isoformat() if r.created_at else None,
+        "updated_at": r.updated_at.isoformat() if r.updated_at else None,
+    }
+
+
+@app.get("/api/combined-lessons")
+def list_combined_lessons(current_user: User = Depends(get_current_user),
+                          db: Session = Depends(get_db)):
+    """Получить список всех правил совмещённых уроков."""
+    items = db.query(CombinedLessonRule).filter(
+        (CombinedLessonRule.school_id == current_user.school_id)
+        | (CombinedLessonRule.school_id == None)
+    ).all()
+    return [_to_dict(r) for r in items]
+
+
+@app.post("/api/combined-lessons")
+def create_combined_lesson(
+    payload: CombinedLessonCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Создать новое правило совмещённого урока."""
+    rule = CombinedLessonRule(
+        school_id=current_user.school_id,
+        name=payload.name,
+        subject=payload.subject,
+        teacher=payload.teacher,
+        classroom=payload.classroom,
+        classes=payload.classes,
+        hours=payload.hours,
+        week_index=payload.week_index,
+        days=payload.days,
+    )
+    db.add(rule)
+    db.commit()
+    db.refresh(rule)
+    return _to_dict(rule)
+
+
+@app.put("/api/combined-lessons/{rule_id}")
+def update_combined_lesson(
+    rule_id: int,
+    payload: CombinedLessonCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Обновить существующее правило совмещённого урока."""
+    rule = db.query(CombinedLessonRule).filter(
+        CombinedLessonRule.id == rule_id,
+        CombinedLessonRule.school_id == current_user.school_id,
+    ).first()
+    if not rule:
+        raise HTTPException(status_code=404, detail="Правило не найдено")
+    rule.name = payload.name
+    rule.subject = payload.subject
+    rule.teacher = payload.teacher
+    rule.classroom = payload.classroom
+    rule.classes = payload.classes
+    rule.hours = payload.hours
+    rule.week_index = payload.week_index
+    rule.days = payload.days
+    db.commit()
+    db.refresh(rule)
+    return _to_dict(rule)
+
+
+@app.delete("/api/combined-lessons/{rule_id}")
+def delete_combined_lesson(
+    rule_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Удалить правило совмещённого урока."""
+    rule = db.query(CombinedLessonRule).filter(
+        CombinedLessonRule.id == rule_id,
+        CombinedLessonRule.school_id == current_user.school_id,
+    ).first()
+    if not rule:
+        raise HTTPException(status_code=404, detail="Правило не найдено")
+    db.delete(rule)
+    db.commit()
+    return {"message": "Правило удалено"}
 
 
 # ============================================================

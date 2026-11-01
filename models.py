@@ -46,6 +46,10 @@ class TimetableRequest(BaseModel):
     slots: List[int] = [1, 2, 3, 4, 5, 6, 7]
     teachers: Dict[str, Teacher]
     lesson_times: List[str] = Field(default_factory=list, alias="lessonTimes")
+    combined_lessons: Optional[List[CombinedLesson]] = Field(
+        default=None,
+        description="Правила совмещённых занятий",
+    )
 
     model_config = {"populate_by_name": True}
 
@@ -57,6 +61,8 @@ class LessonAssignment(BaseModel):
     classroom: Optional[str] = None
     week_index: Optional[int] = None
     half: bool = False
+    # + совмещённое занятие
+    combined_group_id: Optional[str] = None  # если not None — урок части группы
 
 
 class TeacherSchedule(BaseModel):
@@ -123,3 +129,31 @@ class ManualEditRequest(BaseModel):
     slot: int
     subject: Optional[str] = None
     grade: Optional[str] = None
+    combined_group_id: Optional[str] = None  # если not None — урок части группы
+
+
+# ============================================================
+# Модели для совмещённых занятий
+# ============================================================
+class CombinedLesson(BaseModel):
+    """Правило совмещённого урока.
+
+    Один учитель, один кабинет, один предмет — несколько классов одновременно
+    в один и тот же временной слот.
+    """
+
+    subject: str = Field(default="", description="Предмет (например «Музыка»)")
+    teacher: str = Field(default="", description="ФИО учителя на все классы")
+    classroom: Optional[str] = Field(default=None, description="Общий кабинет")
+    classes: List[str] = Field(
+        default_factory=list,
+        min_length=2,
+        description="Список классов-участников ['1А', '1Б']",
+    )
+    hours: float = Field(default=1, ge=0.5, description="Часов в неделю на каждый класс")
+    week_index: Optional[int] = Field(
+        default=None, description="None — каждую неделю, 0 — синяя, 1 — красная"
+    )
+    days: Optional[List[str]] = Field(
+        default=None, description="На какие дни ограничено; None — все учебные дни"
+    )
