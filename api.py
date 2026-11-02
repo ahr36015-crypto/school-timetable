@@ -1029,13 +1029,13 @@ def _to_dict(r: CombinedLessonRule) -> Dict[str, Any]:
 @app.get("/api/combined-lessons")
 def list_combined_lessons(current_user: User = Depends(get_current_user),
                           db: Session = Depends(get_db)):
-    """Получить список всех правил совмещённых уроков."""
-    school_id = current_user.schools[0].id if current_user.schools else None
-    query_filter = (
-        (CombinedLessonRule.school_id == school_id)
-        | (CombinedLessonRule.school_id == None)
+    """Получить список правил совмещённых уроков текущего пользователя."""
+    items = (
+        db.query(CombinedLessonRule)
+        .filter(CombinedLessonRule.user_id == current_user.id)
+        .order_by(CombinedLessonRule.created_at.desc())
+        .all()
     )
-    items = db.query(CombinedLessonRule).filter(query_filter).all() if school_id else db.query(CombinedLessonRule).all()
     return [_to_dict(r) for r in items]
 
 
@@ -1049,6 +1049,7 @@ def create_combined_lesson(
     school_id = current_user.schools[0].id if current_user.schools else None
     rule = CombinedLessonRule(
         school_id=school_id,
+        user_id=current_user.id,
         name=payload.name,
         subject=payload.subject,
         teacher=payload.teacher,
@@ -1072,12 +1073,7 @@ def update_combined_lesson(
     db: Session = Depends(get_db),
 ):
     """Обновить существующее правило совмещённого урока."""
-    school_id = current_user.schools[0].id if current_user.schools else None
-    query = CombinedLessonRule.id == rule_id
-    if school_id:
-        query = query & (CombinedLessonRule.school_id == school_id)
-    else:
-        query = query & (CombinedLessonRule.school_id == None)
+    query = (CombinedLessonRule.id == rule_id) & (CombinedLessonRule.user_id == current_user.id)
     rule = db.query(CombinedLessonRule).filter(query).first()
     if not rule:
         raise HTTPException(status_code=404, detail="Правило не найдено")
@@ -1101,12 +1097,7 @@ def delete_combined_lesson(
     db: Session = Depends(get_db),
 ):
     """Удалить правило совмещённого урока."""
-    school_id = current_user.schools[0].id if current_user.schools else None
-    query = CombinedLessonRule.id == rule_id
-    if school_id:
-        query = query & (CombinedLessonRule.school_id == school_id)
-    else:
-        query = query & (CombinedLessonRule.school_id == None)
+    query = (CombinedLessonRule.id == rule_id) & (CombinedLessonRule.user_id == current_user.id)
     rule = db.query(CombinedLessonRule).filter(query).first()
     if not rule:
         raise HTTPException(status_code=404, detail="Правило не найдено")

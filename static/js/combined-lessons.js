@@ -259,6 +259,7 @@ async function saveCombinedLesson() {
     };
 
     console.log('Sending combined lesson data:', JSON.stringify(payload, null, 2));
+    console.log('Token:', getToken());
 
     try {
         const res = await fetch(url, {

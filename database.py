@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, ForeignKey, Table, DateTime, Text, Float, func, JSON
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, ForeignKey, Table, DateTime, Text, Float, func, JSON, text
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 
 load_dotenv()
@@ -115,6 +115,11 @@ class CombinedLessonRule(Base):
         ForeignKey("schools.id", ondelete="CASCADE"),
         nullable=True,
     )  # None = глобальное правило
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=True,
+    )  # владелец правила (изоляция данных между пользователями)
     name = Column(String(255), default="")  # человеко-читаемое название
     subject = Column(String(255), nullable=False)  # предмет
     teacher = Column(String(255), nullable=False)  # ФИО учителя
@@ -133,6 +138,21 @@ class CombinedLessonRule(Base):
 def init_db():
     Base.metadata.create_all(bind=engine)
     print("✅ База данных PostgreSQL инициализирована")
+
+    # Миграция: добавление колонки user_id в combined_lesson_rules
+    with engine.connect() as conn:
+        try:
+            conn.execute(text("""
+                ALTER TABLE combined_lesson_rules 
+                ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
+            """))
+            conn.commit()
+            print("✅ Миграция: добавлена колонка user_id в combined_lesson_rules")
+        except Exception as e:
+            if "already exists" in str(e) or "duplicate column" in str(e):
+                print("ℹ️ Колонка user_id уже существует")
+            else:
+                print(f"⚠️ Ошибка миграции: {e}")
 
 
 def get_db():

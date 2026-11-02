@@ -1433,6 +1433,7 @@ async function generateTimetable(isRetry = false) {
     btn.textContent = ' Генерация...';
     document.getElementById('progressOverlay').classList.add('active');
 
+    console.log('Token:', getToken());
     try {
         let attempts = 0;
         let success = false;
