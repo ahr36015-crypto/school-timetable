@@ -45,6 +45,8 @@ function getCombinedTooltip(extra) {
     if (!extra.isCombined || !extra.ruleName) return '';
     return '\n                            data-combined-rule="' + escapeAttr(extra.ruleName) + '"\n                            onmouseenter="showCombinedTooltip(event, \'' + escapeAttr(extra.ruleName) + '\')"\n                            onmouseleave="hideCombinedTooltip()"
                         ';
+}
+
 let _draggedChipId = null;
 let _originalParent = null;
 
@@ -61,6 +63,8 @@ function updateEditorClassFilter() {
     if (!currentResult) return;
     const select = document.getElementById('editorClassFilter');
     if (!select) return;
+
+    console.log('Timetable data:', currentResult);
 
     const grades = new Set();
     if (currentResult.teachers) {
@@ -81,9 +85,12 @@ function updateEditorClassFilter() {
         });
     }
 
+    const classes = Array.from(grades).sort();
+    console.log('Extracted classes:', classes);
+
     const currentVal = select.value;
-    select.innerHTML = '<option value="">-- Показать всех --</option> ' +
-        Array.from(grades).sort().map(g => `<option value="${g}">${g} класс</option>`).join('');
+    select.innerHTML = '<option value="">-- Показать всех --</option>' +
+        classes.map(g => `<option value="${g}">${g} класс</option>`).join('');
     select.value = currentVal;
 
     updateUndoButtonState();
