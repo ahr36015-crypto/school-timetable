@@ -43,8 +43,9 @@ function getCombinedChipClass(extra) {
 /** Создаёт tooltip с информацией о совмещённом уроке */
 function getCombinedTooltip(extra) {
     if (!extra.isCombined || !extra.ruleName) return '';
-    return '\n                            data-combined-rule="' + escapeAttr(extra.ruleName) + '"\n                            onmouseenter="showCombinedTooltip(event, \'' + escapeAttr(extra.ruleName) + '\')"\n                            onmouseleave="hideCombinedTooltip()"
-                        ';
+    return ' data-combined-rule="' + escapeAttr(extra.ruleName) + '"' +
+           ' onmouseenter="showCombinedTooltip(event, \'' + escapeAttr(extra.ruleName) + '\')"' +
+           ' onmouseleave="hideCombinedTooltip()"';
 }
 
 let _draggedChipId = null;
@@ -60,11 +61,18 @@ const MAX_UNDO_HISTORY = 20;
 // ОБНОВЛЕНИЕ ФИЛЬТРА ПО КЛАССУ
 // ============================================================
 function updateEditorClassFilter() {
-    if (!currentResult) return;
+    console.log('🔍 updateEditorClassFilter вызван');
+    console.log('currentResult:', currentResult);
+    if (!currentResult) {
+        console.warn('⚠ currentResult пуст');
+        return;
+    }
     const select = document.getElementById('editorClassFilter');
-    if (!select) return;
-
-    console.log('Timetable data:', currentResult);
+    if (!select) {
+        console.warn('⚠ Элемент editorClassFilter не найден');
+        return;
+    }
+    console.log('select найден:', select);
 
     const grades = new Set();
     if (currentResult.teachers) {
@@ -87,11 +95,14 @@ function updateEditorClassFilter() {
 
     const classes = Array.from(grades).sort();
     console.log('Extracted classes:', classes);
+    console.log('grades.size:', grades.size);
 
     const currentVal = select.value;
-    select.innerHTML = '<option value="">-- Показать всех --</option>' +
-        classes.map(g => `<option value="${g}">${g} класс</option>`).join('');
+    const optionsHtml = classes.map(g => `<option value="${g}">${g} класс</option>`).join('');
+    select.innerHTML = '<option value="">-- Показать всех --</option>' + optionsHtml;
     select.value = currentVal;
+    console.log('select.innerHTML после заполнения:', select.innerHTML);
+    console.log('select.options.length:', select.options.length);
 
     updateUndoButtonState();
 }
