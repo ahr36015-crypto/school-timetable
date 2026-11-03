@@ -233,12 +233,14 @@ function renderGlobalEditor() {
 
                     const classroom = l.classroom ? `<br><small>${l.classroom}</small>` : '';
                     const chipId = `chip-${day}-${teacher.teacher}-${slot}-${l.subject}-${l.grade}`.replace(/\s+/g, '-');
-                    const chipTitle = `Перетащите, чтобы изменить время: ${l.subject}, ${l.grade} кл${combinedLabel}`;
+                    const chipTitle = `Перетащите, чтобы изменить время: ${l.subject}, ${l.grade} кл`;
+
+                    console.log('Lesson card HTML for', l.subject, l.grade, '- combinedInfo:', combinedInfo);
 
                     cellContent += `
                         <div id="${chipId}" class="${extraClass}"
                              draggable="true"
-                             title="${chipTitle}"
+                             title="${escapeAttr(chipTitle)}"
                              aria-label="${escapeAttr(chipTitle)}"
                              ${tooltipAttr}
                              ondragstart="handleGlobalDragStart(event, '${chipId}')"
