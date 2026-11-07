@@ -669,7 +669,7 @@ body { background: var(--bg); padding: 0; }
 #mainApp { display: none; width: 100%; max-width: 100%; margin: 0; height: 100vh; overflow: hidden; }
 #mainApp.active { display: flex; }
 
-.sidebar { width: 260px; background: var(--sidebar-bg); color: #cbd5e1; display: flex; flex-direction: column; flex-shrink: 0; }
+.sidebar { min-width: 260px; width: auto; max-width: 300px; background: var(--sidebar-bg); color: #cbd5e1; display: flex; flex-direction: column; flex-shrink: 0; }
 .sidebar .logo { padding: 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #334155; color: #fff; }
 .sidebar .logo .icon { width: 36px; height: 36px; border-radius: 8px; background: linear-gradient(135deg, #6366f1, #a855f7); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
 .sidebar .logo .text h1 { font-size: 1rem; font-weight: 700; line-height: 1.2; }
@@ -677,7 +677,7 @@ body { background: var(--bg); padding: 0; }
 
 .nav-group { padding: 16px 12px; }
 .nav-title { font-size: .65rem; text-transform: uppercase; letter-spacing: .05em; color: #64748b; margin-bottom: 8px; padding-left: 12px; font-weight: 700; }
-.nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 6px; cursor: pointer; font-size: .9rem; transition: .2s; color: #cbd5e1; text-decoration: none; margin-bottom: 2px; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 6px; cursor: pointer; font-size: .9rem; transition: .2s; color: #cbd5e1; text-decoration: none; margin-bottom: 2px; white-space: nowrap; }
 .nav-item:hover { background: var(--sidebar-hover); color: #fff; }
 .nav-item.active { background: var(--sidebar-active); color: #fff; font-weight: 600; }
 .nav-item .badge { margin-left: auto; background: var(--danger); color: #fff; font-size: .7rem; padding: 2px 6px; border-radius: 10px; font-weight: bold; }
@@ -789,6 +789,12 @@ table.data-table tr:nth-child(even) { background: transparent; }
     .plan-add-form, .subs-form { grid-template-columns: 1fr; }
     .stats-grid { grid-template-columns: repeat(2, 1fr); }
     .reports-grid { grid-template-columns: 1fr; }
+}
+
+/* Адаптивность бокового меню */
+@media (max-width: 768px) {
+    .sidebar { width: 200px; }
+    .nav-item { font-size: .8rem; padding: 8px 10px; }
 }
 
 /* ============================================================
