@@ -468,11 +468,21 @@ function addPlanItem() {
         alert('Такая позиция уже есть в плане');
         return;
     }
-    schoolData.planItems.push({ id: _uid(), subject: subject, grade: grade, hours: hours, weekIndex: weekIndex });
+    // Формируем новую запись плана
+    const newItem = { id: _uid(), subject: subject, grade: grade, hours: hours, weekIndex: weekIndex };
+    console.log('Plan item added:', newItem); // отладка: выводим добавленную запись в консоль
+    schoolData.planItems.push(newItem);
     saveSchoolData();
+    // Перерисовываем таблицу плана и блок назначения учителю
     renderPlanItems();
     renderPlanAssignments();
     logActivity('В план добавлено: ' + subject + ' · ' + grade + ' · ' + hours + ' ч · ' + weekShortText(weekIndex));
+    // Сбрасываем форму, чтобы можно было добавить следующую запись без перезагрузки
+    subjectEl.selectedIndex = 0;
+    gradeEl.selectedIndex = 0;
+    hoursEl.value = '1';
+    weekEl.value = '';
+    subjectEl.focus();
 }
 
 function removePlanItem(id) {
