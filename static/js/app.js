@@ -427,9 +427,24 @@ function removeTransfer(i) {
 // ---------- Учебные планы ----------
 function renderPlans() {
     _ensureData();
+    console.log('[plans] renderPlans called');
+    console.log('[plans] schoolData.subjects:', schoolData.subjects);
+    console.log('[plans] schoolData.classes:', schoolData.classes);
+    console.log('[plans] schoolData.teachers:', schoolData.teachers);
+    console.log('[plans] _subjects():', _subjects());
+    console.log('[plans] _classes():', _classes());
+    console.log('[plans] _teachers():', _teachers());
+    
     _fillSelect('planSubject', _subjects());
     _fillSelect('planGrade', _classes());
     _fillSelect('planTeacher', _teachers(), '-- Выберите учителя --');
+    
+    // Проверяем, заполнились ли dropdown
+    const planSubject = document.getElementById('planSubject');
+    const planGrade = document.getElementById('planGrade');
+    console.log('[plans] planSubject options:', planSubject ? planSubject.options.length : 'not found');
+    console.log('[plans] planGrade options:', planGrade ? planGrade.options.length : 'not found');
+    
     renderPlanItems();
     renderPlanAssignments();
 }

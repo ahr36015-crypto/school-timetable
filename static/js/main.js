@@ -1,20 +1,30 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     const savedData = localStorage.getItem('schoolData');
     if (savedData) {
         try {
             schoolData = JSON.parse(savedData);
             if (!schoolData.teacherAssignments) schoolData.teacherAssignments = {};
-            restoreStep1Fields();
-            renderClasses();
-            renderTeachers();
-            renderSubjects();
-            renderClassrooms();
-            updateTeacherDatalist();
         } catch (e) {
             console.error("Ошибка парсинга schoolData:", e);
         }
     }
+    
+    // Загружаем справочники с сервера (общие для всей школы)
+    if (getToken()) {
+        console.log('[init] Loading school data from server...');
+        const loaded = await loadSchoolDataFromServer();
+        console.log('[init] School data loaded:', loaded);
+    }
+    
+    // Рендерим справочники (после загрузки с сервера или из localStorage)
+    restoreStep1Fields();
+    renderClasses();
+    renderTeachers();
+    renderSubjects();
+    renderClassrooms();
+    updateTeacherDatalist();
     renderLessonTimeRows();
+    
     if (getToken()) {
         showMainApp();
         loadSavedTimetables();

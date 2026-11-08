@@ -26,7 +26,88 @@ function checkAuth() {
     return true;
 }
 
-function saveSchoolData() { localStorage.setItem('schoolData', JSON.stringify(schoolData)); }
+function saveSchoolData() {
+    localStorage.setItem('schoolData', JSON.stringify(schoolData));
+    // Синхронизация с сервером (async, не блокирует)
+    saveSchoolDataToServer();
+}
+
+// Дебаунс для сохранения на сервер (избегаем слишком частых запросов)
+let _saveSchoolDataTimeout = null;
+function saveSchoolDataToServer() {
+    if (!getToken()) return;
+    clearTimeout(_saveSchoolDataTimeout);
+    _saveSchoolDataTimeout = setTimeout(async () => {
+        try {
+            // Сохраняем только справочники (subjects, classes, teachers, classrooms)
+            const dataToSave = {
+                subjects: schoolData.subjects || [],
+                classes: schoolData.classes || [],
+                teachers: (schoolData.teachers || []).map(t => ({
+                    full_name: t.full_name,
+                    email: t.email || '',
+                    subjects: t.subjects || []
+                })),
+                classrooms: schoolData.classrooms || []
+            };
+            console.log('[schoolData] Saving to server:', dataToSave);
+            const res = await fetch('/api/school-data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + getToken()
+                },
+                body: JSON.stringify({ data: dataToSave })
+            });
+            if (!res.ok) {
+                console.error('[schoolData] Failed to save:', res.status);
+            } else {
+                console.log('[schoolData] Saved successfully');
+            }
+        } catch (e) {
+            console.error('[schoolData] Save error:', e);
+        }
+    }, 1000); // Дебаунс 1 секунда
+}
+
+// Загрузка справочников с сервера
+async function loadSchoolDataFromServer() {
+    if (!getToken()) return false;
+    try {
+        console.log('[schoolData] Loading from server...');
+        const res = await fetch('/api/school-data', {
+            headers: { 'Authorization': 'Bearer ' + getToken() }
+        });
+        if (!res.ok) {
+            console.error('[schoolData] Failed to load:', res.status);
+            return false;
+        }
+        const data = await res.json();
+        console.log('[schoolData] Loaded from server:', data);
+        
+        // Обновляем только справочники, не перезаписываем другие настройки
+        if (data.subjects && Array.isArray(data.subjects)) {
+            schoolData.subjects = data.subjects;
+        }
+        if (data.classes && Array.isArray(data.classes)) {
+            schoolData.classes = data.classes;
+        }
+        if (data.teachers && Array.isArray(data.teachers)) {
+            schoolData.teachers = data.teachers;
+        }
+        if (data.classrooms && Array.isArray(data.classrooms)) {
+            schoolData.classrooms = data.classrooms;
+        }
+        
+        // Сохраняем в localStorage для кеширования
+        localStorage.setItem('schoolData', JSON.stringify(schoolData));
+        console.log('[schoolData] Synced to localStorage');
+        return true;
+    } catch (e) {
+        console.error('[schoolData] Load error:', e);
+        return false;
+    }
+}
 
 // Время уроков: приоритет у сохранённого расписания, затем — локальные настройки
 function getLessonTimes() {
@@ -72,6 +153,8 @@ async function login() {
             localStorage.setItem('access_token', data.access_token);
             localStorage.setItem('user_id', data.user_id);
             localStorage.setItem('full_name', data.full_name);
+            // Загружаем справочники с сервера после входа
+            await loadSchoolDataFromServer();
             showMainApp(); loadSavedTimetables();
         } else { err.textContent = data.detail; err.classList.add('show'); }
     } catch(e) { err.textContent = 'Ошибка соединения: ' + e.message; err.classList.add('show'); }
@@ -90,6 +173,8 @@ async function register() {
             localStorage.setItem('access_token', data.access_token);
             localStorage.setItem('user_id', data.user_id);
             localStorage.setItem('full_name', data.full_name);
+            // Загружаем справочники с сервера после регистрации
+            await loadSchoolDataFromServer();
             showMainApp(); loadSavedTimetables();
         } else { err.textContent = data.detail; err.classList.add('show'); }
     } catch(e) { err.textContent = 'Ошибка соединения: ' + e.message; err.classList.add('show'); }

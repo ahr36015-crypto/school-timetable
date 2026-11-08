@@ -100,6 +100,21 @@ class Substitution(Base):
     created_at = Column(DateTime, server_default=func.now())
 
 
+class SchoolData(Base):
+    """Справочники школы (предметы, классы, учителя, кабинеты).
+    
+    Общие для всех пользователей одной школы.
+    """
+    __tablename__ = "school_data"
+
+    id = Column(Integer, primary_key=True, index=True)
+    school_id = Column(Integer, ForeignKey("schools.id", ondelete="CASCADE"), nullable=False)
+    data = Column(JSON, nullable=False, default={})  # {subjects, classes, teachers, classrooms, ...}
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    school = relationship("School")
+
+
 class CombinedLessonRule(Base):
     """Постоянное правило совмещённого урока.
 

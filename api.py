@@ -10,7 +10,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from database import init_db, get_db, User, SavedTimetable, Substitution, CombinedLessonRule
+from database import init_db, get_db, User, SavedTimetable, Substitution, CombinedLessonRule, SchoolData, School
 from auth import get_password_hash, verify_password, create_access_token, get_current_user
 from models import TimetableRequest, TimetableResponse, AIInputRequest, CombinedLesson
 from solver import validate_teachers, solve_timetable
@@ -1367,3 +1367,63 @@ def import_template(current_user: User = Depends(get_current_user)):
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": "attachment; filename=shablon_importa.xlsx"},
     )
+
+
+# ============================================================
+# СПРАВОЧНИКИ ШКОЛЫ (общие для всех пользователей школы)
+# ============================================================
+class SchoolDataUpdate(BaseModel):
+    data: Dict[str, Any]
+
+
+def _get_user_school_id(current_user: User, db: Session) -> Optional[int]:
+    """Получить ID школы пользователя. Создаёт школу если её нет."""
+    school = db.query(School).filter(School.user_id == current_user.id).first()
+    if not school and current_user.school_name:
+        school = School(user_id=current_user.id, name=current_user.school_name)
+        db.add(school)
+        db.commit()
+        db.refresh(school)
+    return school.id if school else None
+
+
+@app.get("/api/school-data")
+def get_school_data(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Получить справочники школы (предметы, классы, учителя, кабинеты).
+    
+    Данные общие для всех пользователей одной школы.
+    """
+    school_id = _get_user_school_id(current_user, db)
+    if not school_id:
+        return {"subjects": [], "classes": [], "teachers": [], "classrooms": []}
+    
+    school_data = db.query(SchoolData).filter(SchoolData.school_id == school_id).first()
+    if not school_data:
+        return {"subjects": [], "classes": [], "teachers": [], "classrooms": []}
+    
+    return school_data.data or {}
+
+
+@app.post("/api/school-data")
+def save_school_data(
+    payload: SchoolDataUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Сохранить справочники школы на сервер.
+    
+    Данные сохраняются для всей школы и доступны всем пользователям.
+    """
+    school_id = _get_user_school_id(current_user, db)
+    if not school_id:
+        raise HTTPException(status_code=400, detail="Школа не найдена. Укажите название школы при регистрации.")
+    
+    existing = db.query(SchoolData).filter(SchoolData.school_id == school_id).first()
+    if existing:
+        existing.data = payload.data
+    else:
+        new_data = SchoolData(school_id=school_id, data=payload.data)
+        db.add(new_data)
+    
+    db.commit()
+    return {"message": "Данные сохранены", "school_id": school_id}
