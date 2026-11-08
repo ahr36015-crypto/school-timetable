@@ -239,6 +239,13 @@
                     <option value="red">Красная</option>
                 </select>
             </div>
+            <div class="form-group">
+                <label>Количество четвертей в году</label>
+                <select id="quartersCount">
+                    <option value="4">4 четверти</option>
+                    <option value="5">5 четвертей</option>
+                </select>
+            </div>
             <button class="btn-primary" onclick="completeStep(1)">💾 Далее →</button>
         </div>
 
@@ -626,9 +633,15 @@
                 <section class="page" id="page-plans">
                     <div class="card">
                         <h3>Учебные планы: предметы и часы</h3>
-                        <p class="muted">Добавьте предмет, класс и количество часов в неделю. Затем выберите учителя и отметьте галочками, что он ведёт.</p>
+                        <p class="muted">Добавьте предмет, класс и количество часов в неделю. Часы в четверть и год рассчитываются автоматически.</p>
                         <div class="plan-add-form">
-                            <div class="form-group"><label>Предмет</label><select class="form-control" id="planSubject"></select></div>
+                            <div class="form-group" style="flex: 2;">
+                                <label>Предмет</label>
+                                <div style="display: flex; gap: 8px;">
+                                    <select class="form-control" id="planSubject" style="flex: 1;"></select>
+                                    <button type="button" class="btn" onclick="openNewSubjectModal()" title="Добавить новый предмет" style="white-space: nowrap;">+ Новый</button>
+                                </div>
+                            </div>
                             <div class="form-group"><label>Класс</label><select class="form-control" id="planGrade"></select></div>
                             <div class="form-group"><label>Часов/нед</label><input type="number" class="form-control" id="planHours" min="1" max="40" value="1"></div>
                             <div class="form-group"><label>Периодичность</label>
@@ -642,8 +655,8 @@
                         </div>
                         <div class="table-wrap">
                             <table class="data-table" id="plansTable">
-                                <thead><tr><th>Предмет</th><th>Класс</th><th>Часов/нед</th><th>Периодичность</th><th></th></tr></thead>
-                                <tbody><tr><td colspan="5" class="muted">План пуст</td></tr></tbody>
+                                <thead><tr><th>Предмет</th><th>Класс</th><th>Часов/нед</th><th>Часов/четверть</th><th>Часов/год</th><th>Периодичность</th><th></th></tr></thead>
+                                <tbody><tr><td colspan="7" class="muted">План пуст</td></tr></tbody>
                             </table>
                         </div>
                     </div>
@@ -726,6 +739,29 @@
     <div id="progressOverlay" class="progress-overlay">
         <div class="progress-spinner"></div>
         <p>Генерация расписания...</p>
+    </div>
+
+    <!-- Модальное окно для быстрого добавления предмета -->
+    <div id="newSubjectModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 400px;">
+            <h3 style="margin-bottom: 16px;">Новый предмет</h3>
+            <div class="form-group">
+                <label>Название предмета</label>
+                <input type="text" id="newSubjectName" placeholder="Например: Математика" class="form-control">
+            </div>
+            <div class="form-group">
+                <label>Категория</label>
+                <select id="newSubjectCategory" class="form-control">
+                    <option value="Основной">Основной</option>
+                    <option value="Факультатив">Факультатив</option>
+                    <option value="Кружок">Кружок</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
+                <button type="button" class="btn" onclick="closeNewSubjectModal()">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="saveNewSubject()">Добавить</button>
+            </div>
+        </div>
     </div>
 
     <script src="/static/js/state.js"></script>

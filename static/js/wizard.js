@@ -241,6 +241,9 @@ async function completeStep(step) {
             anchorDate: anchorEl ? anchorEl.value : '',
             anchorIsBlue: (anchorWeekEl ? anchorWeekEl.value : 'blue') !== 'red'
         };
+        // Сохраняем количество четвертей
+        const quartersEl = document.getElementById('quartersCount');
+        schoolData.quartersCount = quartersEl ? parseInt(quartersEl.value) || 4 : 4;
         // Сохраняем название школы на сервере
         if (schoolData.name && getToken()) {
             try {
@@ -273,10 +276,12 @@ function restoreStep1Fields() {
     const nameField = document.getElementById('schoolName');
     const daysField = document.getElementById('daysPerWeek');
     const lessonsField = document.getElementById('lessonsPerDay');
+    const quartersField = document.getElementById('quartersCount');
 
     if (nameField && schoolData.name) nameField.value = schoolData.name;
     if (daysField && schoolData.days) daysField.value = schoolData.days;
     if (lessonsField && schoolData.lessonsPerDay) lessonsField.value = schoolData.lessonsPerDay;
+    if (quartersField && schoolData.quartersCount) quartersField.value = schoolData.quartersCount;
 
     const cfg = schoolData.weekConfig || {};
     const anchorEl = document.getElementById('weekAnchorDate');

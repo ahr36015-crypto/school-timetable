@@ -1514,3 +1514,52 @@ def save_school_data(
     
     db.commit()
     return {"message": "Данные сохранены", "school_id": school_id}
+
+
+# ============================================================
+# БЫСТРОЕ ДОБАВЛЕНИЕ ПРЕДМЕТА
+# ============================================================
+class SubjectCreate(BaseModel):
+    name: str
+    category: str = "Основной"
+
+
+@app.post("/api/subjects")
+def create_subject(
+    payload: SubjectCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Быстрое добавление нового предмета в справочник школы."""
+    school_id = _get_user_school_id(current_user, db)
+    if not school_id:
+        raise HTTPException(status_code=400, detail="Школа не найдена")
+    
+    # Загружаем текущие данные школы
+    school_data = db.query(SchoolData).filter(SchoolData.school_id == school_id).first()
+    if not school_data:
+        # Создаём новую запись с одним предметом
+        new_data = SchoolData(school_id=school_id, data={
+            "subjects": [{"name": payload.name, "category": payload.category}],
+            "classes": [],
+            "teachers": [],
+            "classrooms": []
+        })
+        db.add(new_data)
+    else:
+        # Добавляем предмет к существующим данным
+        data = school_data.data or {"subjects": [], "classes": [], "teachers": [], "classrooms": []}
+        subjects = data.get("subjects", [])
+        
+        # Проверяем дубликаты
+        name_lower = payload.name.lower()
+        if any(s.get("name", "").lower() == name_lower for s in subjects):
+            raise HTTPException(status_code=400, detail="Такой предмет уже существует")
+        
+        subjects.append({"name": payload.name, "category": payload.category})
+        data["subjects"] = subjects
+        school_data.data = data
+    
+    db.commit()
+    
+    return {"name": payload.name, "category": payload.category}

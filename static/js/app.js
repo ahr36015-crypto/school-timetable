@@ -33,6 +33,19 @@ function _subjects() { return (schoolData.subjects || []).map(s => s.name); }
 function _classes() { return (schoolData.classes || []).map(c => c.name); }
 function _teachers() { return (schoolData.teachers || []).map(t => t.full_name); }
 
+// Расчёт часов в четверть и год на основе часов в неделю
+function _calculateQuarterHours(hoursPerWeek) {
+    const quartersCount = schoolData.quartersCount || 4;
+    const weeksPerYear = 35;
+    const weeksPerQuarter = Math.round(weeksPerYear / quartersCount);
+    return Math.round(hoursPerWeek * weeksPerQuarter * 10) / 10;
+}
+
+function _calculateYearHours(hoursPerWeek) {
+    const weeksPerYear = 35;
+    return Math.round(hoursPerWeek * weeksPerYear * 10) / 10;
+}
+
 function _esc(v) {
     return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -46,6 +59,74 @@ function _fillSelect(id, values, placeholder) {
     const head = (placeholder !== undefined) ? `<option value="">${_esc(placeholder)}</option>` : '';
     el.innerHTML = head + values.map(v => `<option value="${_esc(v)}">${_esc(v)}</option>`).join('');
     if (values.includes(cur)) el.value = cur;
+}
+
+// ---------- Модальное окно для быстрого добавления предмета ----------
+function openNewSubjectModal() {
+    const modal = document.getElementById('newSubjectModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        const nameInput = document.getElementById('newSubjectName');
+        if (nameInput) {
+            nameInput.value = '';
+            nameInput.focus();
+        }
+    }
+}
+
+function closeNewSubjectModal() {
+    const modal = document.getElementById('newSubjectModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+async function saveNewSubject() {
+    const nameInput = document.getElementById('newSubjectName');
+    const categorySelect = document.getElementById('newSubjectCategory');
+    const name = nameInput ? nameInput.value.trim() : '';
+    const category = categorySelect ? categorySelect.value : 'Основной';
+    
+    if (!name) {
+        alert('Введите название предмета');
+        return;
+    }
+    
+    try {
+        const res = await fetch('/api/subjects', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + getToken()
+            },
+            body: JSON.stringify({ name, category })
+        });
+        
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || 'Ошибка ' + res.status);
+        }
+        
+        const newSubject = await res.json();
+        console.log('[subject] Created:', newSubject);
+        
+        // Добавляем в локальное состояние
+        schoolData.subjects.push({ name: newSubject.name, category: newSubject.category });
+        saveSchoolData();
+        
+        // Обновляем dropdown и выбираем новый предмет
+        _fillSelect('planSubject', _subjects());
+        const planSubjectEl = document.getElementById('planSubject');
+        if (planSubjectEl) {
+            planSubjectEl.value = newSubject.name;
+        }
+        
+        closeNewSubjectModal();
+        logActivity('Добавлен предмет: ' + newSubject.name);
+        
+    } catch (e) {
+        alert('Не удалось добавить предмет: ' + e.message);
+    }
 }
 
 function logActivity(action) {
@@ -453,19 +534,26 @@ function renderPlanItems() {
     const tbody = document.querySelector('#plansTable tbody');
     if (!tbody) return;
     const items = schoolData.planItems || [];
+    const quartersCount = schoolData.quartersCount || 4;
     tbody.innerHTML = items.length
         ? items.map(it => {
             const wi = _normWeek(it.weekIndex);
-            const per = (wi === null) ? (it.hours + ' ч/нед') : (it.hours + ' ч / 2 нед');
+            const per = weekLabelText(wi);
+            // Для расчёта часов в четверть/год: если предмет через неделю, фактически часов в неделю = hours/2
+            const effectiveHoursPerWeek = (wi === null) ? it.hours : it.hours / 2;
+            const hoursPerQuarter = _calculateQuarterHours(effectiveHoursPerWeek);
+            const hoursPerYear = _calculateYearHours(effectiveHoursPerWeek);
             return '<tr>' +
                 '<td>' + _esc(it.subject) + '</td>' +
                 '<td>' + _esc(it.grade) + '</td>' +
+                '<td>' + _esc(it.hours) + '</td>' +
+                '<td>' + _esc(hoursPerQuarter) + '</td>' +
+                '<td>' + _esc(hoursPerYear) + '</td>' +
                 '<td>' + _esc(per) + '</td>' +
-                '<td>' + _esc(weekLabelText(wi)) + '</td>' +
                 '<td><button class="small danger" onclick="removePlanItem(\'' + it.id + '\')" title="Удалить из плана" aria-label="Удалить из плана">🗑</button></td>' +
                 '</tr>';
         }).join('')
-        : '<tr><td colspan="5" class="muted">План пуст</td></tr>';
+        : '<tr><td colspan="7" class="muted">План пуст</td></tr>';
 }
 
 function addPlanItem() {
@@ -518,7 +606,13 @@ function renderPlanAssignments() {
     }
     const items = schoolData.planItems || [];
     if (!items.length) {
-        box.innerHTML = '<p class="muted">Сначала добавьте предметы и часы в план выше.</p>';
+        // Улучшенное сообщение, когда план пуст
+        box.innerHTML = `
+            <div style="padding: 20px; background: #fff8e1; border-radius: 8px; border: 1px solid #ffe082; text-align: center;">
+                <p style="color: #f57c00; margin-bottom: 8px; font-weight: 500;">⚠️ Сначала добавьте предметы в учебный план</p>
+                <p class="muted" style="font-size: 13px; margin: 0;">Используйте форму выше, чтобы добавить предметы и указать часы. Затем здесь можно будет назначить их учителю.</p>
+            </div>
+        `;
         return;
     }
     box.innerHTML = items.map(it => {
@@ -526,11 +620,16 @@ function renderPlanAssignments() {
         const checked = (schoolData.workloads || []).some(w =>
             w.teacher === teacher && w.subject === it.subject && w.grade === it.grade && _normWeek(w.weekIndex) === wi);
         const per = (wi === null) ? (it.hours + ' ч/нед') : (it.hours + ' ч / 2 нед (' + weekShortText(wi) + ')');
+        // Расчёт часов в четверть и год
+        const effectiveHoursPerWeek = (wi === null) ? it.hours : it.hours / 2;
+        const hoursPerQuarter = _calculateQuarterHours(effectiveHoursPerWeek);
+        const hoursPerYear = _calculateYearHours(effectiveHoursPerWeek);
         return '<label class="plan-check ' + (checked ? 'checked' : '') + '">' +
             '<input type="checkbox" ' + (checked ? 'checked' : '') +
             ' onchange="togglePlanAssignment(\'' + it.id + '\', this.checked)">' +
             '<span class="pc-subject">' + _esc(it.subject) + '</span>' +
-            '<span class="pc-meta">' + _esc(it.grade) + ' · ' + _esc(per) + '</span>' +
+            '<span class="pc-meta">' + _esc(it.grade) + ' · ' + _esc(per) +
+            ' · <small>' + hoursPerQuarter + ' ч/четв, ' + hoursPerYear + ' ч/год</small></span>' +
             '</label>';
     }).join('');
 }

@@ -9,7 +9,8 @@ let schoolData = {
     planItems: [], substitutions: [], activityLog: [],
     holidays: [], transfers: [],
     weekConfig: { anchorDate: '', anchorIsBlue: true },
-    combined_lessons: [] // правила совмещённых занятий
+    combined_lessons: [], // правила совмещённых занятий
+    quartersCount: 4 // количество четвертей (4 или 5)
 };
 let currentResult = null;
 let currentTimetableId = null;
@@ -39,7 +40,7 @@ function saveSchoolDataToServer() {
     clearTimeout(_saveSchoolDataTimeout);
     _saveSchoolDataTimeout = setTimeout(async () => {
         try {
-            // Сохраняем только справочники (subjects, classes, teachers, classrooms)
+            // Сохраняем справочники И настройки (workloads, planItems, availability, etc.)
             const dataToSave = {
                 subjects: schoolData.subjects || [],
                 classes: schoolData.classes || [],
@@ -48,7 +49,16 @@ function saveSchoolDataToServer() {
                     email: t.email || '',
                     subjects: t.subjects || []
                 })),
-                classrooms: schoolData.classrooms || []
+                classrooms: schoolData.classrooms || [],
+                // НОВОЕ: сохраняем нагрузки, планы, доступность и другие настройки
+                workloads: schoolData.workloads || [],
+                planItems: schoolData.planItems || [],
+                availability: schoolData.availability || {},
+                teacherAssignments: schoolData.teacherAssignments || [],
+                holidays: schoolData.holidays || [],
+                transfers: schoolData.transfers || [],
+                weekConfig: schoolData.weekConfig || { anchorDate: '', anchorIsBlue: true },
+                quartersCount: schoolData.quartersCount || 4
             };
             console.log('[schoolData] Saving to server:', dataToSave);
             console.log('Filtered by school_id: (server resolves from user token)');
@@ -71,7 +81,7 @@ function saveSchoolDataToServer() {
     }, 1000); // Дебаунс 1 секунда
 }
 
-// Загрузка справочников с сервера
+// Загрузка справочников и настроек с сервера
 async function loadSchoolDataFromServer() {
     if (!getToken()) return false;
     try {
@@ -87,7 +97,7 @@ async function loadSchoolDataFromServer() {
         const data = await res.json();
         console.log('[schoolData] Loaded from server:', data);
         
-        // Обновляем только справочники, не перезаписываем другие настройки
+        // Обновляем справочники
         if (data.subjects && Array.isArray(data.subjects)) {
             schoolData.subjects = data.subjects;
         }
@@ -99,6 +109,32 @@ async function loadSchoolDataFromServer() {
         }
         if (data.classrooms && Array.isArray(data.classrooms)) {
             schoolData.classrooms = data.classrooms;
+        }
+        
+        // НОВОЕ: Восстанавливаем нагрузки, планы, доступность и другие настройки
+        if (data.workloads && Array.isArray(data.workloads)) {
+            schoolData.workloads = data.workloads;
+        }
+        if (data.planItems && Array.isArray(data.planItems)) {
+            schoolData.planItems = data.planItems;
+        }
+        if (data.availability && typeof data.availability === 'object') {
+            schoolData.availability = data.availability;
+        }
+        if (data.teacherAssignments && Array.isArray(data.teacherAssignments)) {
+            schoolData.teacherAssignments = data.teacherAssignments;
+        }
+        if (data.holidays && Array.isArray(data.holidays)) {
+            schoolData.holidays = data.holidays;
+        }
+        if (data.transfers && Array.isArray(data.transfers)) {
+            schoolData.transfers = data.transfers;
+        }
+        if (data.weekConfig && typeof data.weekConfig === 'object') {
+            schoolData.weekConfig = data.weekConfig;
+        }
+        if (data.quartersCount) {
+            schoolData.quartersCount = data.quartersCount;
         }
         
         // Сохраняем в localStorage для кеширования
