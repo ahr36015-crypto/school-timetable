@@ -5,7 +5,7 @@ let schoolData = {
     name: '', days: 5, lessonsPerDay: 7, lessonTimes: [],
     classes: [], teachers: [], subjects: [], classrooms: [],
     workloads: [], availability: {},
-    teacherAssignments: {},
+    teacherAssignments: [],
     planItems: [], substitutions: [], activityLog: [],
     holidays: [], transfers: [],
     weekConfig: { anchorDate: '', anchorIsBlue: true },
@@ -51,6 +51,7 @@ function saveSchoolDataToServer() {
                 classrooms: schoolData.classrooms || []
             };
             console.log('[schoolData] Saving to server:', dataToSave);
+            console.log('Filtered by school_id: (server resolves from user token)');
             const res = await fetch('/api/school-data', {
                 method: 'POST',
                 headers: {
@@ -75,6 +76,7 @@ async function loadSchoolDataFromServer() {
     if (!getToken()) return false;
     try {
         console.log('[schoolData] Loading from server...');
+        console.log('Filtered by school_id: (server resolves from user token)');
         const res = await fetch('/api/school-data', {
             headers: { 'Authorization': 'Bearer ' + getToken() }
         });
@@ -134,10 +136,14 @@ function showMainApp() {
     document.getElementById('authContainer').style.display = 'none';
     document.getElementById('mainApp').classList.add('active');
     const name = localStorage.getItem('full_name') || 'Гость';
+    const schoolName = localStorage.getItem('school_name') || 'Школа не выбрана';
     const nameEl = document.getElementById('sidebarUserName');
     const avEl = document.getElementById('sidebarAvatar');
+    const roleEl = document.getElementById('sidebarUserRole');
     if (nameEl) nameEl.textContent = name;
     if (avEl) avEl.textContent = (name.trim().charAt(0) || 'Г').toUpperCase();
+    if (roleEl) roleEl.textContent = schoolName;
+    console.log('Current user school:', schoolName);
     if (typeof openPage === 'function') openPage('dashboard');
 }
 
@@ -153,6 +159,7 @@ async function login() {
             localStorage.setItem('access_token', data.access_token);
             localStorage.setItem('user_id', data.user_id);
             localStorage.setItem('full_name', data.full_name);
+            if (data.school_name) localStorage.setItem('school_name', data.school_name);
             // Загружаем справочники с сервера после входа
             await loadSchoolDataFromServer();
             showMainApp(); loadSavedTimetables();
@@ -173,6 +180,11 @@ async function register() {
             localStorage.setItem('access_token', data.access_token);
             localStorage.setItem('user_id', data.user_id);
             localStorage.setItem('full_name', data.full_name);
+            if (data.school_name) localStorage.setItem('school_name', data.school_name);
+            else {
+                const schoolNameInput = document.getElementById('regSchool');
+                if (schoolNameInput && schoolNameInput.value) localStorage.setItem('school_name', schoolNameInput.value);
+            }
             // Загружаем справочники с сервера после регистрации
             await loadSchoolDataFromServer();
             showMainApp(); loadSavedTimetables();

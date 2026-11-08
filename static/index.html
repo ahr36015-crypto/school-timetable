@@ -298,16 +298,39 @@
 
                 <hr style="margin:25px 0; border:none; border-top:1px solid #eee;">
                 <h3>Кто что ведёт</h3>
-                <p class="step-hint">Выберите учителя, добавьте классы, которые он ведёт, и предметы в каждом классе</p>
+                <p class="step-hint">Выберите учителя, отметьте галочками классы и предметы, затем сохраните</p>
                 <div class="form-group">
                     <label>Учитель</label>
-                    <input type="text" id="assignTeacher" list="teacherDatalist"
-                           placeholder="Иванов Иван Иванович" onchange="loadAssignmentCard()">
+                    <select id="teacher-assignment-select" onchange="onTeacherAssignmentSelect()">
+                        <option value="">-- Выберите учителя --</option>
+                    </select>
                 </div>
-                <div id="assignmentCard" style="display:none">
-                    <button class="btn-primary" onclick="addAssignmentClass()">+ Добавить класс</button>
-                    <div id="assignmentList" class="assignment-list"></div>
+                <div class="class-checkboxes" style="margin-bottom:16px;">
+                    <h4>Классы:</h4>
+                    <div id="class-checkbox-list" class="checkbox-group">
+                        <span style="color:#999;font-size:13px">Сначала добавьте классы выше</span>
+                    </div>
                 </div>
+                <div class="subject-checkboxes" style="margin-bottom:16px;">
+                    <h4>Предметы:</h4>
+                    <div id="subject-checkbox-list" class="checkbox-group">
+                        <span style="color:#999;font-size:13px">Сначала добавьте предметы выше</span>
+                    </div>
+                </div>
+                <button class="btn-primary" onclick="saveTeacherAssignment()">💾 Сохранить назначение</button>
+                <table id="teacher-assignments-table" class="data-table" style="margin-top:20px;">
+                    <thead>
+                        <tr>
+                            <th>Учитель</th>
+                            <th>Классы</th>
+                            <th>Предметы</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="assignments-tbody">
+                        <tr><td colspan="4" class="muted">Пока нет назначений</td></tr>
+                    </tbody>
+                </table>
             </div>
             <div class="reference-content" id="ref-classrooms">
                 <h3>Кабинеты</h3>

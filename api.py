@@ -176,6 +176,11 @@ def register(user: UserRegister, db: Session = Depends(get_db)):
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+    # Создаём школу автоматически при регистрации
+    if user.school_name:
+        school = School(user_id=new_user.id, name=user.school_name)
+        db.add(school)
+        db.commit()
     access_token = create_access_token(
         data={"sub": new_user.id},
         expires_delta=timedelta(minutes=10080)
@@ -185,7 +190,8 @@ def register(user: UserRegister, db: Session = Depends(get_db)):
         "user_id": new_user.id,
         "access_token": access_token,
         "token_type": "bearer",
-        "full_name": new_user.full_name
+        "full_name": new_user.full_name,
+        "school_name": new_user.school_name
     }
 
 
@@ -198,6 +204,7 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
         data={"sub": db_user.id},
         expires_delta=timedelta(minutes=10080)
     )
+    print(f"[login] User {db_user.id} logged in, school_name={db_user.school_name}")
     return {
         "message": "Вход выполнен успешно",
         "user_id": db_user.id,
@@ -326,7 +333,8 @@ def ai_parse_text(request: AIInputRequest, current_user: User = Depends(get_curr
 def generate_timetable(request: TimetableRequest, current_user: User = Depends(get_current_user),
                        db: Session = Depends(get_db)):
     try:
-        print(f"🚀 НАЧАЛО ГЕНЕРАЦИИ для пользователя {current_user.id}")
+        school_id = _get_user_school_id(current_user, db)
+        print(f"🚀 НАЧАЛО ГЕНЕРАЦИИ для пользователя {current_user.id}, school_id={school_id}")
         is_valid, teacher_stats, errors = validate_teachers(request)
         if not is_valid:
             return {
@@ -351,13 +359,14 @@ def generate_timetable(request: TimetableRequest, current_user: User = Depends(g
         data_dict = response_to_dict(result, request)
         saved = SavedTimetable(
             user_id=current_user.id,
+            school_id=school_id,
             name=f"Расписание {datetime.utcnow().strftime('%d.%m.%Y %H:%M')}",
             data=data_dict,
         )
         db.add(saved)
         db.commit()
         db.refresh(saved)
-        print(f"💾 Расписание сохранено с ID: {saved.id}")
+        print(f"💾 Расписание сохранено с ID: {saved.id}, school_id={school_id}")
 
         return {
             "message": "Расписание сгенерировано",
@@ -380,9 +389,14 @@ def generate_timetable(request: TimetableRequest, current_user: User = Depends(g
 def get_timetables(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
         db.expire_all()
-        timetables = db.query(SavedTimetable).filter(
-            SavedTimetable.user_id == current_user.id
-        ).order_by(SavedTimetable.created_at.desc()).all()
+        school_id = _get_user_school_id(current_user, db)
+        query = db.query(SavedTimetable)
+        if school_id:
+            query = query.filter(SavedTimetable.school_id == school_id)
+        else:
+            query = query.filter(SavedTimetable.user_id == current_user.id)
+        print(f"[timetables] Filtered by school_id={school_id} for user={current_user.id}")
+        timetables = query.order_by(SavedTimetable.created_at.desc()).all()
         return [
             {
                 "id": t.id,
@@ -401,16 +415,19 @@ def get_timetables(current_user: User = Depends(get_current_user), db: Session =
 def get_timetable(timetable_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
         db.expire_all()
-        timetable = db.query(SavedTimetable).filter(
-            SavedTimetable.id == timetable_id,
-            SavedTimetable.user_id == current_user.id
-        ).first()
+        school_id = _get_user_school_id(current_user, db)
+        query = db.query(SavedTimetable).filter(SavedTimetable.id == timetable_id)
+        if school_id:
+            query = query.filter(SavedTimetable.school_id == school_id)
+        else:
+            query = query.filter(SavedTimetable.user_id == current_user.id)
+        timetable = query.first()
         if not timetable:
             raise HTTPException(status_code=404, detail="Расписание не найдено")
 
         data = ensure_topic_field(copy.deepcopy(timetable.data)) if timetable.data else {}
 
-        print(f"📥 GET /timetables/{timetable_id} - возвращаем данные с {len(data.get('teachers', []))} учителями")
+        print(f"📥 GET /timetables/{timetable_id} - возвращаем данные с {len(data.get('teachers', []))} учителями, school_id={school_id}")
 
         return {
             "id": timetable.id,
@@ -428,10 +445,13 @@ def get_timetable(timetable_id: int, current_user: User = Depends(get_current_us
 @app.put("/timetables/{timetable_id}")
 def update_timetable(timetable_id: int, update_data: TimetableUpdate, current_user: User = Depends(get_current_user),
                      db: Session = Depends(get_db)):
-    timetable = db.query(SavedTimetable).filter(
-        SavedTimetable.id == timetable_id,
-        SavedTimetable.user_id == current_user.id
-    ).first()
+    school_id = _get_user_school_id(current_user, db)
+    query = db.query(SavedTimetable).filter(SavedTimetable.id == timetable_id)
+    if school_id:
+        query = query.filter(SavedTimetable.school_id == school_id)
+    else:
+        query = query.filter(SavedTimetable.user_id == current_user.id)
+    timetable = query.first()
     if not timetable:
         raise HTTPException(status_code=404, detail="Расписание не найдено")
     if update_data.name is not None:
@@ -445,10 +465,13 @@ def update_timetable(timetable_id: int, update_data: TimetableUpdate, current_us
 
 @app.delete("/timetables/{timetable_id}")
 def delete_timetable(timetable_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    timetable = db.query(SavedTimetable).filter(
-        SavedTimetable.id == timetable_id,
-        SavedTimetable.user_id == current_user.id
-    ).first()
+    school_id = _get_user_school_id(current_user, db)
+    query = db.query(SavedTimetable).filter(SavedTimetable.id == timetable_id)
+    if school_id:
+        query = query.filter(SavedTimetable.school_id == school_id)
+    else:
+        query = query.filter(SavedTimetable.user_id == current_user.id)
+    timetable = query.first()
     if not timetable:
         raise HTTPException(status_code=404, detail="Расписание не найдено")
     db.delete(timetable)
@@ -473,16 +496,19 @@ def move_lesson(
 
         db.expire_all()
 
-        timetable = db.query(SavedTimetable).filter(
-            SavedTimetable.id == timetable_id,
-            SavedTimetable.user_id == current_user.id
-        ).first()
+        school_id = _get_user_school_id(current_user, db)
+        query = db.query(SavedTimetable).filter(SavedTimetable.id == timetable_id)
+        if school_id:
+            query = query.filter(SavedTimetable.school_id == school_id)
+        else:
+            query = query.filter(SavedTimetable.user_id == current_user.id)
+        timetable = query.first()
 
         if not timetable:
-            print(f"⚠️ Расписание {timetable_id} не найдено для пользователя {current_user.id}")
+            print(f"⚠️ Расписание {timetable_id} не найдено для пользователя {current_user.id}, school_id={school_id}")
             raise HTTPException(status_code=404, detail="Расписание не найдено")
 
-        print(f"✅ Расписание загружено из БД")
+        print(f"✅ Расписание загружено из БД, school_id={school_id}")
 
         # Работаем с КОПИЕЙ данных: мутация ORM-объекта in-place не отслеживается SQLAlchemy,
         # поэтому изменения не сохранялись. Изменённую копию присваиваем в конце.
@@ -692,10 +718,13 @@ def update_lesson_topics(
     try:
         db.expire_all()
 
-        timetable = db.query(SavedTimetable).filter(
-            SavedTimetable.id == timetable_id,
-            SavedTimetable.user_id == current_user.id
-        ).first()
+        school_id = _get_user_school_id(current_user, db)
+        query = db.query(SavedTimetable).filter(SavedTimetable.id == timetable_id)
+        if school_id:
+            query = query.filter(SavedTimetable.school_id == school_id)
+        else:
+            query = query.filter(SavedTimetable.user_id == current_user.id)
+        timetable = query.first()
 
         if not timetable:
             raise HTTPException(status_code=404, detail="Расписание не найдено")
@@ -706,7 +735,7 @@ def update_lesson_topics(
         teachers = data.get('teachers', [])
         updated_count = 0
 
-        print(f"📝 Обновление тем: получено {len(request.updates)} обновлений")
+        print(f"📝 Обновление тем: получено {len(request.updates)} обновлений, school_id={school_id}")
 
         for update in request.updates:
             req_teacher = update.teacher.strip().lower()
@@ -799,10 +828,13 @@ def export_topics_excel(
     try:
         db.expire_all()
 
-        timetable = db.query(SavedTimetable).filter(
-            SavedTimetable.id == timetable_id,
-            SavedTimetable.user_id == current_user.id
-        ).first()
+        school_id = _get_user_school_id(current_user, db)
+        query = db.query(SavedTimetable).filter(SavedTimetable.id == timetable_id)
+        if school_id:
+            query = query.filter(SavedTimetable.school_id == school_id)
+        else:
+            query = query.filter(SavedTimetable.user_id == current_user.id)
+        timetable = query.first()
 
         if not timetable:
             raise HTTPException(status_code=404, detail="Расписание не найдено")
@@ -928,10 +960,13 @@ def export_excel(
 ):
     db.expire_all()
 
-    timetable = db.query(SavedTimetable).filter(
-        SavedTimetable.id == timetable_id,
-        SavedTimetable.user_id == current_user.id
-    ).first()
+    school_id = _get_user_school_id(current_user, db)
+    query = db.query(SavedTimetable).filter(SavedTimetable.id == timetable_id)
+    if school_id:
+        query = query.filter(SavedTimetable.school_id == school_id)
+    else:
+        query = query.filter(SavedTimetable.user_id == current_user.id)
+    timetable = query.first()
 
     if not timetable:
         raise HTTPException(status_code=404, detail="Расписание не найдено")
@@ -968,10 +1003,13 @@ def export_pdf(
 ):
     db.expire_all()
 
-    timetable = db.query(SavedTimetable).filter(
-        SavedTimetable.id == timetable_id,
-        SavedTimetable.user_id == current_user.id
-    ).first()
+    school_id = _get_user_school_id(current_user, db)
+    query = db.query(SavedTimetable).filter(SavedTimetable.id == timetable_id)
+    if school_id:
+        query = query.filter(SavedTimetable.school_id == school_id)
+    else:
+        query = query.filter(SavedTimetable.user_id == current_user.id)
+    timetable = query.first()
 
     if not timetable:
         raise HTTPException(status_code=404, detail="Расписание не найдено")
@@ -1029,13 +1067,15 @@ def _to_dict(r: CombinedLessonRule) -> Dict[str, Any]:
 @app.get("/api/combined-lessons")
 def list_combined_lessons(current_user: User = Depends(get_current_user),
                           db: Session = Depends(get_db)):
-    """Получить список правил совмещённых уроков текущего пользователя."""
-    items = (
-        db.query(CombinedLessonRule)
-        .filter(CombinedLessonRule.user_id == current_user.id)
-        .order_by(CombinedLessonRule.created_at.desc())
-        .all()
-    )
+    """Получить список правил совмещённых уроков текущей школы."""
+    school_id = _get_user_school_id(current_user, db)
+    query = db.query(CombinedLessonRule)
+    if school_id:
+        query = query.filter(CombinedLessonRule.school_id == school_id)
+    else:
+        query = query.filter(CombinedLessonRule.user_id == current_user.id)
+    print(f"[combined-lessons] Filtered by school_id={school_id} for user={current_user.id}")
+    items = query.order_by(CombinedLessonRule.created_at.desc()).all()
     return [_to_dict(r) for r in items]
 
 
@@ -1136,16 +1176,27 @@ def _substitution_to_dict(s: Substitution) -> Dict[str, Any]:
 
 @app.get("/api/substitutions")
 def list_substitutions(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    items = db.query(Substitution).order_by(Substitution.date.desc(), Substitution.slot.asc()).all()
+    school_id = _get_user_school_id(current_user, db)
+    query = db.query(Substitution)
+    if school_id:
+        query = query.filter(Substitution.school_id == school_id)
+    else:
+        # У пользователя нет школы — возвращаем пустой список
+        return []
+    items = query.order_by(Substitution.date.desc(), Substitution.slot.asc()).all()
     return [_substitution_to_dict(s) for s in items]
 
 
 @app.post("/api/substitutions")
 def create_substitution(payload: SubstitutionCreate, current_user: User = Depends(get_current_user),
                         db: Session = Depends(get_db)):
+    school_id = _get_user_school_id(current_user, db)
+    if not school_id:
+        raise HTTPException(status_code=400, detail="Школа не найдена. Укажите название школы при регистрации.")
     if payload.substitute and payload.substitute.strip() == payload.absent.strip():
         raise HTTPException(status_code=400, detail="Замена не может совпадать с отсутствующим учителем")
     s = Substitution(
+        school_id=school_id,
         date=(payload.date or None),
         slot=payload.slot or 1,
         grade=payload.grade,
@@ -1162,7 +1213,13 @@ def create_substitution(payload: SubstitutionCreate, current_user: User = Depend
 @app.patch("/api/substitutions/{sub_id}")
 def update_substitution(sub_id: int, payload: SubstitutionUpdate,
                         current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    s = db.query(Substitution).filter(Substitution.id == sub_id).first()
+    school_id = _get_user_school_id(current_user, db)
+    query = db.query(Substitution).filter(Substitution.id == sub_id)
+    if school_id:
+        query = query.filter(Substitution.school_id == school_id)
+    else:
+        raise HTTPException(status_code=404, detail="Замена не найдена")
+    s = query.first()
     if not s:
         raise HTTPException(status_code=404, detail="Замена не найдена")
     sub_value = (payload.substitute or "").strip()
@@ -1176,7 +1233,13 @@ def update_substitution(sub_id: int, payload: SubstitutionUpdate,
 
 @app.delete("/api/substitutions/{sub_id}")
 def delete_substitution(sub_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    s = db.query(Substitution).filter(Substitution.id == sub_id).first()
+    school_id = _get_user_school_id(current_user, db)
+    query = db.query(Substitution).filter(Substitution.id == sub_id)
+    if school_id:
+        query = query.filter(Substitution.school_id == school_id)
+    else:
+        raise HTTPException(status_code=404, detail="Замена не найдена")
+    s = query.first()
     if not s:
         raise HTTPException(status_code=404, detail="Замена не найдена")
     db.delete(s)
@@ -1372,6 +1435,30 @@ def import_template(current_user: User = Depends(get_current_user)):
 # ============================================================
 # СПРАВОЧНИКИ ШКОЛЫ (общие для всех пользователей школы)
 # ============================================================
+class SchoolNameUpdate(BaseModel):
+    school_name: str
+
+
+@app.post("/api/school")
+def update_school_name(
+    payload: SchoolNameUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Обновить название школы пользователя. Создаёт школу если её нет."""
+    school = db.query(School).filter(School.user_id == current_user.id).first()
+    if school:
+        school.name = payload.school_name
+    else:
+        school = School(user_id=current_user.id, name=payload.school_name)
+        db.add(school)
+    # Также обновляем school_name в User
+    current_user.school_name = payload.school_name
+    db.commit()
+    print(f"[school] User {current_user.id} updated school_name to '{payload.school_name}'")
+    return {"message": "Школа обновлена", "school_name": payload.school_name}
+
+
 class SchoolDataUpdate(BaseModel):
     data: Dict[str, Any]
 

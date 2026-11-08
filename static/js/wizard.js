@@ -88,6 +88,10 @@ async function goToStep(step) {
         renderTeachers();
         renderSubjects();
         renderClassrooms();
+        _migrateTeacherAssignments();
+        populateTeacherAssignmentDropdown();
+        populateAssignmentCheckboxes();
+        renderAssignmentsTable();
     }
     if (step === 3) {
         updateTeacherSelect();
@@ -225,7 +229,7 @@ function collectLessonTimes() {
     return times;
 }
 
-function completeStep(step) {
+async function completeStep(step) {
     if (step === 1) {
         schoolData.name = document.getElementById('schoolName').value;
         schoolData.days = parseInt(document.getElementById('daysPerWeek').value);
@@ -237,6 +241,28 @@ function completeStep(step) {
             anchorDate: anchorEl ? anchorEl.value : '',
             anchorIsBlue: (anchorWeekEl ? anchorWeekEl.value : 'blue') !== 'red'
         };
+        // Сохраняем название школы на сервере
+        if (schoolData.name && getToken()) {
+            try {
+                const res = await fetch('/api/school', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + getToken()
+                    },
+                    body: JSON.stringify({ school_name: schoolData.name })
+                });
+                if (res.ok) {
+                    localStorage.setItem('school_name', schoolData.name);
+                    console.log('[school] School name saved:', schoolData.name);
+                    // Обновляем отображение школы в интерфейсе
+                    const roleEl = document.getElementById('sidebarUserRole');
+                    if (roleEl) roleEl.textContent = schoolData.name;
+                }
+            } catch (e) {
+                console.error('[school] Failed to save school name:', e);
+            }
+        }
     }
     saveSchoolData();
     goToStep(step + 1);
@@ -469,11 +495,9 @@ function removeSubject(i) {
         });
     });
     // убираем предмет из назначений «учитель → класс → предметы»
-    if (schoolData.teacherAssignments) {
-        Object.values(schoolData.teacherAssignments).forEach(items => {
-            items.forEach(it => {
-                it.subjects = (it.subjects || []).filter(s => s !== subjectName);
-            });
+    if (Array.isArray(schoolData.teacherAssignments)) {
+        schoolData.teacherAssignments.forEach(a => {
+            a.subjects = (a.subjects || []).filter(s => s !== subjectName);
         });
     }
     schoolData.subjects.splice(i, 1);
@@ -643,97 +667,158 @@ function updateTeacherDatalist() {
 // ============================================================
 // НАЗНАЧЕНИЯ «УЧИТЕЛЬ → КЛАССЫ → ПРЕДМЕТЫ» (ВКЛАДКА «ПРЕДМЕТЫ»)
 // ============================================================
-function ensureTeacherExistsSilent(name) {
-    if (!name) return;
-    if (!schoolData.teachers.find(t => t.full_name.toLowerCase() === name.toLowerCase())) {
-        schoolData.teachers.push({ full_name: name, email: '', subjects: [] });
-        renderTeachers();
-        updateTeacherSelect();
-        updateTeacherDatalist();
-        saveSchoolData();
+function _ensureArrayAssignments() {
+    if (!Array.isArray(schoolData.teacherAssignments)) {
+        schoolData.teacherAssignments = [];
     }
 }
 
-function getTeacherAssignments(teacher) {
-    if (!schoolData.teacherAssignments) schoolData.teacherAssignments = {};
-    if (!schoolData.teacherAssignments[teacher]) schoolData.teacherAssignments[teacher] = [];
-    return schoolData.teacherAssignments[teacher];
+function onTeacherAssignmentSelect() {
+    const select = document.getElementById('teacher-assignment-select');
+    const teacherId = select ? select.value : '';
+    if (!teacherId) return;
+    const teacher = schoolData.teachers.find(t => String(t.id || schoolData.teachers.indexOf(t)) === teacherId);
+    if (!teacher) return;
+    // Предзаполняем чекбоксы из существующих назначений этого учителя
+    _ensureArrayAssignments();
+    const existing = schoolData.teacherAssignments.find(a => String(a.teacherId) === teacherId);
+    const assignedClasses = existing ? (existing.classes || []) : [];
+    const assignedSubjects = existing ? (existing.subjects || []) : [];
+    document.querySelectorAll('#class-checkbox-list input[type="checkbox"]').forEach(cb => {
+        cb.checked = assignedClasses.includes(cb.value);
+    });
+    document.querySelectorAll('#subject-checkbox-list input[type="checkbox"]').forEach(cb => {
+        cb.checked = assignedSubjects.includes(cb.value);
+    });
 }
 
-function loadAssignmentCard() {
-    const input = document.getElementById('assignTeacher');
-    const teacher = input ? input.value.trim() : '';
-    const card = document.getElementById('assignmentCard');
-    if (!card) return;
-    if (!teacher) { card.style.display = 'none'; return; }
-    ensureTeacherExistsSilent(teacher);
-    getTeacherAssignments(teacher);
-    card.style.display = 'block';
-    renderAssignmentList(teacher);
+function populateTeacherAssignmentDropdown() {
+    const select = document.getElementById('teacher-assignment-select');
+    if (!select) return;
+    select.innerHTML = '<option value="">-- Выберите учителя --</option>' +
+        schoolData.teachers.map((t, i) => {
+            const id = t.id != null ? t.id : i;
+            return `<option value="${sdEscapeAttr(String(id))}">${sdEscapeAttr(t.full_name)}</option>`;
+        }).join('');
 }
 
-function renderAssignmentList(teacher) {
-    const container = document.getElementById('assignmentList');
-    if (!container) return;
-    const items = getTeacherAssignments(teacher);
-    if (!items.length) {
-        container.innerHTML = '<p style="color:#999;padding:8px">Классы не добавлены. Нажмите «+ Добавить класс».</p>';
+function populateAssignmentCheckboxes() {
+    const classList = document.getElementById('class-checkbox-list');
+    if (classList) {
+        const classes = schoolData.classes || [];
+        classList.innerHTML = classes.length
+            ? classes.map(c => `<label><input type="checkbox" value="${sdEscapeAttr(c.name)}"> ${sdEscapeAttr(c.name)}</label>`).join('')
+            : '<span style="color:#999;font-size:13px">Сначала добавьте классы выше</span>';
+    }
+    const subjectList = document.getElementById('subject-checkbox-list');
+    if (subjectList) {
+        const subjects = (schoolData.subjects || []).map(s => s.name);
+        subjectList.innerHTML = subjects.length
+            ? subjects.map(s => `<label><input type="checkbox" value="${sdEscapeAttr(s)}"> ${sdEscapeAttr(s)}</label>`).join('')
+            : '<span style="color:#999;font-size:13px">Сначала добавьте предметы выше</span>';
+    }
+}
+
+function saveTeacherAssignment() {
+    const select = document.getElementById('teacher-assignment-select');
+    const teacherId = select ? select.value : '';
+    const selectedClasses = Array.from(document.querySelectorAll('#class-checkbox-list input:checked')).map(cb => cb.value);
+    const selectedSubjects = Array.from(document.querySelectorAll('#subject-checkbox-list input:checked')).map(cb => cb.value);
+
+    if (!teacherId || selectedClasses.length === 0 || selectedSubjects.length === 0) {
+        alert('Выберите учителя, хотя бы один класс и один предмет');
         return;
     }
-    const subjects = (schoolData.subjects || []).map(s => s.name);
-    container.innerHTML = items.map((it, i) => `
-        <div class="assignment-block">
-            <div class="assignment-head">
-                <div class="form-group" style="margin:0;">
-                    <label>Класс</label>
-                    <input type="text" value="${sdEscapeAttr(it.grade || '')}" list="classDatalist"
-                           placeholder="5А" onchange="updateAssignmentGrade(${i}, this.value)"
-                           aria-label="Класс ${i + 1}">
-                </div>
-                <button class="small danger" onclick="removeAssignmentClass(${i})" title="Удалить класс" aria-label="Удалить класс">🗑</button>
-            </div>
-            <div class="form-group">
-                <label>Предметы в этом классе</label>
-                <div class="checkbox-group">
-                    ${subjects.length
-                        ? subjects.map(s => `<label><input type="checkbox" ${(it.subjects || []).includes(s) ? 'checked' : ''} onchange="toggleAssignmentSubject(${i}, '${sdEscapeAttr(s)}', this.checked)"> ${sdEscapeAttr(s)}</label>`).join('')
-                        : '<span style="color:#999;font-size:13px">Сначала добавьте предметы выше</span>'}
-                </div>
-            </div>
-        </div>
-    `).join('');
-}
 
-function addAssignmentClass() {
-    const teacher = document.getElementById('assignTeacher').value.trim();
-    if (!teacher) { alert('Сначала введите учителя'); return; }
-    getTeacherAssignments(teacher).push({ grade: '', subjects: [] });
-    renderAssignmentList(teacher);
+    const teacher = schoolData.teachers.find(t => String(t.id != null ? t.id : schoolData.teachers.indexOf(t)) === teacherId);
+    if (!teacher) { alert('Учитель не найден'); return; }
+
+    const assignment = {
+        teacherId: teacherId,
+        teacherName: teacher.full_name,
+        classes: selectedClasses,
+        subjects: selectedSubjects
+    };
+
+    _ensureArrayAssignments();
+    // Удаляем предыдущее назначение этого учителя, если есть
+    schoolData.teacherAssignments = schoolData.teacherAssignments.filter(a => String(a.teacherId) !== teacherId);
+    schoolData.teacherAssignments.push(assignment);
+
+    console.log('[teacherAssignment] Saved:', assignment);
+
+    // Очищаем форму
+    select.value = '';
+    document.querySelectorAll('#class-checkbox-list input').forEach(cb => cb.checked = false);
+    document.querySelectorAll('#subject-checkbox-list input').forEach(cb => cb.checked = false);
+
     saveSchoolData();
+    renderAssignmentsTable();
+    alert('Назначение сохранено!');
 }
 
-function removeAssignmentClass(i) {
-    const teacher = document.getElementById('assignTeacher').value.trim();
-    getTeacherAssignments(teacher).splice(i, 1);
-    renderAssignmentList(teacher);
+function renderAssignmentsTable() {
+    const tbody = document.getElementById('assignments-tbody');
+    if (!tbody) return;
+    _ensureArrayAssignments();
+
+    if (schoolData.teacherAssignments.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="muted">Пока нет назначений</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = schoolData.teacherAssignments.map((assignment, index) =>
+        `<tr>
+            <td>${sdEscapeAttr(assignment.teacherName)}</td>
+            <td>${sdEscapeAttr(assignment.classes.join(', '))}</td>
+            <td>${sdEscapeAttr(assignment.subjects.join(', '))}</td>
+            <td><button class="small danger" onclick="deleteAssignment(${index})">🗑 Удалить</button></td>
+        </tr>`
+    ).join('');
+}
+
+function deleteAssignment(index) {
+    _ensureArrayAssignments();
+    schoolData.teacherAssignments.splice(index, 1);
     saveSchoolData();
+    renderAssignmentsTable();
 }
 
-function updateAssignmentGrade(i, value) {
-    const teacher = document.getElementById('assignTeacher').value.trim();
-    const items = getTeacherAssignments(teacher);
-    if (items[i]) { items[i].grade = value; saveSchoolData(); }
-}
+// Обратная совместимость: старые функции-обёртки для window.xxx в main.js
+function loadAssignmentCard() {}
+function addAssignmentClass() {}
+function removeAssignmentClass() {}
+function updateAssignmentGrade() {}
+function toggleAssignmentSubject() {}
 
-function toggleAssignmentSubject(i, subject, checked) {
-    const teacher = document.getElementById('assignTeacher').value.trim();
-    const items = getTeacherAssignments(teacher);
-    if (!items[i]) return;
-    items[i].subjects = items[i].subjects || [];
-    const pos = items[i].subjects.indexOf(subject);
-    if (checked && pos === -1) items[i].subjects.push(subject);
-    if (!checked && pos !== -1) items[i].subjects.splice(pos, 1);
-    saveSchoolData();
+// Миграция: конвертируем старый формат teacherAssignments (объект) в массив
+function _migrateTeacherAssignments() {
+    if (!schoolData.teacherAssignments) {
+        schoolData.teacherAssignments = [];
+        return;
+    }
+    if (Array.isArray(schoolData.teacherAssignments)) return;
+    // Старый формат: { "Учитель1": [{grade: "5А", subjects: [...]}, ...], ... }
+    const old = schoolData.teacherAssignments;
+    const arr = [];
+    Object.keys(old).forEach(teacherName => {
+        const items = old[teacherName] || [];
+        const allClasses = [];
+        const allSubjects = new Set();
+        items.forEach(it => {
+            if (it.grade) allClasses.push(it.grade);
+            (it.subjects || []).forEach(s => allSubjects.add(s));
+        });
+        const teacherIdx = schoolData.teachers.findIndex(t => t.full_name === teacherName);
+        arr.push({
+            teacherId: String(teacherIdx >= 0 ? teacherIdx : teacherName),
+            teacherName: teacherName,
+            classes: allClasses,
+            subjects: [...allSubjects]
+        });
+    });
+    schoolData.teacherAssignments = arr;
+    console.log('[migration] teacherAssignments migrated to array format:', arr);
 }
 
 // ============================================================
@@ -875,11 +960,13 @@ function loadTeacherCard() {
 // Автоподстановка нагрузок из назначений (вкладка «Предметы»), если их ещё нет
 function autoFillWorkloadsFromAssignments(teacher) {
     if (schoolData.workloads.some(w => w.teacher === teacher)) return;
-    const items = (schoolData.teacherAssignments && schoolData.teacherAssignments[teacher]) || [];
+    _ensureArrayAssignments();
+    const assignment = schoolData.teacherAssignments.find(a => a.teacherName === teacher);
+    if (!assignment) return;
     let added = false;
-    items.forEach(it => {
-        (it.subjects || []).forEach(subj => {
-            schoolData.workloads.push({ teacher, subject: subj, grade: it.grade || '', classroom: '', hours: 1 });
+    (assignment.classes || []).forEach(cls => {
+        (assignment.subjects || []).forEach(subj => {
+            schoolData.workloads.push({ teacher, subject: subj, grade: cls, classroom: '', hours: 1 });
             added = true;
         });
     });
@@ -939,11 +1026,12 @@ function showAutocomplete(input, type) {
     // добавляем классы/предметы из назначений выбранного учителя
     const teacherSelect = document.getElementById('teacherSelect');
     const teacher = teacherSelect ? teacherSelect.value : '';
-    const assigns = (schoolData.teacherAssignments && schoolData.teacherAssignments[teacher]) || [];
-    assigns.forEach(a => {
-        if (type === 'classes' && a.grade) names.add(a.grade);
-        if (type === 'subjects') (a.subjects || []).forEach(s => names.add(s));
-    });
+    _ensureArrayAssignments();
+    const assignment = schoolData.teacherAssignments.find(a => a.teacherName === teacher);
+    if (assignment) {
+        (assignment.classes || []).forEach(c => names.add(c));
+        (assignment.subjects || []).forEach(s => names.add(s));
+    }
     const items = [...names];
     const value = input.value.toLowerCase();
     list.innerHTML = '';

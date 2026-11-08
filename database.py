@@ -76,6 +76,7 @@ class SavedTimetable(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    school_id = Column(Integer, ForeignKey("schools.id", ondelete="CASCADE"), nullable=True)
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     data = Column(JSON, nullable=False)
@@ -87,10 +88,11 @@ class SavedTimetable(Base):
 
 
 class Substitution(Base):
-    """Журнал замен. Общий для всех пользователей (не привязан к владельцу)."""
+    """Журнал замен. Изолирован по school_id."""
     __tablename__ = "substitutions"
 
     id = Column(Integer, primary_key=True, index=True)
+    school_id = Column(Integer, ForeignKey("schools.id", ondelete="CASCADE"), nullable=True)
     date = Column(String(20), nullable=True)          # YYYY-MM-DD
     slot = Column(Integer, nullable=False, default=1)  # номер урока
     grade = Column(String(64), nullable=True)          # класс
@@ -98,6 +100,8 @@ class Substitution(Base):
     substitute = Column(String(255), nullable=True)    # заменяющий ('' = нет замены)
     created_by_name = Column(String(255), nullable=True)
     created_at = Column(DateTime, server_default=func.now())
+
+    school = relationship("School")
 
 
 class SchoolData(Base):
@@ -168,6 +172,36 @@ def init_db():
                 print("ℹ️ Колонка user_id уже существует")
             else:
                 print(f"⚠️ Ошибка миграции: {e}")
+
+    # Миграция: добавление колонки school_id в substitutions
+    with engine.connect() as conn:
+        try:
+            conn.execute(text("""
+                ALTER TABLE substitutions 
+                ADD COLUMN school_id INTEGER REFERENCES schools(id) ON DELETE CASCADE;
+            """))
+            conn.commit()
+            print("✅ Миграция: добавлена колонка school_id в substitutions")
+        except Exception as e:
+            if "already exists" in str(e) or "duplicate column" in str(e):
+                print("ℹ️ Колонка school_id уже существует в substitutions")
+            else:
+                print(f"⚠️ Ошибка миграции substitutions: {e}")
+
+    # Миграция: добавление колонки school_id в saved_timetables
+    with engine.connect() as conn:
+        try:
+            conn.execute(text("""
+                ALTER TABLE saved_timetables 
+                ADD COLUMN school_id INTEGER REFERENCES schools(id) ON DELETE CASCADE;
+            """))
+            conn.commit()
+            print("✅ Миграция: добавлена колонка school_id в saved_timetables")
+        except Exception as e:
+            if "already exists" in str(e) or "duplicate column" in str(e):
+                print("ℹ️ Колонка school_id уже существует в saved_timetables")
+            else:
+                print(f"⚠️ Ошибка миграции saved_timetables: {e}")
 
 
 def get_db():

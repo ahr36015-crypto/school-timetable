@@ -3,7 +3,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (savedData) {
         try {
             schoolData = JSON.parse(savedData);
-            if (!schoolData.teacherAssignments) schoolData.teacherAssignments = {};
+            // Мигрируем старый формат teacherAssignments в массив
+            if (typeof _migrateTeacherAssignments === 'function') _migrateTeacherAssignments();
+            if (!schoolData.teacherAssignments) schoolData.teacherAssignments = [];
         } catch (e) {
             console.error("Ошибка парсинга schoolData:", e);
         }
@@ -40,6 +42,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 window.renderLessonTimeRows = renderLessonTimeRows;
+window.saveTeacherAssignment = saveTeacherAssignment;
+window.deleteAssignment = deleteAssignment;
+window.onTeacherAssignmentSelect = onTeacherAssignmentSelect;
 window.loadAssignmentCard = loadAssignmentCard;
 window.addAssignmentClass = addAssignmentClass;
 window.removeAssignmentClass = removeAssignmentClass;
