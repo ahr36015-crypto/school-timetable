@@ -240,6 +240,13 @@
                 </select>
             </div>
             <div class="form-group">
+                <label>Система обучения</label>
+                <select id="studySystem" onchange="onStudySystemChange()">
+                    <option value="quarters">Четвертная (4 четверти)</option>
+                    <option value="semesters">Семестровая (2 семестра)</option>
+                </select>
+            </div>
+            <div class="form-group" id="quartersCountGroup">
                 <label>Количество четвертей в году</label>
                 <select id="quartersCount">
                     <option value="4">4 четверти</option>
@@ -642,7 +649,12 @@
                                     <button type="button" class="btn" onclick="openNewSubjectModal()" title="Добавить новый предмет" style="white-space: nowrap;">+ Новый</button>
                                 </div>
                             </div>
-                            <div class="form-group"><label>Класс</label><select class="form-control" id="planGrade"></select></div>
+                            <div class="form-group" style="flex: 3;">
+                                <label>Классы
+                                    <button type="button" class="btn-link" style="font-size:11px;margin-left:8px;padding:2px 6px;" onclick="toggleAllPlanGrades()">Все/Снять</button>
+                                </label>
+                                <div id="planGradeCheckboxes" class="checkbox-group"></div>
+                            </div>
                             <div class="form-group"><label>Часов/нед</label><input type="number" class="form-control" id="planHours" min="1" max="40" value="1"></div>
                             <div class="form-group"><label>Периодичность</label>
                                 <select class="form-control" id="planWeek">
@@ -655,7 +667,12 @@
                         </div>
                         <div class="table-wrap">
                             <table class="data-table" id="plansTable">
-                                <thead><tr><th>Предмет</th><th>Класс</th><th>Часов/нед</th><th>Часов/четверть</th><th>Часов/год</th><th>Периодичность</th><th></th></tr></thead>
+                                <thead><tr>
+                                    <th>Предмет</th><th>Класс</th><th>Часов/нед</th>
+                                    <th>Ч1</th><th>Ч2</th><th>Ч3</th><th>Ч4</th>
+                                    <th id="thQ5" style="display:none">Ч5</th>
+                                    <th>Год</th><th>Периодичность</th><th></th>
+                                </tr></thead>
                                 <tbody><tr><td colspan="7" class="muted">План пуст</td></tr></tbody>
                             </table>
                         </div>

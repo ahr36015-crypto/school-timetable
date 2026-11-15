@@ -33,17 +33,39 @@ function _subjects() { return (schoolData.subjects || []).map(s => s.name); }
 function _classes() { return (schoolData.classes || []).map(c => c.name); }
 function _teachers() { return (schoolData.teachers || []).map(t => t.full_name); }
 
-// Расчёт часов в четверть и год на основе часов в неделю
-function _calculateQuarterHours(hoursPerWeek) {
+// Недель по четвертям: [9,9,8,9] для 4ч, [7,7,7,7,7] для 5ч
+// Семестры: Q1+Q2=сем1 (~18 нед), Q3+Q4=сем2 (~17 нед)
+function _getWeeksPerQuarter() {
+    const system = schoolData.system || 'quarters';
     const quartersCount = schoolData.quartersCount || 4;
     const weeksPerYear = 35;
-    const weeksPerQuarter = Math.round(weeksPerYear / quartersCount);
-    return Math.round(hoursPerWeek * weeksPerQuarter * 10) / 10;
+    console.log('[plans] _getWeeksPerQuarter: system=' + system + ', quartersCount=' + quartersCount);
+    if (system === 'semesters') {
+        const sem1 = Math.round(weeksPerYear / 2);     // 18
+        const sem2 = weeksPerYear - sem1;              // 17
+        return [Math.round(sem1/2), sem1 - Math.round(sem1/2), Math.round(sem2/2), sem2 - Math.round(sem2/2)];
+    }
+    if (quartersCount === 5) {
+        const w = Math.round(weeksPerYear / 5);        // 7
+        return [w, w, w, w, weeksPerYear - 4*w];       // [7,7,7,7,7]
+    }
+    return [9, 9, 8, 9];
+}
+
+function _calculateQuarterHours(hoursPerWeek, quarterIndex) {
+    const weeks = (_getWeeksPerQuarter()[quarterIndex]) || 0;
+    return Math.round(hoursPerWeek * weeks * 10) / 10;
 }
 
 function _calculateYearHours(hoursPerWeek) {
-    const weeksPerYear = 35;
-    return Math.round(hoursPerWeek * weeksPerYear * 10) / 10;
+    const totalWeeks = _getWeeksPerQuarter().reduce((a, b) => a + b, 0);
+    return Math.round(hoursPerWeek * totalWeeks * 10) / 10;
+}
+
+// Авто-заполнение четвертей из часов/нед (распределяет по неделям)
+function _autoFillQuarterHours(hoursPerWeek) {
+    const weeks = _getWeeksPerQuarter();
+    return weeks.map(w => Math.round(hoursPerWeek * w * 10) / 10);
 }
 
 function _esc(v) {
@@ -506,25 +528,39 @@ function removeTransfer(i) {
 }
 
 // ---------- Учебные планы ----------
+function renderPlanGradeCheckboxes() {
+    const container = document.getElementById('planGradeCheckboxes');
+    if (!container) return;
+    const classes = schoolData.classes || [];
+    console.log('[plans] renderPlanGradeCheckboxes:', classes.length, 'classes');
+    if (classes.length === 0) {
+        container.innerHTML = '<span style="color:#999;font-size:13px">Сначала добавьте классы</span>';
+        return;
+    }
+    container.innerHTML = classes.map(c =>
+        '<label><input type="checkbox" value="' + _esc(c.name) + '"> ' + _esc(c.name) + '</label>'
+    ).join('');
+}
+
+function toggleAllPlanGrades() {
+    const container = document.getElementById('planGradeCheckboxes');
+    if (!container) return;
+    const cbs = container.querySelectorAll('input[type="checkbox"]');
+    const allChecked = Array.from(cbs).every(cb => cb.checked);
+    cbs.forEach(cb => cb.checked = !allChecked);
+    console.log('[plans] toggleAllPlanGrades:', !allChecked);
+}
+
 function renderPlans() {
     _ensureData();
     console.log('[plans] renderPlans called');
     console.log('[plans] schoolData.subjects:', schoolData.subjects);
     console.log('[plans] schoolData.classes:', schoolData.classes);
     console.log('[plans] schoolData.teachers:', schoolData.teachers);
-    console.log('[plans] _subjects():', _subjects());
-    console.log('[plans] _classes():', _classes());
-    console.log('[plans] _teachers():', _teachers());
     
     _fillSelect('planSubject', _subjects());
-    _fillSelect('planGrade', _classes());
     _fillSelect('planTeacher', _teachers(), '-- Выберите учителя --');
-    
-    // Проверяем, заполнились ли dropdown
-    const planSubject = document.getElementById('planSubject');
-    const planGrade = document.getElementById('planGrade');
-    console.log('[plans] planSubject options:', planSubject ? planSubject.options.length : 'not found');
-    console.log('[plans] planGrade options:', planGrade ? planGrade.options.length : 'not found');
+    renderPlanGradeCheckboxes();
     
     renderPlanItems();
     renderPlanAssignments();
@@ -534,58 +570,111 @@ function renderPlanItems() {
     const tbody = document.querySelector('#plansTable tbody');
     if (!tbody) return;
     const items = schoolData.planItems || [];
+    const system = schoolData.system || 'quarters';
     const quartersCount = schoolData.quartersCount || 4;
+    const showQ5 = (system === 'quarters' && quartersCount === 5);
+
+    const thQ5 = document.getElementById('thQ5');
+    if (thQ5) thQ5.style.display = showQ5 ? '' : 'none';
+
+    const totalCols = showQ5 ? 11 : 10;
+
     tbody.innerHTML = items.length
         ? items.map(it => {
             const wi = _normWeek(it.weekIndex);
             const per = weekLabelText(wi);
-            // Для расчёта часов в четверть/год: если предмет через неделю, фактически часов в неделю = hours/2
-            const effectiveHoursPerWeek = (wi === null) ? it.hours : it.hours / 2;
-            const hoursPerQuarter = _calculateQuarterHours(effectiveHoursPerWeek);
-            const hoursPerYear = _calculateYearHours(effectiveHoursPerWeek);
+            const effectiveHours = (wi === null) ? it.hours : it.hours / 2;
+            // Используем сохранённые часы по четвертям ИЛИ авто-расчёт (обратная совместимость)
+            const q1 = it.hours_q1 != null ? it.hours_q1 : _calculateQuarterHours(effectiveHours, 0);
+            const q2 = it.hours_q2 != null ? it.hours_q2 : _calculateQuarterHours(effectiveHours, 1);
+            const q3 = it.hours_q3 != null ? it.hours_q3 : _calculateQuarterHours(effectiveHours, 2);
+            const q4 = it.hours_q4 != null ? it.hours_q4 : _calculateQuarterHours(effectiveHours, 3);
+            const q5 = showQ5 ? (it.hours_q5 != null ? it.hours_q5 : _calculateQuarterHours(effectiveHours, 4)) : 0;
+            const year = it.hours_year != null ? it.hours_year : _calculateYearHours(effectiveHours);
             return '<tr>' +
                 '<td>' + _esc(it.subject) + '</td>' +
                 '<td>' + _esc(it.grade) + '</td>' +
                 '<td>' + _esc(it.hours) + '</td>' +
-                '<td>' + _esc(hoursPerQuarter) + '</td>' +
-                '<td>' + _esc(hoursPerYear) + '</td>' +
+                '<td>' + _esc(q1) + '</td>' +
+                '<td>' + _esc(q2) + '</td>' +
+                '<td>' + _esc(q3) + '</td>' +
+                '<td>' + _esc(q4) + '</td>' +
+                (showQ5 ? '<td>' + _esc(q5) + '</td>' : '') +
+                '<td><strong>' + _esc(year) + '</strong></td>' +
                 '<td>' + _esc(per) + '</td>' +
-                '<td><button class="small danger" onclick="removePlanItem(\'' + it.id + '\')" title="Удалить из плана" aria-label="Удалить из плана">🗑</button></td>' +
+                '<td><button class="small danger" onclick="removePlanItem(\'' + it.id + '\')" title="Удалить" aria-label="Удалить">🗑</button></td>' +
                 '</tr>';
         }).join('')
-        : '<tr><td colspan="7" class="muted">План пуст</td></tr>';
+        : '<tr><td colspan="' + totalCols + '" class="muted">План пуст</td></tr>';
 }
 
 function addPlanItem() {
     _ensureData();
     const subjectEl = document.getElementById('planSubject');
-    const gradeEl = document.getElementById('planGrade');
     const hoursEl = document.getElementById('planHours');
     const weekEl = document.getElementById('planWeek');
     const subject = subjectEl ? subjectEl.value : '';
-    const grade = gradeEl ? gradeEl.value : '';
     const hours = hoursEl ? (parseInt(hoursEl.value) || 1) : 1;
     const weekIndex = _normWeek(weekEl ? parseInt(weekEl.value, 10) : null);
-    if (!subject || !grade) { alert('Выберите предмет и класс'); return; }
-    if (schoolData.planItems.some(p => p.subject === subject && p.grade === grade && _normWeek(p.weekIndex) === weekIndex)) {
-        alert('Такая позиция уже есть в плане');
-        return;
+
+    // Собираем выбранные классы из чекбоксов
+    const gradeContainer = document.getElementById('planGradeCheckboxes');
+    const checkedGrades = gradeContainer
+        ? Array.from(gradeContainer.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value)
+        : [];
+
+    console.log('[plans] addPlanItem:', subject, 'grades=' + JSON.stringify(checkedGrades), 'hours=' + hours, 'weekIndex=' + weekIndex);
+
+    if (!subject) { alert('Выберите предмет'); return; }
+    if (checkedGrades.length === 0) { alert('Выберите хотя бы один класс'); return; }
+
+    // Авто-расчёт часов по четвертям из часов/нед
+    const quarterHours = _autoFillQuarterHours(weekIndex === null ? hours : hours / 2);
+    const yearTotal = _calculateYearHours(weekIndex === null ? hours : hours / 2);
+
+    let addedCount = 0, skippedCount = 0;
+    checkedGrades.forEach(function(grade) {
+        if (schoolData.planItems.some(p => p.subject === subject && p.grade === grade && _normWeek(p.weekIndex) === weekIndex)) {
+            skippedCount++;
+            console.log('[plans] Skipped duplicate:', subject, grade);
+            return;
+        }
+        const newItem = {
+            id: _uid(),
+            subject: subject,
+            grade: grade,
+            hours: hours,
+            weekIndex: weekIndex,
+            hours_q1: quarterHours[0],
+            hours_q2: quarterHours[1],
+            hours_q3: quarterHours[2],
+            hours_q4: quarterHours[3],
+            hours_q5: quarterHours[4] || 0,
+            hours_year: yearTotal
+        };
+        schoolData.planItems.push(newItem);
+        addedCount++;
+    });
+
+    console.log('[plans] Added:', addedCount, 'Skipped:', skippedCount);
+
+    if (addedCount > 0) {
+        saveSchoolData();
+        renderPlanItems();
+        renderPlanAssignments();
+        logActivity('В план добавлено: ' + subject + ' × ' + addedCount + ' кл. · ' + hours + ' ч');
     }
-    // Формируем новую запись плана
-    const newItem = { id: _uid(), subject: subject, grade: grade, hours: hours, weekIndex: weekIndex };
-    console.log('Plan item added:', newItem); // отладка: выводим добавленную запись в консоль
-    schoolData.planItems.push(newItem);
-    saveSchoolData();
-    // Перерисовываем таблицу плана и блок назначения учителю
-    renderPlanItems();
-    renderPlanAssignments();
-    logActivity('В план добавлено: ' + subject + ' · ' + grade + ' · ' + hours + ' ч · ' + weekShortText(weekIndex));
-    // Сбрасываем форму, чтобы можно было добавить следующую запись без перезагрузки
+
+    // Сброс формы
     subjectEl.selectedIndex = 0;
-    gradeEl.selectedIndex = 0;
+    if (gradeContainer) gradeContainer.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
     hoursEl.value = '1';
     weekEl.value = '';
     subjectEl.focus();
+
+    if (skippedCount > 0) {
+        alert('Добавлено: ' + addedCount + '. Пропущено дубликатов: ' + skippedCount);
+    }
 }
 
 function removePlanItem(id) {
@@ -620,16 +709,19 @@ function renderPlanAssignments() {
         const checked = (schoolData.workloads || []).some(w =>
             w.teacher === teacher && w.subject === it.subject && w.grade === it.grade && _normWeek(w.weekIndex) === wi);
         const per = (wi === null) ? (it.hours + ' ч/нед') : (it.hours + ' ч / 2 нед (' + weekShortText(wi) + ')');
-        // Расчёт часов в четверть и год
+        // Расчёт часов по четвертям и год
         const effectiveHoursPerWeek = (wi === null) ? it.hours : it.hours / 2;
-        const hoursPerQuarter = _calculateQuarterHours(effectiveHoursPerWeek);
-        const hoursPerYear = _calculateYearHours(effectiveHoursPerWeek);
+        const q1 = it.hours_q1 != null ? it.hours_q1 : _calculateQuarterHours(effectiveHoursPerWeek, 0);
+        const q2 = it.hours_q2 != null ? it.hours_q2 : _calculateQuarterHours(effectiveHoursPerWeek, 1);
+        const q3 = it.hours_q3 != null ? it.hours_q3 : _calculateQuarterHours(effectiveHoursPerWeek, 2);
+        const q4 = it.hours_q4 != null ? it.hours_q4 : _calculateQuarterHours(effectiveHoursPerWeek, 3);
+        const hoursPerYear = it.hours_year != null ? it.hours_year : _calculateYearHours(effectiveHoursPerWeek);
         return '<label class="plan-check ' + (checked ? 'checked' : '') + '">' +
             '<input type="checkbox" ' + (checked ? 'checked' : '') +
             ' onchange="togglePlanAssignment(\'' + it.id + '\', this.checked)">' +
             '<span class="pc-subject">' + _esc(it.subject) + '</span>' +
             '<span class="pc-meta">' + _esc(it.grade) + ' · ' + _esc(per) +
-            ' · <small>' + hoursPerQuarter + ' ч/четв, ' + hoursPerYear + ' ч/год</small></span>' +
+            ' · <small>Ч:' + q1 + '/' + q2 + '/' + q3 + '/' + q4 + ', Год:' + hoursPerYear + '</small></span>' +
             '</label>';
     }).join('');
 }

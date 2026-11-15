@@ -10,7 +10,8 @@ let schoolData = {
     holidays: [], transfers: [],
     weekConfig: { anchorDate: '', anchorIsBlue: true },
     combined_lessons: [], // правила совмещённых занятий
-    quartersCount: 4 // количество четвертей (4 или 5)
+    quartersCount: 4, // количество четвертей (4 или 5)
+    system: 'quarters' // 'quarters' | 'semesters'
 };
 let currentResult = null;
 let currentTimetableId = null;
@@ -58,7 +59,8 @@ function saveSchoolDataToServer() {
                 holidays: schoolData.holidays || [],
                 transfers: schoolData.transfers || [],
                 weekConfig: schoolData.weekConfig || { anchorDate: '', anchorIsBlue: true },
-                quartersCount: schoolData.quartersCount || 4
+                quartersCount: schoolData.quartersCount || 4,
+                system: schoolData.system || 'quarters'
             };
             console.log('[schoolData] Saving to server:', dataToSave);
             console.log('Filtered by school_id: (server resolves from user token)');
@@ -135,6 +137,9 @@ async function loadSchoolDataFromServer() {
         }
         if (data.quartersCount) {
             schoolData.quartersCount = data.quartersCount;
+        }
+        if (data.system) {
+            schoolData.system = data.system;
         }
         
         // Сохраняем в localStorage для кеширования

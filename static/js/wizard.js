@@ -244,6 +244,10 @@ async function completeStep(step) {
         // Сохраняем количество четвертей
         const quartersEl = document.getElementById('quartersCount');
         schoolData.quartersCount = quartersEl ? parseInt(quartersEl.value) || 4 : 4;
+        // Сохраняем систему обучения
+        const systemEl = document.getElementById('studySystem');
+        schoolData.system = systemEl ? systemEl.value : 'quarters';
+        console.log('[wizard] Step 1 saved: system=' + schoolData.system + ', quarters=' + schoolData.quartersCount);
         // Сохраняем название школы на сервере
         if (schoolData.name && getToken()) {
             try {
@@ -282,6 +286,10 @@ function restoreStep1Fields() {
     if (daysField && schoolData.days) daysField.value = schoolData.days;
     if (lessonsField && schoolData.lessonsPerDay) lessonsField.value = schoolData.lessonsPerDay;
     if (quartersField && schoolData.quartersCount) quartersField.value = schoolData.quartersCount;
+    // Восстанавливаем систему обучения
+    const systemField = document.getElementById('studySystem');
+    if (systemField && schoolData.system) systemField.value = schoolData.system;
+    onStudySystemChange();
 
     const cfg = schoolData.weekConfig || {};
     const anchorEl = document.getElementById('weekAnchorDate');
@@ -290,6 +298,16 @@ function restoreStep1Fields() {
     if (anchorWeekEl) anchorWeekEl.value = (cfg.anchorIsBlue === false) ? 'red' : 'blue';
 
     renderLessonTimeRows();
+}
+
+function onStudySystemChange() {
+    const systemEl = document.getElementById('studySystem');
+    const quartersGroup = document.getElementById('quartersCountGroup');
+    const system = systemEl ? systemEl.value : 'quarters';
+    console.log('[wizard] onStudySystemChange:', system);
+    if (quartersGroup) {
+        quartersGroup.style.display = (system === 'semesters') ? 'none' : '';
+    }
 }
 
 // ============================================================
